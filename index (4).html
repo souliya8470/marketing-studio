@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ຮ້ານຕຸກຕາ ສີໄຄ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&family=Noto+Serif+Lao:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#1F3D2E;
+    --bg-deep-2:#27483A;
+    --cream:#FAF6EE;
+    --cream-2:#F1EAD9;
+    --terracotta:#C9683F;
+    --terracotta-dark:#A6502E;
+    --sage:#A8C0A0;
+    --sage-dark:#5F7D58;
+    --ink:#23291F;
+    --muted:#6F7268;
+    --danger:#B0473B;
+    --white:#FFFFFF;
+    --radius:10px;
+    --shadow:0 2px 10px rgba(31,61,46,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Noto Sans Lao','Noto Sans',sans-serif;
+    background:var(--cream-2);
+    color:var(--ink);
+  }
+  h1,h2,h3,.serif{font-family:'Noto Serif Lao','Noto Sans Lao',serif;}
+  .app{
+    display:grid;
+    grid-template-columns:240px 1fr;
+    min-height:100vh;
+  }
+  .sidebar{
+    background:var(--bg-deep);
+    color:var(--cream);
+    padding:24px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .brand{
+    font-family:'Noto Serif Lao',serif;
+    font-size:20px;
+    font-weight:700;
+    color:var(--cream);
+    margin:0 8px 28px 8px;
+    line-height:1.3;
+  }
+  .brand small{
+    display:block;
+    font-family:'Noto Sans Lao',sans-serif;
+    font-size:12px;
+    font-weight:400;
+    color:var(--sage);
+    margin-top:4px;
+  }
+  .nav-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:none;
+    border:none;
+    color:var(--cream);
+    opacity:0.78;
+    text-align:left;
+    padding:11px 12px;
+    border-radius:8px;
+    font-size:14.5px;
+    font-family:inherit;
+    cursor:pointer;
+    transition:background .15s, opacity .15s;
+    width:100%;
+  }
+  .nav-btn:hover{background:var(--bg-deep-2); opacity:1;}
+  .nav-btn.active{background:var(--terracotta); opacity:1; font-weight:600;}
+  .nav-icon{font-size:17px; width:20px; text-align:center;}
+  .sidebar-foot{
+    margin-top:auto;
+    padding:12px 8px 0 8px;
+    font-size:11.5px;
+    color:var(--sage);
+    border-top:1px solid rgba(255,255,255,0.12);
+    padding-top:14px;
+  }
+  .main{padding:32px 40px; max-width:1180px;}
+  .page-head{margin-bottom:24px;}
+  .page-head h1{font-size:24px; margin:0 0 4px 0; color:var(--bg-deep);}
+  .page-head p{margin:0; color:var(--muted); font-size:14px;}
+  .card{
+    background:var(--white);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px 22px;
+    margin-bottom:18px;
+  }
+  .card h3{margin:0 0 14px 0; font-size:16px; color:var(--bg-deep);}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  .grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  label{display:block; font-size:13px; color:var(--muted); margin:0 0 5px 0; font-weight:600;}
+  input[type=text], input[type=number], textarea, select{
+    width:100%;
+    padding:9px 11px;
+    border:1px solid #DCD6C4;
+    border-radius:7px;
+    font-family:inherit;
+    font-size:14px;
+    background:var(--cream);
+    color:var(--ink);
+    margin-bottom:14px;
+  }
+  textarea{resize:vertical; min-height:80px;}
+  input:focus, textarea:focus, select:focus{
+    outline:none; border-color:var(--terracotta); background:var(--white);
+  }
+  .btn{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--terracotta);
+    color:var(--white);
+    border:none;
+    padding:10px 18px;
+    border-radius:7px;
+    font-family:inherit;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:background .15s, transform .1s;
+  }
+  .btn:hover{background:var(--terracotta-dark);}
+  .btn:active{transform:scale(0.98);}
+  .btn:disabled{background:#C9B9A9; cursor:not-allowed;}
+  .btn-outline{background:none; border:1.5px solid var(--bg-deep); color:var(--bg-deep);}
+  .btn-outline:hover{background:var(--bg-deep); color:var(--cream);}
+  .btn-sm{padding:6px 12px; font-size:12.5px;}
+  .btn-danger{background:var(--danger);}
+  .btn-danger:hover{background:#8E382E;}
+  .pill{display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600;}
+  .pill-sage{background:#E4ECDF; color:var(--sage-dark);}
+  .pill-terra{background:#F4E1D6; color:var(--terracotta-dark);}
+  .pill-gray{background:#EAE7DC; color:var(--muted);}
+  .product-card{
+    border:1px solid #E9E3D3; border-radius:9px; padding:14px;
+    display:flex; flex-direction:column; gap:6px; cursor:pointer; transition:border-color .15s;
+  }
+  .product-card:hover{border-color:var(--terracotta);}
+  .product-card h4{margin:0; font-size:15px; color:var(--bg-deep);}
+  .product-card .meta{font-size:12.5px; color:var(--muted);}
+  .empty{text-align:center; padding:40px 20px; color:var(--muted);}
+  .empty .nav-icon{font-size:32px; display:block; margin-bottom:8px; opacity:.5;}
+  .stat{background:var(--cream); border-radius:9px; padding:14px; border:1px solid #EAE3D2;}
+  .stat .label{font-size:12px; color:var(--muted); margin-bottom:4px;}
+  .stat .value{font-size:21px; font-weight:700; color:var(--bg-deep);}
+  .stat .value.danger{color:var(--danger);}
+  .stat .value.good{color:var(--sage-dark);}
+  .content-out{
+    background:var(--cream); border:1px solid #E9E3D3; border-radius:8px;
+    padding:14px 16px; white-space:pre-wrap; font-size:14px; line-height:1.65;
+    margin-top:10px; max-height:420px; overflow-y:auto;
+  }
+  .toolbar{display:flex; gap:8px; margin-top:10px;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{text-align:left; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:2px solid #EAE3D2;}
+  td{padding:9px 10px; border-bottom:1px solid #F0EBDD; vertical-align:top;}
+  tr:hover td{background:#FBF8F1;}
+  .badge-row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;}
+  .loading{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13.5px; padding:10px 0;}
+  .spinner{
+    width:14px; height:14px; border:2px solid #D9D2BD; border-top-color:var(--terracotta);
+    border-radius:50%; animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .tabs{display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid #E2DBC9;}
+  .tab{padding:9px 16px; cursor:pointer; font-size:14px; color:var(--muted); border-bottom:2px solid transparent; font-weight:600;}
+  .tab.active{color:var(--terracotta-dark); border-bottom-color:var(--terracotta);}
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(31,61,46,0.45);
+    display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal{
+    background:var(--white); border-radius:12px; padding:24px; width:100%; max-width:520px;
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal h3{margin-top:0;}
+  .close-x{float:right; background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted);}
+  .flex-between{display:flex; justify-content:space-between; align-items:center;}
+  .small-muted{font-size:12.5px; color:var(--muted);}
+  @media (max-width: 880px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{flex-direction:row; overflow-x:auto; padding:14px; align-items:center;}
+    .brand{display:none;}
+    .nav-btn{white-space:nowrap; width:auto;}
+    .sidebar-foot{display:none;}
+    .main{padding:20px;}
+    .grid-2, .grid-3, .grid-4{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+window.addEventListener("error", function(e){
+  const root = document.getElementById("root");
+  if(root) root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:30px; background:#1a1a1a; color:#fff; font-family:monospace; font-size:13px; text-align:left; white-space:pre-wrap;">ເກີດຂໍ້ຜິດພາດ JavaScript:\n\n${(e.message||"")}\n\n${(e.filename||"")}:${e.lineno||""}</div>`;
+});
+window.addEventListener("unhandledrejection", function(e){
+  const root = document.getElementById("root");
+  if(root) root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:30px; background:#1a1a1a; color:#fff; font-family:monospace; font-size:13px; text-align:left; white-space:pre-wrap;">ເກີດຂໍ້ຜິດພາດ (Promise):\n\n${(e.reason && e.reason.message) || e.reason}</div>`;
+});
+</script>
+<script>
+/* ====================== SUPABASE CONFIG ====================== */
+const SUPABASE_URL = "https://jhaocdnbrjfyloamzyyk.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Urk20V4zHLxtP7xaAXfbfA_nEIFJsEX";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ====================== STATE & DATA LOADING ====================== */
+function emptyData(){
+  return {
+    products: [],
+    contentHistory: [],
+    costs: [],
+    admins: [],
+    insights: [],
+    reports: [],
+    attendance: []
+  };
+}
+
+async function loadAllData(){
+  const d = emptyData();
+  try{
+    const [products, content, costs, admins, insights, reports, attendance] = await Promise.all([
+      sb.from("products").select("*").order("created_at", {ascending:false}),
+      sb.from("content_history").select("*").order("created_at", {ascending:false}),
+      sb.from("costs").select("*").order("created_at", {ascending:false}),
+      sb.from("admins").select("*").order("created_at", {ascending:true}),
+      sb.from("insights").select("*").order("created_at", {ascending:false}),
+      sb.from("reports").select("*").order("created_at", {ascending:false}),
+      sb.from("attendance").select("*").order("created_at", {ascending:false}),
+    ]);
+    d.products = (products.data||[]).map(rowToProduct);
+    d.contentHistory = (content.data||[]).map(rowToContent);
+    d.costs = (costs.data||[]).map(rowToCost);
+    d.admins = (admins.data||[]).map(rowToAdmin);
+    d.insights = (insights.data||[]).map(rowToInsight);
+    d.reports = (reports.data||[]).map(rowToReport);
+    d.attendance = (attendance.data||[]).map(rowToAttendance);
+  }catch(e){
+    STATE.connError = "ເຊື່ອມຕໍ່ database ບໍ່ໄດ້: " + e.message;
+  }
+  return d;
+}
+
+// row <-> app object mappers (db columns are lowercase, no underscores for product fields)
+function rowToProduct(r){ return {id:r.id, name:r.name, category:r.category, price:r.price, costPrice:r.costprice, desc:r.description, painPoints:r.painpoints}; }
+function rowToContent(r){ return {id:r.id, type:r.type, productName:r.productname, content:r.content, date:r.date}; }
+function rowToCost(r){ return {id:r.id, label:r.label, revenue:r.revenue, productCost:r.productcost, adCost:r.adcost, opCost:r.opcost}; }
+function rowToAdmin(r){ return {id:r.id, name:r.name, role:r.role, status:r.status}; }
+function rowToInsight(r){ return {id:r.id, question:r.question, answer:r.answer, productRelated:r.productrelated, date:r.date, adminName:r.adminname||""}; }
+function rowToReport(r){ return {id:r.id, adminName:r.adminname||"", category:r.category||"", detail:r.detail||"", imageUrl:r.image_url||"", createdAt:r.created_at||""}; }
+function rowToAttendance(r){ return {id:r.id, adminName:r.adminname||"", clockIn:r.clock_in||null, clockOut:r.clock_out||null, date:r.date||""}; }
+
+async function dbInsertReport(rep){ await sb.from("reports").insert({id:rep.id, adminname:rep.adminName, category:rep.category, detail:rep.detail, image_url:rep.imageUrl||""}); }
+async function dbDeleteReport(id){ await sb.from("reports").delete().eq("id", id); }
+
+async function dbClockIn(rec){ await sb.from("attendance").insert({id:rec.id, adminname:rec.adminName, clock_in:rec.clockIn, clock_out:null, date:rec.date}); }
+async function dbClockOut(id, clockOut){ await sb.from("attendance").update({clock_out:clockOut}).eq("id", id); }
+async function dbDeleteAttendance(id){ await sb.from("attendance").delete().eq("id", id); }
+
+async function dbInsertProduct(p){ await sb.from("products").insert({id:p.id, name:p.name, category:p.category, price:p.price, costprice:p.costPrice, description:p.desc, painpoints:p.painPoints}); }
+async function dbUpdateProduct(p){ await sb.from("products").update({name:p.name, category:p.category, price:p.price, costprice:p.costPrice, description:p.desc, painpoints:p.painPoints}).eq("id", p.id); }
+async function dbDeleteProduct(id){ await sb.from("products").delete().eq("id", id); }
+
+async function dbInsertContent(c){ await sb.from("content_history").insert({id:c.id, type:c.type, productname:c.productName, content:c.content, date:c.date}); }
+
+async function dbInsertCost(c){ await sb.from("costs").insert({id:c.id, label:c.label, revenue:c.revenue, productcost:c.productCost, adcost:c.adCost, opcost:c.opCost}); }
+async function dbDeleteCost(id){ await sb.from("costs").delete().eq("id", id); }
+
+async function dbInsertAdmin(a){ await sb.from("admins").insert({id:a.id, name:a.name, role:a.role, status:a.status}); }
+async function dbUpdateAdminStatus(id, status){ await sb.from("admins").update({status}).eq("id", id); }
+async function dbDeleteAdmin(id){ await sb.from("admins").delete().eq("id", id); }
+
+async function dbInsertInsight(i){ await sb.from("insights").insert({id:i.id, question:i.question, answer:i.answer, productrelated:i.productRelated, date:i.date, adminname:i.adminName||""}); }
+async function dbDeleteInsight(id){ await sb.from("insights").delete().eq("id", id); }
+async function dbInsertInsightsBulk(rows){
+  if(rows.length===0) return;
+  await sb.from("insights").insert(rows.map(i=>({id:i.id, question:i.question, answer:i.answer, productrelated:i.productRelated, date:i.date, adminname:i.adminName||""})));
+}
+
+/* ---------- USER AUTH functions ---------- */
+async function dbRegister(name, password){
+  const {data} = await sb.from("users").select("id").eq("name", name).limit(1);
+  if(data && data.length>0) throw new Error("ຊື່ນີ້ຖືກໃຊ້ແລ້ວ ກະລຸນາເລືອກຊື່ໃໝ່");
+  const id = "u"+Date.now();
+  await sb.from("users").insert({id, name, password, role:"admin"});
+  return {id, name, role:"admin"};
+}
+async function dbLogin(name, password){
+  const {data} = await sb.from("users").select("*").eq("name", name).eq("password", password).limit(1);
+  if(!data || data.length===0) throw new Error("ຊື່ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
+  return {id:data[0].id, name:data[0].name, role:data[0].role};
+}
+
+function subscribeRealtime(onChange){
+  // Poll every 8 seconds — more reliable than websocket realtime for static hosting
+  setInterval(async ()=>{
+    const fresh = await loadAllData();
+    // Only re-render if data actually changed (compare counts + latest id)
+    const changed =
+      fresh.products.length !== STATE.data.products.length ||
+      fresh.insights.length !== STATE.data.insights.length ||
+      fresh.costs.length !== STATE.data.costs.length ||
+      fresh.admins.length !== STATE.data.admins.length ||
+      fresh.contentHistory.length !== STATE.data.contentHistory.length ||
+      fresh.reports.length !== STATE.data.reports.length ||
+      fresh.attendance.length !== STATE.data.attendance.length;
+    if(changed){ onChange(fresh); }
+  }, 8000);
+}
+
+const STATE = {
+  data: emptyData(),
+  ready: false,
+  connError: "",
+  page: "dashboard",
+  contentTab: "video",
+  selProduct: "",
+  extra: "",
+  output: "",
+  loading: false,
+  error: "",
+  showProductForm: false,
+  editingProduct: null,
+  productForm: {name:"", category:"", price:"", costPrice:"", desc:"", painPoints:""},
+  costForm: {label:"", revenue:"", productCost:"", adCost:"", opCost:""},
+  adminForm: {name:"", role:"", status:"ກຳລັງເຮັດວຽກ"},
+  insightForm: {question:"", answer:"", productRelated:""},
+  analyzing:false,
+  analysis:"",
+  analyzeError:"",
+  importMsg:"",
+  viewingInsight: null,
+  reportForm: {category:"", detail:"", imageBase64:""},
+  currentUser: null,
+  loginForm: {name:"", password:""},
+  loginMode: "login",
+  loginError: ""
+};
+
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmt(n){ return Number(n||0).toLocaleString(); }
+
+/* ====================== AI CALL ====================== */
+async function callAI(prompt, system){
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      system: system || "",
+      messages: [{role:"user", content: prompt}]
+    })
+  });
+  const data = await res.json();
+  if(data.content && data.content.length){
+    return data.content.map(b => b.text || "").join("\n").trim();
+  }
+  throw new Error("ບໍ່ໄດ້ຮັບຄຳຕອບຈາກ AI");
+}
+
+/* ====================== NAV ====================== */
+const NAV = [
+  {id:"dashboard", label:"ພາບລວມ", icon:"&#9633;"},
+  {id:"products", label:"ສິນຄ້າ", icon:"&#9638;"},
+  {id:"content", label:"ສ້າງ Content", icon:"&#9998;"},
+  {id:"costs", label:"ຕົ້ນທຶນ & ກຳໄລ", icon:"&#3647;"},
+  {id:"admin", label:"ແອັດມິນ", icon:"&#9776;"},
+  {id:"insights", label:"ຄວາມຄິດເຫັນລູກຄ້າ", icon:"&#128172;"},
+  {id:"reports", label:"ລາຍງານຂໍ້ຜິດພາດ", icon:"&#9888;"},
+  {id:"attendance", label:"ລົງໂມງ", icon:"&#128336;"}
+];
+
+/* ====================== RENDER ====================== */
+function renderLoginPage(){
+  const f = STATE.loginForm;
+  const isRegister = STATE.loginMode === "register";
+  return `
+    <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg-deep); padding:20px;">
+      <div style="background:var(--white); border-radius:14px; padding:32px; width:100%; max-width:380px; box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+        <div style="text-align:center; margin-bottom:24px;">
+          <div style="font-family:'Noto Serif Lao',serif; font-size:22px; font-weight:700; color:var(--bg-deep);">ຮ້ານຕຸກຕາ ສີໄຄ</div>
+          <div style="font-size:13px; color:var(--muted); margin-top:4px;">ລະບົບການຕະຫຼາດອັດຕະໂນມັດ</div>
+        </div>
+        <div style="display:flex; margin-bottom:20px; background:var(--cream-2); border-radius:8px; padding:3px;">
+          <button class="btn ${!isRegister?'':'btn-outline'}" style="flex:1; justify-content:center; ${!isRegister?'':'background:none; color:var(--muted); border:none;'}" id="tab-login">ເຂົ້າສູ່ລະບົບ</button>
+          <button class="btn ${isRegister?'':'btn-outline'}" style="flex:1; justify-content:center; ${isRegister?'':'background:none; color:var(--muted); border:none;'}" id="tab-register">ລົງທະບຽນ</button>
+        </div>
+        <label>ຊື່ຜູ້ໃຊ້</label>
+        <input type="text" id="login-name" value="${esc(f.name)}" placeholder="ໃສ່ຊື່ຂອງທ່ານ"/>
+        <label>ລະຫັດຜ່ານ</label>
+        <div style="position:relative; margin-bottom:14px;">
+          <input type="password" id="login-password" value="${esc(f.password)}" placeholder="ໃສ່ລະຫັດຜ່ານ" style="margin-bottom:0; padding-right:44px;"/>
+          <button type="button" id="btn-toggle-password" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:18px; color:var(--muted); padding:4px;">👁</button>
+        </div>
+        ${STATE.loginError ? `<p style="color:var(--danger); font-size:13px; margin:0 0 12px 0;">${esc(STATE.loginError)}</p>` : ""}
+        <button class="btn" style="width:100%; justify-content:center;" id="btn-login-submit">
+          ${isRegister ? "ລົງທະບຽນ ແລະ ເຂົ້າໃຊ້" : "ເຂົ້າສູ່ລະບົບ"}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function render(){
+  const root = document.getElementById("root");
+  if(!STATE.ready){
+    root.innerHTML = `
+      <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; background:var(--cream-2);">
+        <div class="spinner" style="width:28px; height:28px; border-width:3px;"></div>
+        <div style="color:var(--muted); font-size:14px;">ກຳລັງໂຫຼດຂໍ້ມູນ...</div>
+        ${STATE.connError ? `<div style="color:var(--danger); font-size:13px; max-width:400px; text-align:center;">${esc(STATE.connError)}</div>` : ""}
+      </div>
+    `;
+    attachLoginEvents();
+    return;
+  }
+  if(!STATE.currentUser){
+    root.innerHTML = renderLoginPage();
+    attachLoginEvents();
+    return;
+  }
+  root.innerHTML = `
+    <div class="app">
+      <div class="sidebar">
+        <div class="brand">ຮ້ານຕຸກຕາ ສີໄຄ<small>ລະບົບການຕະຫຼາດອັດຕະໂນມັດ</small></div>
+        ${NAV.map(n => `
+          <button class="nav-btn ${STATE.page===n.id?'active':''}" data-nav="${n.id}">
+            <span class="nav-icon">${n.icon}</span>${n.label}
+          </button>
+        `).join("")}
+        <div class="sidebar-foot">
+          <div style="margin-bottom:8px;">👤 ${esc(STATE.currentUser?.name||"")}</div>
+          <button class="btn btn-sm btn-outline" style="width:100%; justify-content:center; color:var(--cream); border-color:rgba(255,255,255,0.3);" id="btn-logout">ອອກຈາກລະບົບ</button>
+        </div>
+      </div>
+      <div class="main" id="main">${renderPage()}</div>
+    </div>
+  `;
+  attachEvents();
+}
+
+function renderPage(){
+  switch(STATE.page){
+    case "dashboard": return renderDashboard();
+    case "products": return renderProducts();
+    case "content": return renderContent();
+    case "costs": return renderCosts();
+    case "admin": return renderAdmin();
+    case "insights": return renderInsights();
+    case "reports": return renderReports();
+    case "attendance": return renderAttendance();
+    default: return "";
+  }
+}
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(){
+  const d = STATE.data;
+  const totalRevenue = d.costs.reduce((s,c)=>s+(Number(c.revenue)||0),0);
+  const totalCost = d.costs.reduce((s,c)=>s+(Number(c.productCost)||0)+(Number(c.adCost)||0)+(Number(c.opCost)||0),0);
+  const profit = totalRevenue - totalCost;
+  return `
+    <div class="page-head">
+      <h1>ພາບລວມຮ້ານ</h1>
+      <p>ສະຫຼຸບຂໍ້ມູນທັງໝົດຂອງລະບົບ automation</p>
+    </div>
+    <div class="grid-4">
+      <div class="stat"><div class="label">ສິນຄ້າທັງໝົດ</div><div class="value">${d.products.length}</div></div>
+      <div class="stat"><div class="label">Content ທີ່ສ້າງແລ້ວ</div><div class="value">${d.contentHistory.length}</div></div>
+      <div class="stat"><div class="label">ກຳໄລລວມ</div><div class="value ${profit>=0?'good':'danger'}">${fmt(profit)} ກີບ</div></div>
+      <div class="stat"><div class="label">ບັນຫາລູກຄ້າທີ່ບັນທຶກ</div><div class="value">${d.insights.length}</div></div>
+    </div>
+    <div class="card" style="margin-top:18px;">
+      <h3>ເລີ່ມຕົ້ນໄວ</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" data-nav="products">+ ເພີ່ມສິນຄ້າ</button>
+        <button class="btn btn-outline" data-nav="content">ສ້າງ Content</button>
+        <button class="btn btn-outline" data-nav="insights">ບັນທຶກບັນຫາລູກຄ້າ</button>
+      </div>
+    </div>
+    ${d.products.length===0 ? `
+      <div class="card empty">
+        <span class="nav-icon">&#9638;</span>
+        ຍັງບໍ່ມີສິນຄ້າໃນລະບົບ — ເລີ່ມໂດຍການເພີ່ມສິນຄ້າທຳອິດຂອງທ່ານ
+      </div>` : ""}
+  `;
+}
+
+/* ---------- PRODUCTS ---------- */
+function renderProducts(){
+  const d = STATE.data;
+  return `
+    <div class="page-head flex-between">
+      <div>
+        <h1>ຄັງສິນຄ້າ</h1>
+        <p>ລວມຂໍ້ມູນສິນຄ້າທັງໝົດໄວ້ບ່ອນດຽວ ໃຊ້ອ້າງອີງເວລາສ້າງ content</p>
+      </div>
+      <button class="btn" id="btn-new-product">+ ເພີ່ມສິນຄ້າ</button>
+    </div>
+    ${d.products.length===0 ? `
+      <div class="card empty">
+        <span class="nav-icon">&#9638;</span>
+        ຍັງບໍ່ມີສິນຄ້າ — ກົດ "ເພີ່ມສິນຄ້າ" ເພື່ອເລີ່ມຕົ້ນ
+      </div>` : `
+      <div class="grid-3">
+        ${d.products.map(p => `
+          <div class="product-card" data-edit-product="${p.id}">
+            <h4>${esc(p.name)}</h4>
+            <div class="meta">${esc(p.category)||"ບໍ່ມີໝວດໝູ່"}</div>
+            <div class="badge-row">${p.price ? `<span class="pill pill-terra">ລາຄາ ${fmt(p.price)} ກີບ</span>` : ""}</div>
+            <div class="small-muted" style="margin-top:4px;">${esc((p.desc||"").slice(0,70))}${(p.desc||"").length>70?"...":""}</div>
+            <div style="margin-top:8px;">
+              <button class="btn btn-sm btn-danger" data-del-product="${p.id}">ລຶບ</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `}
+    ${STATE.showProductForm ? renderProductModal() : ""}
+  `;
+}
+
+function renderProductModal(){
+  const f = STATE.productForm;
+  return `
+    <div class="modal-bg" id="product-modal-bg">
+      <div class="modal" id="product-modal">
+        <button class="close-x" id="close-product-modal">&#10005;</button>
+        <h3>${STATE.editingProduct ? "ແກ້ໄຂສິນຄ້າ" : "ເພີ່ມສິນຄ້າໃໝ່"}</h3>
+        <label>ຊື່ສິນຄ້າ</label>
+        <input type="text" id="pf-name" value="${esc(f.name)}"/>
+        <label>ໝວດໝູ່</label>
+        <input type="text" id="pf-category" placeholder="ສຸຂະພາບ / ຄວາມງາມ / ອາຫານ-ເຄື່ອງດື່ມ" value="${esc(f.category)}"/>
+        <div class="grid-2">
+          <div>
+            <label>ລາຄາຂາຍ (ກີບ)</label>
+            <input type="number" id="pf-price" value="${esc(f.price)}"/>
+          </div>
+          <div>
+            <label>ຕົ້ນທຶນ/ໜ່ວຍ (ກີບ)</label>
+            <input type="number" id="pf-costPrice" value="${esc(f.costPrice)}"/>
+          </div>
+        </div>
+        <label>ລາຍລະອຽດສິນຄ້າ / ຈຸດເດັ່ນ</label>
+        <textarea id="pf-desc">${esc(f.desc)}</textarea>
+        <label>ບັນຫາລູກຄ້າ (pain points)</label>
+        <textarea id="pf-painPoints" placeholder="ບັນຫາທີ່ສິນຄ້ານີ້ຊ່ວຍແກ້ໄຂ">${esc(f.painPoints)}</textarea>
+        <button class="btn" id="save-product">ບັນທຶກ</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- CONTENT STUDIO ---------- */
+const TAB_LABELS = {video:"ວິດີໂອ", caption:"ແຄບຊັນ", calendar:"ປະຕິທິນ", closing:"ປິດການຂາຍ"};
+const TAB_TITLES = {video:"Script ວິດີໂອ", caption:"ແຄບຊັນໂພສ", calendar:"ປະຕິທິນ 7 ວັນ", closing:"Script ປິດການຂາຍ"};
+
+function renderContent(){
+  const d = STATE.data;
+  if(!STATE.selProduct && d.products.length>0) STATE.selProduct = d.products[0].id;
+
+  return `
+    <div class="page-head">
+      <h1>ສ້າງ Content ດ້ວຍ AI</h1>
+      <p>ເລືອກສິນຄ້າ ແລະ ປະເພດ content ທີ່ຕ້ອງການໃຫ້ AI ຊ່ວຍສ້າງ</p>
+    </div>
+    <div class="tabs">
+      ${Object.keys(TAB_TITLES).map(t=>`
+        <div class="tab ${STATE.contentTab===t?'active':''}" data-content-tab="${t}">${TAB_TITLES[t]}</div>
+      `).join("")}
+    </div>
+    <div class="card">
+      ${d.products.length===0 ? `<p class="small-muted">ກະລຸນາເພີ່ມສິນຄ້າກ່ອນ ໃນໜ້າ "ສິນຄ້າ"</p>` : `
+        <label>ເລືອກສິນຄ້າ</label>
+        <select id="content-product">
+          ${d.products.map(p=>`<option value="${p.id}" ${STATE.selProduct===p.id?'selected':''}>${esc(p.name)}</option>`).join("")}
+        </select>
+        <label>ຄຳແນະນຳເພີ່ມເຕີມ (ບໍ່ບັງຄັບ)</label>
+        <textarea id="content-extra" placeholder="ເຊັ່ນ: ເນັ້ນກຸ່ມແມ່ບ້ານ ອາຍຸ 30-45 ປີ, ສະໄຕລ໌ມ່ວນ">${esc(STATE.extra)}</textarea>
+        <button class="btn" id="btn-generate" ${STATE.loading?'disabled':''}>${STATE.loading?'ກຳລັງສ້າງ...':'ສ້າງ Content'}</button>
+        ${STATE.error ? `<p style="color:var(--danger); font-size:13.5px;">${esc(STATE.error)}</p>` : ""}
+        ${STATE.loading ? `<div class="loading"><div class="spinner"></div>AI ກຳລັງສ້າງ content ໃຫ້ທ່ານ...</div>` : ""}
+        ${STATE.output ? `
+          <div class="content-out">${esc(STATE.output)}</div>
+          <div class="toolbar">
+            <button class="btn btn-sm btn-outline" id="btn-copy">ກັອບປີ້</button>
+            <button class="btn btn-sm" id="btn-open-fb">ກັອບປີ້ ແລະ ເປີດ Facebook &#8599;</button>
+          </div>
+        ` : ""}
+      `}
+    </div>
+    ${d.contentHistory.length>0 ? `
+      <div class="card">
+        <h3>ປະຫວັດ Content ທີ່ສ້າງ (${d.contentHistory.length})</h3>
+        <table>
+          <thead><tr><th>ວັນທີ</th><th>ປະເພດ</th><th>ສິນຄ້າ</th><th></th></tr></thead>
+          <tbody>
+            ${d.contentHistory.slice(0,8).map(c=>`
+              <tr>
+                <td class="small-muted">${esc(c.date)}</td>
+                <td><span class="pill pill-gray">${TAB_LABELS[c.type]||c.type}</span></td>
+                <td>${esc(c.productName)}</td>
+                <td><button class="btn btn-sm btn-outline" data-view-history="${c.id}">ເບິ່ງ</button></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    ` : ""}
+  `;
+}
+
+async function generateContent(){
+  const d = STATE.data;
+  const product = d.products.find(p=>p.id===STATE.selProduct);
+  if(!product){ STATE.error = "ກະລຸນາເລືອກສິນຄ້າກ່ອນ"; render(); return; }
+  STATE.loading = true; STATE.error = ""; STATE.output = "";
+  render();
+
+  let prompt = "";
+  const tab = STATE.contentTab;
+  if(tab==="video"){
+    prompt = `ສ້າງ script ວິດີໂອສິນຄ້າ (ສຳລັບ TikTok/Facebook Reels, ຄວາມຍາວ 30-45 ວິນາທີ) ສຳລັບສິນຄ້າຕໍ່ໄປນີ້ ເປັນພາສາລາວ:
+ຊື່ສິນຄ້າ: ${product.name}
+ໝວດໝູ່: ${product.category}
+ລາຍລະອຽດ: ${product.desc}
+ບັນຫາລູກຄ້າທີ່ແກ້ໄຂ: ${product.painPoints}
+${STATE.extra ? "ຄຳແນະນຳເພີ່ມເຕີມ: "+STATE.extra : ""}
+
+ກະລຸນາສ້າງ script ທີ່ມີ: Hook (3 ວິນາທີທຳອິດ), ເນື້ອຫາ (ບັນຫາ-ວິທີແກ້-ຜົນລັບ), Call-to-action ປິດທ້າຍ. ຂຽນເປັນພາສາລາວແບບເປັນກັນເອງ ເໝາະກັບຕະຫຼາດລາວ.`;
+  } else if(tab==="caption"){
+    prompt = `ສ້າງແຄບຊັນໂພສ Facebook ສຳລັບສິນຄ້າຕໍ່ໄປນີ້ ເປັນພາສາລາວ ແບບດຶງດູດ ມີ emoji ພໍດີ ແລະ hashtag ທ້າຍ:
+ຊື່ສິນຄ້າ: ${product.name}
+ໝວດໝູ່: ${product.category}
+ລາຍລະອຽດ: ${product.desc}
+ບັນຫາລູກຄ້າທີ່ແກ້ໄຂ: ${product.painPoints}
+ລາຄາ: ${product.price ? fmt(product.price)+" ກີບ" : "ບໍ່ລະບຸ"}
+${STATE.extra ? "ຄຳແນະນຳເພີ່ມເຕີມ: "+STATE.extra : ""}
+
+ສ້າງ 2 ແບບ (version A ແບບເລົ່າເລື່ອງ, version B ແບບສັ້ນກະທັດຮັດເນັ້ນ CTA) ໃຫ້ພ້ອມ copy ໄປໂພສໄດ້ເລີຍ.`;
+  } else if(tab==="calendar"){
+    prompt = `ສ້າງແຜນ content calendar 7 ວັນ ສຳລັບໂພສ Facebook ຂາຍສິນຄ້ານີ້ ເປັນພາສາລາວ:
+ຊື່ສິນຄ້າ: ${product.name}
+ໝວດໝູ່: ${product.category}
+ລາຍລະອຽດ: ${product.desc}
+${STATE.extra ? "ຄຳແນະນຳເພີ່ມເຕີມ: "+STATE.extra : ""}
+
+ສຳລັບແຕ່ລະວັນ ໃຫ້ລະບຸ: ຫົວຂໍ້ໂພສ, ປະເພດ content (ໂພສຂາຍກົງ/ໃຫ້ຄວາມຮູ້/testimonial/ຕະຫຼົກ-engagement), ແລະແນວຄິດສັ້ນໆ.`;
+  } else if(tab==="closing"){
+    prompt = `ສ້າງ script ສຳລັບຕອບແຊັດປິດການຂາຍ (closing script) ເປັນພາສາລາວ ສຳລັບສິນຄ້ານີ້:
+ຊື່ສິນຄ້າ: ${product.name}
+ລາຍລະອຽດ: ${product.desc}
+ບັນຫາລູກຄ້າ: ${product.painPoints}
+ລາຄາ: ${product.price ? fmt(product.price)+" ກີບ" : "ບໍ່ລະບຸ"}
+${STATE.extra ? "ສະຖານະການລູກຄ້າ: "+STATE.extra : ""}
+
+ໃຫ້ script ສຳລັບ: ການຕອບຄຳຖາມລາຄາ, ການແກ້ຂໍ້ສົງໄສ (objection handling), ແລະປະໂຫຍກປິດການຂາຍ.`;
+  }
+
+  try{
+    const result = await callAI(prompt, "ທ່ານແມ່ນຜູ້ຊ່ຽວຊານດ້ານການຕະຫຼາດອອນລາຍສຳລັບຕະຫຼາດລາວ ຂຽນເປັນພາສາລາວທີ່ເປັນທຳມະຊາດ ເຂົ້າໃຈວັດທະນະທຳການຂາຍຂອງລາວ.");
+    STATE.output = result;
+    const newItem = {
+      id:"c"+Date.now(), type:tab, productName:product.name,
+      content:result, date:new Date().toLocaleString("lo-LA")
+    };
+    STATE.data.contentHistory.unshift(newItem);
+    dbInsertContent(newItem).catch(e=>console.error(e));
+  }catch(e){
+    STATE.error = "ເກີດຂໍ້ຜິດພາດ: " + e.message;
+  }
+  STATE.loading = false;
+  render();
+}
+
+/* ---------- COSTS ---------- */
+function renderCosts(){
+  const d = STATE.data;
+  const totalRevenue = d.costs.reduce((s,c)=>s+(Number(c.revenue)||0),0);
+  const totalProduct = d.costs.reduce((s,c)=>s+(Number(c.productCost)||0),0);
+  const totalAd = d.costs.reduce((s,c)=>s+(Number(c.adCost)||0),0);
+  const totalOp = d.costs.reduce((s,c)=>s+(Number(c.opCost)||0),0);
+  const totalProfit = totalRevenue - totalProduct - totalAd - totalOp;
+  const f = STATE.costForm;
+
+  return `
+    <div class="page-head flex-between">
+      <div>
+        <h1>ຕົ້ນທຶນ ແລະ ກຳໄລ</h1>
+        <p>ບັນທຶກລາຍຮັບ-ລາຍຈ່າຍ ແຍກຕາມແຄມເປນ ຫຼື ໄລຍະເວລາ</p>
+      </div>
+      <button class="btn btn-outline" id="btn-export-costs-excel">ສົ່ງອອກ Excel</button>
+    </div>
+    <div class="grid-4">
+      <div class="stat"><div class="label">ລາຍຮັບລວມ</div><div class="value">${fmt(totalRevenue)}</div></div>
+      <div class="stat"><div class="label">ຕົ້ນທຶນສິນຄ້າລວມ</div><div class="value">${fmt(totalProduct)}</div></div>
+      <div class="stat"><div class="label">ຄ່າໂຄສະນາລວມ</div><div class="value">${fmt(totalAd)}</div></div>
+      <div class="stat"><div class="label">ກຳໄລສຸດທິ</div><div class="value ${totalProfit>=0?'good':'danger'}">${fmt(totalProfit)}</div></div>
+    </div>
+    <div class="card" style="margin-top:18px;">
+      <h3>ເພີ່ມລາຍການ</h3>
+      <label>ຊື່ລາຍການ / ແຄມເປນ</label>
+      <input type="text" id="cf-label" placeholder="ເຊັ່ນ: ໂຄສະນາ Pimnada ອາທິດ 1" value="${esc(f.label)}"/>
+      <div class="grid-4">
+        <div><label>ລາຍຮັບ (ກີບ)</label><input type="number" id="cf-revenue" value="${esc(f.revenue)}"/></div>
+        <div><label>ຕົ້ນທຶນສິນຄ້າ</label><input type="number" id="cf-productCost" value="${esc(f.productCost)}"/></div>
+        <div><label>ຄ່າໂຄສະນາ</label><input type="number" id="cf-adCost" value="${esc(f.adCost)}"/></div>
+        <div><label>ຄ່າບໍລິຫານ/ອື່ນໆ</label><input type="number" id="cf-opCost" value="${esc(f.opCost)}"/></div>
+      </div>
+      <button class="btn" id="btn-add-cost">ບັນທຶກລາຍການ</button>
+    </div>
+    <div class="card">
+      <h3>ລາຍການທັງໝົດ</h3>
+      ${d.costs.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີລາຍການ</p>` : `
+        <table>
+          <thead><tr><th>ລາຍການ</th><th>ລາຍຮັບ</th><th>ຕົ້ນທຶນ</th><th>ໂຄສະນາ</th><th>ບໍລິຫານ</th><th>ກຳໄລ</th><th></th></tr></thead>
+          <tbody>
+            ${d.costs.map(c=>{
+              const p = (Number(c.revenue)||0)-(Number(c.productCost)||0)-(Number(c.adCost)||0)-(Number(c.opCost)||0);
+              return `<tr>
+                <td>${esc(c.label)}</td>
+                <td>${fmt(c.revenue)}</td>
+                <td>${fmt(c.productCost)}</td>
+                <td>${fmt(c.adCost)}</td>
+                <td>${fmt(c.opCost)}</td>
+                <td style="color:${p>=0?'var(--sage-dark)':'var(--danger)'}; font-weight:600;">${fmt(p)}</td>
+                <td><button class="btn btn-sm btn-danger" data-del-cost="${c.id}">ລຶບ</button></td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      `}
+    </div>
+  `;
+}
+
+/* ---------- ADMIN ---------- */
+function renderAdmin(){
+  const d = STATE.data;
+  const f = STATE.adminForm;
+  return `
+    <div class="page-head">
+      <h1>ຄວບຄຸມແອັດມິນ</h1>
+      <p>ຈັດການລາຍຊື່ ແລະ ສະຖານະການເຮັດວຽກຂອງທີມແອັດມິນ</p>
+    </div>
+    <div class="card">
+      <h3>ເພີ່ມແອັດມິນ</h3>
+      <div class="grid-3">
+        <div><label>ຊື່</label><input type="text" id="af-name" value="${esc(f.name)}"/></div>
+        <div><label>ໜ້າທີ່</label><input type="text" id="af-role" placeholder="ເຊັ່ນ: ຕອບແຊັດ, ໂພສ content" value="${esc(f.role)}"/></div>
+        <div><label>ສະຖານະ</label>
+          <select id="af-status">
+            <option ${f.status==='ກຳລັງເຮັດວຽກ'?'selected':''}>ກຳລັງເຮັດວຽກ</option>
+            <option ${f.status==='ພັກ'?'selected':''}>ພັກ</option>
+            <option ${f.status==='ບໍ່ຢູ່'?'selected':''}>ບໍ່ຢູ່</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="btn-add-admin">ເພີ່ມແອັດມິນ</button>
+    </div>
+    <div class="card">
+      <h3>ລາຍຊື່ແອັດມິນ (${d.admins.length})</h3>
+      <table>
+        <thead><tr><th>ຊື່</th><th>ໜ້າທີ່</th><th>ສະຖານະ</th><th></th></tr></thead>
+        <tbody>
+          ${d.admins.map(a=>`
+            <tr>
+              <td>${esc(a.name)}</td>
+              <td class="small-muted">${esc(a.role)}</td>
+              <td><span class="pill ${a.status==='ກຳລັງເຮັດວຽກ'?'pill-sage':a.status==='ພັກ'?'pill-terra':'pill-gray'}" style="cursor:pointer;" data-cycle-status="${a.id}">${esc(a.status)}</span></td>
+              <td><button class="btn btn-sm btn-danger" data-del-admin="${a.id}">ລຶບ</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      <p class="small-muted" style="margin-top:10px;">ກົດທີ່ pill ສະຖານະເພື່ອປ່ຽນ</p>
+    </div>
+  `;
+}
+
+/* ---------- INSIGHTS ---------- */
+function renderInsights(){
+  const d = STATE.data;
+  const f = STATE.insightForm;
+  return `
+    <div class="page-head flex-between">
+      <div>
+        <h1>ບັນທຶກຄວາມຕ້ອງການລູກຄ້າ</h1>
+        <p>ເກັບກຳຄຳຖາມ-ບັນຫາທີ່ລູກຄ້າແຊັດເຂົ້າມາ ເພື່ອວິເຄາະຫາແນວຄິດສິນຄ້າໃໝ່</p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-outline" id="btn-export-excel">ສົ່ງອອກ Excel</button>
+        <button class="btn btn-outline" id="btn-import-excel-trigger">ນຳເຂົ້າ Excel</button>
+        <input type="file" id="import-excel-input" accept=".xlsx,.xls" style="display:none;"/>
+      </div>
+    </div>
+    ${STATE.importMsg ? `<div class="card" style="background:var(--cream); border:1px solid #E9E3D3;"><p class="small-muted" style="margin:0;">${esc(STATE.importMsg)}</p></div>` : ""}
+    <div class="card">
+      <h3>ບັນທຶກລາຍການໃໝ່</h3>
+      <label>ຄຳຖາມ/ບັນຫາທີ່ລູກຄ້າຖາມ</label>
+      <textarea id="if-question" placeholder="ເຊັ່ນ: ມີສິນຄ້າສຳລັບຄົນເປັນເບົາຫວານບໍ?">${esc(f.question)}</textarea>
+      <label>ແອັດມິນຕອບແນວໃດ</label>
+      <textarea id="if-answer">${esc(f.answer)}</textarea>
+      <label>ກ່ຽວຂ້ອງສິນຄ້າໃດ (ບໍ່ບັງຄັບ)</label>
+      <select id="if-product">
+        <option value="">— ບໍ່ລະບຸ —</option>
+        ${d.products.map(p=>`<option value="${esc(p.name)}" ${f.productRelated===p.name?'selected':''}>${esc(p.name)}</option>`).join("")}
+      </select>
+      <button class="btn" id="btn-add-insight">ບັນທຶກ</button>
+    </div>
+    <div class="card">
+      <div class="flex-between">
+        <h3 style="margin:0;">ວິເຄາະຫາໂອກາດສິນຄ້າໃໝ່</h3>
+        <button class="btn btn-outline" id="btn-analyze" ${STATE.analyzing?'disabled':''}>${STATE.analyzing?'ກຳລັງວິເຄາະ...':'ໃຫ້ AI ວິເຄາະ'}</button>
+      </div>
+      ${STATE.analyzeError ? `<p style="color:var(--danger); font-size:13.5px;">${esc(STATE.analyzeError)}</p>` : ""}
+      ${STATE.analyzing ? `<div class="loading"><div class="spinner"></div>ກຳລັງວິເຄາະ pattern ຈາກບັນທຶກທັງໝົດ...</div>` : ""}
+      ${STATE.analysis ? `<div class="content-out">${esc(STATE.analysis)}</div>` : ""}
+    </div>
+    <div class="card">
+      <h3>ບັນທຶກທັງໝົດ (${d.insights.length})</h3>
+      ${d.insights.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີບັນທຶກ</p>` : `
+        <table>
+          <thead><tr><th>ວັນທີ</th><th>ຄຳຖາມ</th><th>ສິນຄ້າ</th><th>ຂຽນໂດຍ</th><th></th></tr></thead>
+          <tbody>
+            ${d.insights.map(i=>`
+              <tr>
+                <td class="small-muted">${esc(i.date)}</td>
+                <td>${esc(i.question)}</td>
+                <td><span class="pill pill-gray">${esc(i.productRelated)||"-"}</span></td>
+                <td><span class="pill pill-sage">${esc(i.adminName)||"-"}</span></td>
+                <td style="display:flex; gap:6px;">
+                  <button class="btn btn-sm btn-outline" data-view-insight="${i.id}">ເບິ່ງ</button>
+                  <button class="btn btn-sm btn-danger" data-del-insight="${i.id}">ລຶບ</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `}
+    </div>
+    ${STATE.viewingInsight ? renderInsightModal(STATE.viewingInsight) : ""}
+  `;
+}
+
+function renderInsightModal(i){
+  return `
+    <div class="modal-bg" id="insight-modal-bg">
+      <div class="modal" id="insight-modal">
+        <button class="close-x" id="close-insight-modal">&#10005;</button>
+        <h3>ລາຍລະອຽດບັນທຶກ</h3>
+        <div style="margin-bottom:12px;">
+          <label>ວັນທີ</label>
+          <div style="font-size:14px; color:var(--muted);">${esc(i.date)}</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label>ຂຽນໂດຍ</label>
+          <div style="font-size:14px;"><span class="pill pill-sage">${esc(i.adminName)||"-"}</span></div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label>ສິນຄ້າທີ່ກ່ຽວຂ້ອງ</label>
+          <div style="font-size:14px;">${esc(i.productRelated)||"-"}</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label>ຄຳຖາມ/ບັນຫາຂອງລູກຄ້າ</label>
+          <div class="content-out" style="min-height:60px; max-height:200px;">${esc(i.question)}</div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label>ຄຳຕອບທີ່ແອັດມິນຕອບ</label>
+          <div class="content-out" style="min-height:60px; max-height:200px;">${esc(i.answer)||"(ບໍ່ໄດ້ບັນທຶກ)"}</div>
+        </div>
+        <button class="btn btn-outline" id="close-insight-modal-btn">ປິດ</button>
+      </div>
+    </div>
+  `;
+}
+
+async function analyzeInsights(){
+  const d = STATE.data;
+  if(d.insights.length===0){ STATE.analyzeError = "ຍັງບໍ່ມີຂໍ້ມູນບັນທຶກ ກະລຸນາເພີ່ມບັນຫາລູກຄ້າກ່ອນ"; render(); return; }
+  STATE.analyzing = true; STATE.analyzeError = ""; STATE.analysis = "";
+  render();
+  try{
+    const list = d.insights.slice(0,30).map((i,idx)=>`${idx+1}. ຄຳຖາມ: ${i.question} | ຄຳຕອບ: ${i.answer} | ສິນຄ້າ: ${i.productRelated||"-"}`).join("\n");
+    const prompt = `ນີ້ແມ່ນບັນທຶກຄຳຖາມ-ຄຳຕອບຈາກລູກຄ້າທີ່ແຊັດເຂົ້າມາໃນຮ້ານອອນລາຍ:
+
+${list}
+
+ກະລຸນາວິເຄາະ:
+1. ຮູບແບບ/ແນວໂນ້ມບັນຫາທີ່ລູກຄ້າຖາມເລື້ອຍໆ
+2. ຈຸດທີ່ສິນຄ້າປະຈຸບັນຍັງຕອບສະໜອງບໍ່ພໍ
+3. ແນວຄິດສິນຄ້າໃໝ່ ຫຼື ການແຕກລາຍສິນຄ້າທີ່ອາດຕອບໂຈດຄວາມຕ້ອງການເຫຼົ່ານີ້ໄດ້ (ສະເໜີ 2-3 ແນວຄິດ)
+4. ຄຳແນະນຳສຳລັບການສ້າງ content ໃໝ່ ໂດຍອີງໃສ່ບັນຫາທີ່ພົບ
+
+ຂຽນເປັນພາສາລາວ ຈັດໝວດໝູ່ໃຫ້ຈະແຈ້ງ.`;
+    const result = await callAI(prompt, "ທ່ານແມ່ນນັກວິເຄາະການຕະຫຼາດ ຊ່ຽວຊານໃນການອ່ານ pattern ຈາກຄຳຖາມລູກຄ້າ ເພື່ອຄົ້ນພົບໂອກາດສິນຄ້າໃໝ່.");
+    STATE.analysis = result;
+  }catch(e){
+    STATE.analyzeError = "ເກີດຂໍ້ຜິດພາດ: "+e.message;
+  }
+  STATE.analyzing = false;
+  render();
+}
+
+/* ---------- EXCEL EXPORT / IMPORT (insights) ---------- */
+function exportInsightsToExcel(){
+  const d = STATE.data;
+  const rows = d.insights.map(i => ({
+    "ວັນທີ": i.date || "",
+    "ຄຳຖາມ": i.question || "",
+    "ຄຳຕອບ": i.answer || "",
+    "ສິນຄ້າທີ່ກ່ຽວຂ້ອງ": i.productRelated || ""
+  }));
+  if(rows.length===0){
+    STATE.importMsg = "ຍັງບໍ່ມີຂໍ້ມູນບັນທຶກໃຫ້ສົ່ງອອກ";
+    render();
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:40},{wch:40},{wch:20}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ບັນຫາລູກຄ້າ");
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `customer-insights-${stamp}.xlsx`);
+}
+
+function importInsightsFromExcel(file){
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const wb = XLSX.read(e.target.result, {type:"array"});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+      const newItems = [];
+      rows.forEach((r, idx) => {
+        const question = r["ຄຳຖາມ"] || r["question"] || r["Question"] || "";
+        const answer = r["ຄຳຕອບ"] || r["answer"] || r["Answer"] || "";
+        const productRelated = r["ສິນຄ້າທີ່ກ່ຽວຂ້ອງ"] || r["product"] || r["Product"] || "";
+        const date = r["ວັນທີ"] || r["date"] || r["Date"] || new Date().toLocaleDateString("lo-LA");
+        if(String(question).trim()){
+          newItems.push({
+            id:"i"+Date.now()+"-"+idx,
+            question:String(question), answer:String(answer),
+            productRelated:String(productRelated), date:String(date)
+          });
+        }
+      });
+      if(newItems.length>0){
+        STATE.data.insights.unshift(...newItems);
+        await dbInsertInsightsBulk(newItems);
+      }
+      STATE.importMsg = newItems.length>0
+        ? `ນຳເຂົ້າສຳເລັດ: ເພີ່ມ ${newItems.length} ລາຍການໃໝ່`
+        : "ບໍ່ພົບແຖວທີ່ມີຄຳຖາມໃນໄຟລ໌ — ກະລຸນາກວດຫົວຄໍລາມ໌ໃຫ້ກົງກັບ 'ຄຳຖາມ', 'ຄຳຕອບ', 'ສິນຄ້າທີ່ກ່ຽວຂ້ອງ', 'ວັນທີ'";
+    }catch(err){
+      STATE.importMsg = "ອ່ານໄຟລ໌ບໍ່ສຳເລັດ: " + err.message;
+    }
+    render();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ====================== EVENTS ====================== */
+/* ---------- REPORTS ---------- */
+const REPORT_CATEGORIES = [
+  "ຮັບອໍເດີຜິດ",
+  "ຕອບຜິດ",
+  "ບໍ່ອ່ານແຊັດຄືນ",
+  "ສົ່ງຂໍ້ມູນລູກຄ້າຜິດ",
+  "ໃຊ້ພາສາບໍ່ສຸພາບ",
+  "ລືມ follow-up ລູກຄ້າ",
+  "ອື່ນໆ"
+];
+
+const OWNER_NAMES = ["owner", "ເຈົ້າຂອງຮ້ານ", "ຫົວໜ້າ", "admin"];
+function isOwner(){ return STATE.currentUser && OWNER_NAMES.includes(STATE.currentUser.name.toLowerCase()); }
+
+function renderReports(){
+  const d = STATE.data;
+  const f = STATE.reportForm;
+  const owner = isOwner();
+  const myReports = owner ? d.reports : d.reports.filter(r=>r.adminName===STATE.currentUser?.name);
+
+  return `
+    <div class="page-head">
+      <h1>ລາຍງານຂໍ້ຜິດພາດ</h1>
+      <p>${owner ? "ລາຍງານທັງໝົດຈາກທີມແອັດມິນ (ສິດຫົວໜ້າ)" : "ສົ່ງລາຍງານຂໍ້ຜິດພາດ — ຫົວໜ້າເທົ່ານັ້ນທີ່ຈະເຫັນ"}</p>
+    </div>
+
+    ${!owner ? `
+    <div class="card">
+      <h3>ສ້າງລາຍງານໃໝ່</h3>
+      <label>ໝວດໝູ່ຂໍ້ຜິດພາດ</label>
+      <select id="rep-category">
+        <option value="">— ເລືອກໝວດໝູ່ —</option>
+        ${REPORT_CATEGORIES.map(c=>`<option value="${c}" ${f.category===c?'selected':''}>${c}</option>`).join("")}
+      </select>
+      <label>ລາຍລະອຽດ</label>
+      <textarea id="rep-detail" placeholder="ອະທິບາຍສິ່ງທີ່ເກີດຂຶ້ນ...">${esc(f.detail)}</textarea>
+      <label>ແນບຮູບພາບ (ບໍ່ບັງຄັບ)</label>
+      <div style="margin-bottom:14px;">
+        <input type="file" id="rep-image-input" accept="image/*" style="font-size:13px;"/>
+        ${f.imageBase64 ? `<div style="margin-top:8px;"><img src="${f.imageBase64}" style="max-width:200px; max-height:140px; border-radius:7px; border:1px solid #E9E3D3;"/></div>` : ""}
+      </div>
+      <button class="btn" id="btn-submit-report">ສົ່ງລາຍງານ</button>
+    </div>
+    ` : ""}
+
+    <div class="card">
+      <h3>${owner ? "ລາຍງານທັງໝົດ ("+myReports.length+")" : "ລາຍງານຂອງຂ້ອຍ ("+myReports.length+")"}</h3>
+      ${myReports.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີລາຍງານ</p>` : myReports.map(r=>`
+        <div style="border:1px solid #E9E3D3; border-radius:9px; padding:14px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <span class="pill pill-terra">${esc(r.category)}</span>
+              ${owner ? `<span class="pill pill-sage">${esc(r.adminName)}</span>` : ""}
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span class="small-muted">${r.createdAt ? new Date(r.createdAt).toLocaleString("lo-LA") : ""}</span>
+              ${owner ? `<button class="btn btn-sm btn-danger" data-del-report="${r.id}">ລຶບ</button>` : ""}
+            </div>
+          </div>
+          <div style="font-size:14px; color:var(--ink); margin-bottom:8px;">${esc(r.detail)}</div>
+          ${r.imageUrl ? `<img src="${r.imageUrl}" style="max-width:260px; max-height:180px; border-radius:7px; border:1px solid #E9E3D3; display:block;"/>` : ""}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function attachReportEvents(){
+  const catEl = document.getElementById("rep-category");
+  const detEl = document.getElementById("rep-detail");
+  const imgEl = document.getElementById("rep-image-input");
+
+  if(catEl) catEl.addEventListener("change", ()=>{ STATE.reportForm.category = catEl.value; });
+  if(detEl) detEl.addEventListener("input", ()=>{ STATE.reportForm.detail = detEl.value; });
+  if(imgEl) imgEl.addEventListener("change", ()=>{
+    const file = imgEl.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (e)=>{ STATE.reportForm.imageBase64 = e.target.result; render(); };
+    reader.readAsDataURL(file);
+  });
+
+  const submitBtn = document.getElementById("btn-submit-report");
+  if(submitBtn) submitBtn.addEventListener("click", async ()=>{
+    const f = STATE.reportForm;
+    if(!f.category){ alert("ກະລຸນາເລືອກໝວດໝູ່ຂໍ້ຜິດພາດ"); return; }
+    const newReport = {
+      id:"rep"+Date.now(),
+      adminName: STATE.currentUser?.name || "",
+      category: f.category,
+      detail: f.detail,
+      imageUrl: f.imageBase64 || "",
+      createdAt: new Date().toISOString()
+    };
+    STATE.data.reports.unshift(newReport);
+    STATE.reportForm = {category:"", detail:"", imageBase64:""};
+    render();
+    dbInsertReport(newReport).catch(err=>console.error(err));
+  });
+
+  document.querySelectorAll("[data-del-report]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-del-report");
+      STATE.data.reports = STATE.data.reports.filter(r=>r.id!==id);
+      render();
+      dbDeleteReport(id).catch(err=>console.error(err));
+    });
+  });
+}
+
+/* ---------- ATTENDANCE ---------- */
+function fmtTime(ts){
+  if(!ts) return "-";
+  return new Date(ts).toLocaleTimeString("lo-LA", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+}
+function fmtDuration(inTs, outTs){
+  if(!inTs || !outTs) return "-";
+  const ms = new Date(outTs) - new Date(inTs);
+  if(ms<=0) return "-";
+  const h = Math.floor(ms/3600000);
+  const m = Math.floor((ms%3600000)/60000);
+  const s = Math.floor((ms%60000)/1000);
+  return `${h} ຊມ ${m} ນທ ${s} ວ`;
+}
+function todayStr(){ return new Date().toLocaleDateString("lo-LA"); }
+
+function renderAttendance(){
+  const d = STATE.data;
+  const me = STATE.currentUser?.name||"";
+  const owner = isOwner();
+
+  // My today's record
+  const todayRec = d.attendance.find(a=>a.adminName===me && a.date===todayStr());
+  const isClockedIn = todayRec && todayRec.clockIn && !todayRec.clockOut;
+  const isClockedOut = todayRec && todayRec.clockIn && todayRec.clockOut;
+
+  // Records to show in table
+  const showList = owner
+    ? d.attendance
+    : d.attendance.filter(a=>a.adminName===me);
+
+  return `
+    <div class="page-head">
+      <h1>ລົງໂມງ</h1>
+      <p>${owner ? "ລາຍງານການລົງໂມງທັງໝົດຂອງທີມ (ສິດຫົວໜ້າ)" : "ກົດປຸ່ມຂ້າງລຸ່ມເພື່ອລົງໂມງ"}</p>
+    </div>
+
+    ${!owner ? `
+    <!-- CLOCK CARD -->
+    <div class="card" style="text-align:center; padding:32px 22px;">
+      <div style="font-size:15px; color:var(--muted); margin-bottom:6px;">ວັນທີ: ${todayStr()}</div>
+      <div style="font-family:'Noto Serif Lao',serif; font-size:22px; font-weight:700; color:var(--bg-deep); margin-bottom:4px;">👤 ${esc(me)}</div>
+
+      ${!todayRec ? `
+        <!-- NOT CLOCKED IN YET -->
+        <div style="margin:24px 0 8px 0;">
+          <div style="font-size:48px; margin-bottom:8px;">🟢</div>
+          <div style="font-size:15px; color:var(--muted); margin-bottom:20px;">ທ່ານຍັງບໍ່ໄດ້ລົງໂມງເຂົ້າວຽກມື້ນີ້</div>
+          <button class="btn" id="btn-clock-in" style="font-size:18px; padding:16px 40px; border-radius:12px;">
+            🟢 &nbsp; ເຂົ້າວຽກ
+          </button>
+        </div>
+      ` : isClockedIn ? `
+        <!-- CLOCKED IN, NOT OUT YET -->
+        <div style="margin:24px 0 8px 0;">
+          <div style="font-size:48px; margin-bottom:8px;">🔵</div>
+          <div style="font-size:15px; color:var(--muted); margin-bottom:6px;">ເຂົ້າວຽກເວລາ</div>
+          <div style="font-size:28px; font-weight:700; color:var(--sage-dark); margin-bottom:20px;">${fmtTime(todayRec.clockIn)}</div>
+          <button class="btn btn-danger" id="btn-clock-out" style="font-size:18px; padding:16px 40px; border-radius:12px;">
+            🔴 &nbsp; ເລີກວຽກ
+          </button>
+        </div>
+      ` : `
+        <!-- FULLY DONE -->
+        <div style="margin:24px 0 8px 0;">
+          <div style="font-size:48px; margin-bottom:8px;">✅</div>
+          <div style="font-size:15px; color:var(--muted); margin-bottom:12px;">ລົງໂມງຄົບແລ້ວສຳລັບມື້ນີ້</div>
+          <div style="display:flex; justify-content:center; gap:32px; flex-wrap:wrap; margin-bottom:8px;">
+            <div>
+              <div class="small-muted">ເຂົ້າວຽກ</div>
+              <div style="font-size:20px; font-weight:700; color:var(--sage-dark);">${fmtTime(todayRec.clockIn)}</div>
+            </div>
+            <div>
+              <div class="small-muted">ເລີກວຽກ</div>
+              <div style="font-size:20px; font-weight:700; color:var(--danger);">${fmtTime(todayRec.clockOut)}</div>
+            </div>
+            <div>
+              <div class="small-muted">ເວລາລວມ</div>
+              <div style="font-size:20px; font-weight:700; color:var(--bg-deep);">${fmtDuration(todayRec.clockIn, todayRec.clockOut)}</div>
+            </div>
+          </div>
+        </div>
+      `}
+    </div>
+    ` : ""}
+
+    <!-- HISTORY TABLE -->
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:14px;">
+        <h3 style="margin:0;">${owner ? "ລາຍງານທັງໝົດ ("+showList.length+")" : "ປະຫວັດຂອງຂ້ອຍ"}</h3>
+        ${owner ? `<button class="btn btn-outline" id="btn-export-attendance">ສົ່ງອອກ Excel</button>` : ""}
+      </div>
+      ${showList.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີຂໍ້ມູນ</p>` : `
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ວັນທີ</th>
+                ${owner ? "<th>ພະນັກງານ</th>" : ""}
+                <th>ເຂົ້າວຽກ</th>
+                <th>ເລີກວຽກ</th>
+                <th>ເວລາລວມ</th>
+                ${owner ? "<th></th>" : ""}
+              </tr>
+            </thead>
+            <tbody>
+              ${showList.map(a=>`
+                <tr>
+                  <td class="small-muted">${esc(a.date)}</td>
+                  ${owner ? `<td><span class="pill pill-sage">${esc(a.adminName)}</span></td>` : ""}
+                  <td style="color:var(--sage-dark); font-weight:600;">${fmtTime(a.clockIn)}</td>
+                  <td style="color:${a.clockOut?"var(--danger)":"var(--muted)"}; font-weight:600;">${a.clockOut ? fmtTime(a.clockOut) : "ຍັງຢູ່ວຽກ"}</td>
+                  <td style="font-weight:600;">${fmtDuration(a.clockIn, a.clockOut)}</td>
+                  ${owner ? `<td><button class="btn btn-sm btn-danger" data-del-attendance="${a.id}">ລຶບ</button></td>` : ""}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function attachAttendanceEvents(){
+  const clockInBtn = document.getElementById("btn-clock-in");
+  if(clockInBtn) clockInBtn.addEventListener("click", async ()=>{
+    clockInBtn.disabled = true;
+    clockInBtn.textContent = "ກຳລັງບັນທຶກ...";
+    const now = new Date().toISOString();
+    const rec = {
+      id:"att"+Date.now(),
+      adminName: STATE.currentUser?.name||"",
+      clockIn: now,
+      clockOut: null,
+      date: todayStr()
+    };
+    STATE.data.attendance.unshift(rec);
+    render();
+    dbClockIn(rec).catch(e=>console.error(e));
+  });
+
+  const clockOutBtn = document.getElementById("btn-clock-out");
+  if(clockOutBtn) clockOutBtn.addEventListener("click", async ()=>{
+    clockOutBtn.disabled = true;
+    clockOutBtn.textContent = "ກຳລັງບັນທຶກ...";
+    const me = STATE.currentUser?.name||"";
+    const rec = STATE.data.attendance.find(a=>a.adminName===me && a.date===todayStr() && !a.clockOut);
+    if(!rec){ render(); return; }
+    const now = new Date().toISOString();
+    rec.clockOut = now;
+    render();
+    dbClockOut(rec.id, now).catch(e=>console.error(e));
+  });
+
+  const exportBtn = document.getElementById("btn-export-attendance");
+  if(exportBtn) exportBtn.addEventListener("click", ()=>{
+    const rows = STATE.data.attendance.map(a=>({
+      "ວັນທີ": a.date,
+      "ພະນັກງານ": a.adminName,
+      "ເຂົ້າວຽກ": a.clockIn ? new Date(a.clockIn).toLocaleTimeString("lo-LA") : "",
+      "ເລີກວຽກ": a.clockOut ? new Date(a.clockOut).toLocaleTimeString("lo-LA") : "ຍັງຢູ່ວຽກ",
+      "ຊົ່ວໂມງລວມ": fmtDuration(a.clockIn, a.clockOut)
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{wch:14},{wch:16},{wch:12},{wch:12},{wch:18}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ລົງໂມງ");
+    XLSX.writeFile(wb, `attendance-${new Date().toISOString().slice(0,10)}.xlsx`);
+  });
+
+  document.querySelectorAll("[data-del-attendance]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-del-attendance");
+      STATE.data.attendance = STATE.data.attendance.filter(a=>a.id!==id);
+      render();
+      dbDeleteAttendance(id).catch(e=>console.error(e));
+    });
+  });
+}
+
+function attachLoginEvents(){
+  const tabLogin = document.getElementById("tab-login");
+  const tabReg = document.getElementById("tab-register");
+  if(tabLogin) tabLogin.addEventListener("click", ()=>{ STATE.loginMode="login"; STATE.loginError=""; render(); });
+  if(tabReg) tabReg.addEventListener("click", ()=>{ STATE.loginMode="register"; STATE.loginError=""; render(); });
+
+  const nameEl = document.getElementById("login-name");
+  const passEl = document.getElementById("login-password");
+  if(nameEl) nameEl.addEventListener("input", ()=>{ STATE.loginForm.name = nameEl.value; });
+  if(passEl) passEl.addEventListener("input", ()=>{ STATE.loginForm.password = passEl.value; });
+
+  const toggleBtn = document.getElementById("btn-toggle-password");
+  if(toggleBtn && passEl){
+    toggleBtn.addEventListener("click", ()=>{
+      if(passEl.type==="password"){
+        passEl.type = "text";
+        toggleBtn.textContent = "🙈";
+      } else {
+        passEl.type = "password";
+        toggleBtn.textContent = "👁";
+      }
+    });
+  }
+
+  const submitBtn = document.getElementById("btn-login-submit");
+  if(submitBtn) submitBtn.addEventListener("click", async ()=>{
+    const name = STATE.loginForm.name.trim();
+    const password = STATE.loginForm.password.trim();
+    if(!name || !password){ STATE.loginError = "ກະລຸນາໃສ່ຊື່ ແລະ ລະຫັດຜ່ານ"; render(); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "ກຳລັງດຳເນີນການ...";
+    try{
+      let user;
+      if(STATE.loginMode==="register"){
+        user = await dbRegister(name, password);
+      } else {
+        user = await dbLogin(name, password);
+      }
+      STATE.currentUser = user;
+      STATE.loginError = "";
+      STATE.loginForm = {name:"", password:""};
+      render();
+    }catch(e){
+      STATE.loginError = e.message;
+      render();
+    }
+  });
+}
+
+function attachEvents(){
+  // nav
+  document.querySelectorAll("[data-nav]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      STATE.page = el.getAttribute("data-nav");
+      STATE.output = ""; STATE.error = "";
+      render();
+    });
+  });
+
+  const logoutBtn = document.getElementById("btn-logout");
+  if(logoutBtn) logoutBtn.addEventListener("click", ()=>{
+    STATE.currentUser = null;
+    STATE.page = "dashboard";
+    render();
+  });
+
+  if(STATE.page==="products") attachProductEvents();
+  if(STATE.page==="content") attachContentEvents();
+  if(STATE.page==="costs") attachCostEvents();
+  if(STATE.page==="admin") attachAdminEvents();
+  if(STATE.page==="insights") attachInsightEvents();
+  if(STATE.page==="reports") attachReportEvents();
+  if(STATE.page==="attendance") attachAttendanceEvents();
+}
+
+function attachProductEvents(){
+  const btnNew = document.getElementById("btn-new-product");
+  if(btnNew) btnNew.addEventListener("click", ()=>{
+    STATE.productForm = {name:"", category:"", price:"", costPrice:"", desc:"", painPoints:""};
+    STATE.editingProduct = null;
+    STATE.showProductForm = true;
+    render();
+  });
+
+  document.querySelectorAll("[data-edit-product]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-edit-product");
+      const p = STATE.data.products.find(x=>x.id===id);
+      if(p){
+        STATE.productForm = {...p};
+        STATE.editingProduct = id;
+        STATE.showProductForm = true;
+        render();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-del-product]").forEach(el=>{
+    el.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const id = el.getAttribute("data-del-product");
+      STATE.data.products = STATE.data.products.filter(p=>p.id!==id);
+      render();
+      dbDeleteProduct(id).catch(err=>console.error(err));
+    });
+  });
+
+  const modalBg = document.getElementById("product-modal-bg");
+  if(modalBg){
+    modalBg.addEventListener("click", (e)=>{
+      if(e.target.id==="product-modal-bg"){ STATE.showProductForm = false; render(); }
+    });
+  }
+  const closeBtn = document.getElementById("close-product-modal");
+  if(closeBtn) closeBtn.addEventListener("click", ()=>{ STATE.showProductForm = false; render(); });
+
+  const saveBtn = document.getElementById("save-product");
+  if(saveBtn){
+    saveBtn.addEventListener("click", async ()=>{
+      const f = {
+        name: document.getElementById("pf-name").value,
+        category: document.getElementById("pf-category").value,
+        price: document.getElementById("pf-price").value,
+        costPrice: document.getElementById("pf-costPrice").value,
+        desc: document.getElementById("pf-desc").value,
+        painPoints: document.getElementById("pf-painPoints").value
+      };
+      if(!f.name.trim()) return;
+      if(STATE.editingProduct){
+        const updated = {...f, id:STATE.editingProduct};
+        STATE.data.products = STATE.data.products.map(p=>p.id===STATE.editingProduct ? updated : p);
+        STATE.showProductForm = false;
+        render();
+        dbUpdateProduct(updated).catch(err=>console.error(err));
+      } else {
+        const newProduct = {...f, id:"p"+Date.now()};
+        STATE.data.products.push(newProduct);
+        STATE.showProductForm = false;
+        render();
+        dbInsertProduct(newProduct).catch(err=>console.error(err));
+      }
+    });
+  }
+}
+
+function attachContentEvents(){
+  document.querySelectorAll("[data-content-tab]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      STATE.contentTab = el.getAttribute("data-content-tab");
+      STATE.output = ""; STATE.error = "";
+      render();
+    });
+  });
+
+  const sel = document.getElementById("content-product");
+  if(sel) sel.addEventListener("change", ()=>{ STATE.selProduct = sel.value; });
+
+  const extra = document.getElementById("content-extra");
+  if(extra) extra.addEventListener("input", ()=>{ STATE.extra = extra.value; });
+
+  const genBtn = document.getElementById("btn-generate");
+  if(genBtn) genBtn.addEventListener("click", generateContent);
+
+  const copyBtn = document.getElementById("btn-copy");
+  if(copyBtn) copyBtn.addEventListener("click", ()=>{
+    navigator.clipboard.writeText(STATE.output);
+  });
+
+  const fbBtn = document.getElementById("btn-open-fb");
+  if(fbBtn) fbBtn.addEventListener("click", ()=>{
+    navigator.clipboard.writeText(STATE.output);
+    window.open("https://www.facebook.com/", "_blank");
+  });
+
+  document.querySelectorAll("[data-view-history]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-view-history");
+      const item = STATE.data.contentHistory.find(c=>c.id===id);
+      if(item){ STATE.output = item.content; render(); }
+    });
+  });
+}
+
+function exportCostsToExcel(){
+  const d = STATE.data;
+  if(d.costs.length===0){ render(); return; }
+  const rows = d.costs.map(c => {
+    const profit = (Number(c.revenue)||0)-(Number(c.productCost)||0)-(Number(c.adCost)||0)-(Number(c.opCost)||0);
+    return {
+      "ລາຍການ": c.label || "",
+      "ລາຍຮັບ": Number(c.revenue)||0,
+      "ຕົ້ນທຶນສິນຄ້າ": Number(c.productCost)||0,
+      "ຄ່າໂຄສະນາ": Number(c.adCost)||0,
+      "ຄ່າບໍລິຫານ": Number(c.opCost)||0,
+      "ກຳໄລ": profit
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:28},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ຕົ້ນທຶນ-ກຳໄລ");
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `cost-profit-${stamp}.xlsx`);
+}
+
+function attachCostEvents(){
+  const exportBtn = document.getElementById("btn-export-costs-excel");
+  if(exportBtn) exportBtn.addEventListener("click", exportCostsToExcel);
+  ["label","revenue","productCost","adCost","opCost"].forEach(k=>{
+    const el = document.getElementById("cf-"+k);
+    if(el) el.addEventListener("input", ()=>{ STATE.costForm[k] = el.value; });
+  });
+  const addBtn = document.getElementById("btn-add-cost");
+  if(addBtn) addBtn.addEventListener("click", ()=>{
+    const f = STATE.costForm;
+    if(!f.label.trim()) return;
+    const newCost = {...f, id:"co"+Date.now()};
+    STATE.data.costs.unshift(newCost);
+    STATE.costForm = {label:"", revenue:"", productCost:"", adCost:"", opCost:""};
+    render();
+    dbInsertCost(newCost).catch(err=>console.error(err));
+  });
+  document.querySelectorAll("[data-del-cost]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-del-cost");
+      STATE.data.costs = STATE.data.costs.filter(c=>c.id!==id);
+      render();
+      dbDeleteCost(id).catch(err=>console.error(err));
+    });
+  });
+}
+
+function attachAdminEvents(){
+  ["name","role"].forEach(k=>{
+    const el = document.getElementById("af-"+k);
+    if(el) el.addEventListener("input", ()=>{ STATE.adminForm[k] = el.value; });
+  });
+  const statusEl = document.getElementById("af-status");
+  if(statusEl) statusEl.addEventListener("change", ()=>{ STATE.adminForm.status = statusEl.value; });
+
+  const addBtn = document.getElementById("btn-add-admin");
+  if(addBtn) addBtn.addEventListener("click", ()=>{
+    const f = STATE.adminForm;
+    if(!f.name.trim()) return;
+    const newAdmin = {...f, id:"ad"+Date.now()};
+    STATE.data.admins.push(newAdmin);
+    STATE.adminForm = {name:"", role:"", status:"ກຳລັງເຮັດວຽກ"};
+    render();
+    dbInsertAdmin(newAdmin).catch(err=>console.error(err));
+  });
+
+  document.querySelectorAll("[data-del-admin]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-del-admin");
+      STATE.data.admins = STATE.data.admins.filter(a=>a.id!==id);
+      render();
+      dbDeleteAdmin(id).catch(err=>console.error(err));
+    });
+  });
+
+  document.querySelectorAll("[data-cycle-status]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-cycle-status");
+      const order = ["ກຳລັງເຮັດວຽກ","ພັກ","ບໍ່ຢູ່"];
+      let newStatus = "";
+      STATE.data.admins = STATE.data.admins.map(a=>{
+        if(a.id!==id) return a;
+        const idx = order.indexOf(a.status);
+        newStatus = order[(idx+1)%order.length];
+        return {...a, status: newStatus};
+      });
+      render();
+      dbUpdateAdminStatus(id, newStatus).catch(err=>console.error(err));
+    });
+  });
+}
+
+function attachInsightEvents(){
+  const qEl = document.getElementById("if-question");
+  if(qEl) qEl.addEventListener("input", ()=>{ STATE.insightForm.question = qEl.value; });
+  const aEl = document.getElementById("if-answer");
+  if(aEl) aEl.addEventListener("input", ()=>{ STATE.insightForm.answer = aEl.value; });
+  const pEl = document.getElementById("if-product");
+  if(pEl) pEl.addEventListener("change", ()=>{ STATE.insightForm.productRelated = pEl.value; });
+
+  document.querySelectorAll("[data-view-insight]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-view-insight");
+      STATE.viewingInsight = STATE.data.insights.find(i=>i.id===id) || null;
+      render();
+    });
+  });
+
+  const modalBg = document.getElementById("insight-modal-bg");
+  if(modalBg) modalBg.addEventListener("click", (e)=>{
+    if(e.target.id==="insight-modal-bg"){ STATE.viewingInsight=null; render(); }
+  });
+  const closeModal = document.getElementById("close-insight-modal");
+  if(closeModal) closeModal.addEventListener("click", ()=>{ STATE.viewingInsight=null; render(); });
+  const closeModalBtn = document.getElementById("close-insight-modal-btn");
+  if(closeModalBtn) closeModalBtn.addEventListener("click", ()=>{ STATE.viewingInsight=null; render(); });
+
+  const addBtn = document.getElementById("btn-add-insight");
+  if(addBtn) addBtn.addEventListener("click", ()=>{
+    const f = STATE.insightForm;
+    if(!f.question.trim()) return;
+    const newInsight = {
+      ...f,
+      id:"i"+Date.now(),
+      date:new Date().toLocaleDateString("lo-LA"),
+      adminName: STATE.currentUser?.name || ""
+    };
+    STATE.data.insights.unshift(newInsight);
+    STATE.insightForm = {question:"", answer:"", productRelated:""};
+    render();
+    dbInsertInsight(newInsight).catch(err=>console.error(err));
+  });
+
+  document.querySelectorAll("[data-del-insight]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.getAttribute("data-del-insight");
+      STATE.data.insights = STATE.data.insights.filter(i=>i.id!==id);
+      render();
+      dbDeleteInsight(id).catch(err=>console.error(err));
+    });
+  });
+
+  const analyzeBtn = document.getElementById("btn-analyze");
+  if(analyzeBtn) analyzeBtn.addEventListener("click", analyzeInsights);
+
+  const exportBtn = document.getElementById("btn-export-excel");
+  if(exportBtn) exportBtn.addEventListener("click", exportInsightsToExcel);
+
+  const importTrigger = document.getElementById("btn-import-excel-trigger");
+  const importInput = document.getElementById("import-excel-input");
+  if(importTrigger && importInput){
+    importTrigger.addEventListener("click", ()=> importInput.click());
+    importInput.addEventListener("change", (e)=>{
+      const file = e.target.files[0];
+      if(file) importInsightsFromExcel(file);
+      importInput.value = "";
+    });
+  }
+}
+
+/* ====================== INIT ====================== */
+async function init(){
+  render();
+  STATE.data = await loadAllData();
+  STATE.ready = true;
+  render();
+  subscribeRealtime((fresh)=>{
+    STATE.data = fresh;
+    render();
+  });
+}
+init();
+</script>
+</body>
+</html>
