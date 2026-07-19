@@ -1,0 +1,427 @@
+// Supabase Edge Function: whatsapp-send
+// Deploy as: supabase functions deploy whatsapp-send
+// (JWT verification stays ON — this one IS called from Marketing Studio via sb.functions.invoke,
+// which automatically sends the anon key, unlike whatsapp-webhook which Meta calls directly)
+//
+// Required secrets:
+//   SUPABASE_SERVICE_ROLE_KEY
+//   WHATSAPP_TOKEN   — permanent access token for the "marketingstudiosync" System User
+//
+// Called from the app as ANY of:
+//   Text only:
+//     sb.functions.invoke("whatsapp-send", { body: { to, phoneNumberId, message, conversationId, sentBy, replyToWaMessageId } })
+//   With a media attachment:
+//     const fd = new FormData();
+//     fd.append("to", ...); fd.append("phoneNumberId", ...); fd.append("conversationId", ...);
+//     fd.append("caption", ...);           // optional, ignored for audio (Meta doesn't support it)
+//     fd.append("sentBy", ...);            // v3.12: admin/staff name, stored on the message row
+//     fd.append("replyToWaMessageId", ...); // v3.54: optional — wa_message_id being replied to
+//     fd.append("file", fileBlob, fileName);
+//     sb.functions.invoke("whatsapp-send", { body: fd });
+//   Template message (for re-engaging a customer outside the 24h window, OR starting a
+//   brand-new conversation with someone who's never messaged our WhatsApp before — e.g. a
+//   Pancake customer reached out to via order tracking):
+//     sb.functions.invoke("whatsapp-send", { body: {
+//       to, phoneNumberId, conversationId, sentBy,
+//       customerName, customerPhone, // v3.33: only used if conversationId doesn't exist yet
+//       template: { name: "order_followup", language: "en_US", parameters: ["ຄຳ", "T100234"] }
+//     }})
+//
+// Storage: requires the "whatsapp-media" public bucket (see whatsapp_media_migration.sql)
+// and the whatsapp_messages.media_url / media_mime_type / media_filename columns from the
+// same migration.
+//
+// v3.12: added "sentBy" (admin/staff display name) end-to-end — passed in from Marketing
+// Studio's index.html, stored on whatsapp_messages.sent_by (requires that column — see
+// wa_read_and_sender_tracking_migration.sql) so the app can show "sent by [name]" when an
+// admin taps one of their own outbound bubbles. Never blocks sending if it's missing/blank.
+// v3.33: template send now UPSERTs whatsapp_conversations instead of blind-updating — lets
+// this same path start a genuinely brand-new conversation (customerName/customerPhone in the
+// request body are only used in that insert-if-missing case).
+// v3.55: fixed a bug in the template-send path where a brand-new conversation's message row
+// was inserted BEFORE its parent conversation row existed, violating the
+// whatsapp_messages_conversation_id_fkey foreign key every time — meaning template messages
+// to a first-time contact (e.g. reaching out to a Pancake customer who's never messaged
+// before) always reported "sent successfully but couldn't save" and never actually appeared
+// in the chat. Conversation creation now happens before the message insert.
+// v3.54: added reply-to-specific-message support (WhatsApp's own "reply" feature) — an
+// optional replyToWaMessageId is passed through to Meta as context.message_id on both the
+// text and media send paths, and stored on our own message row (reply_to_wa_message_id) so
+// Marketing Studio can render the quoted snippet in its own chat view too.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const sb = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+const MEDIA_BUCKET = "whatsapp-media";
+
+// Meta's error code for "outside the 24-hour customer service window, a template is
+// required" — code 131047. We surface this distinctly (requiresTemplate: true) so the app
+// can offer to send an approved template instead of just showing a generic error.
+function isWindowClosedError(graphData: any): boolean {
+  const code = graphData?.error?.code;
+  const msg = String(graphData?.error?.message || "").toLowerCase();
+  return code === 131047 || msg.includes("24 hours") || msg.includes("re-engagement");
+}
+
+function genId(prefix: string) {
+  return prefix + Date.now() + Math.random().toString(36).slice(2, 9);
+}
+
+function waTypeFromMime(mime: string) {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime.startsWith("video/")) return "video";
+  return "document";
+}
+
+function safeExt(filename: string, mime: string) {
+  if (filename && filename.includes(".")) return "." + filename.split(".").pop();
+  const map: Record<string, string> = {
+    "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
+    "audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/mp4": ".m4a",
+    "video/mp4": ".mp4", "application/pdf": ".pdf",
+  };
+  return map[mime] || "";
+}
+
+function mediaPreviewLabel(type: string, caption: string) {
+  const icons: Record<string, string> = {
+    image: "📷 ຮູບພາບ", audio: "🎵 ຂໍ້ຄວາມສຽງ", video: "🎬 ວິດີໂອ", document: "📄 ເອກະສານ",
+  };
+  const label = icons[type] || `[${type}]`;
+  return caption ? `${label}: ${caption}` : label;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const token = Deno.env.get("WHATSAPP_TOKEN")!;
+    const contentType = req.headers.get("content-type") || "";
+
+    // ============================================================
+    // MEDIA SEND — multipart/form-data body carrying an actual file
+    // ============================================================
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      const to = String(form.get("to") || "");
+      const phoneNumberId = String(form.get("phoneNumberId") || "");
+      const conversationId = String(form.get("conversationId") || "");
+      const caption = String(form.get("caption") || "");
+      const sentBy = String(form.get("sentBy") || ""); // v3.12
+      const replyToWaMessageId = String(form.get("replyToWaMessageId") || "") || null; // v3.54
+      const file = form.get("file") as File | null;
+
+      if (!to || !phoneNumberId || !file) {
+        return new Response(JSON.stringify({ error: "Missing to/phoneNumberId/file" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const waType = waTypeFromMime(file.type || "application/octet-stream");
+      const fileBytes = await file.arrayBuffer();
+
+      // Step 1: upload the file to Meta so we get back a media id we can reference in the
+      // message send call below.
+      const metaForm = new FormData();
+      metaForm.append("messaging_product", "whatsapp");
+      metaForm.append("file", new Blob([fileBytes], { type: file.type }), file.name);
+      metaForm.append("type", file.type || "application/octet-stream");
+      const uploadRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: metaForm,
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) {
+        console.error("Meta media upload error:", uploadData);
+        return new Response(JSON.stringify({ error: uploadData.error?.message || "ອັບໂຫລດ media ຫາ Meta ບໍ່ໄດ້", detail: uploadData }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const mediaId = uploadData.id;
+
+      // Step 2: send the message referencing that media id. Audio messages don't support a
+      // caption on WhatsApp's API — Meta silently rejects it, so we only attach caption for
+      // image/video/document.
+      const mediaPayload: Record<string, unknown> = { id: mediaId };
+      if (caption && waType !== "audio") mediaPayload.caption = caption;
+      if (waType === "document") mediaPayload.filename = file.name;
+
+      const sendRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messaging_product: "whatsapp", to, type: waType, [waType]: mediaPayload,
+          ...(replyToWaMessageId ? { context: { message_id: replyToWaMessageId } } : {}), // v3.54
+        }),
+      });
+      const sendData = await sendRes.json();
+      if (!sendRes.ok) {
+        console.error("Graph API send error:", sendData);
+        return new Response(JSON.stringify({
+          error: sendData.error?.message || "ສົ່ງ media ບໍ່ໄດ້",
+          detail: sendData,
+          requiresTemplate: isWindowClosedError(sendData),
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const waMessageId = sendData.messages?.[0]?.id || null;
+
+      // Step 3: also store our own copy in Supabase Storage, so Marketing Studio can show the
+      // media immediately without waiting for any webhook round-trip.
+      let mediaUrl: string | null = null;
+      try {
+        const ext = safeExt(file.name, file.type);
+        const path = `${conversationId}/${waMessageId || genId("wm")}${ext}`;
+        const { error: upErr } = await sb.storage.from(MEDIA_BUCKET).upload(path, fileBytes, {
+          contentType: file.type || "application/octet-stream",
+          upsert: true,
+        });
+        if (upErr) throw upErr;
+        const { data: pub } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+        mediaUrl = pub.publicUrl;
+      } catch (e) {
+        console.error("own-copy storage upload failed (message still sent fine):", e);
+      }
+
+      const { error: mediaMsgInsertErr } = await sb.from("whatsapp_messages").insert({
+        id: genId("wm"),
+        conversation_id: conversationId,
+        wa_message_id: waMessageId,
+        direction: "out",
+        message_type: waType,
+        content: caption,
+        media_url: mediaUrl,
+        media_mime_type: file.type || null,
+        media_filename: file.name || null,
+        status: "sent",
+        sent_by: sentBy || null, // v3.12
+        reply_to_wa_message_id: replyToWaMessageId, // v3.54
+      });
+      if (mediaMsgInsertErr) {
+        console.error("whatsapp_messages insert failed (media send):", mediaMsgInsertErr);
+        return new Response(JSON.stringify({ error: "ຮູບ/ໄຟລ໌ສົ່ງອອກ WhatsApp ສຳເລັດ ແຕ່ບັນທຶກໃນລະບົບບໍ່ໄດ້: " + mediaMsgInsertErr.message }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await sb.from("whatsapp_conversations").update({
+        last_message_at: new Date().toISOString(),
+        last_message_preview: mediaPreviewLabel(waType, caption),
+      }).eq("id", conversationId);
+
+      return new Response(JSON.stringify({ ok: true, waMessageId }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ============================================================
+    // TEMPLATE SEND — for re-engaging outside the 24h window
+    // ============================================================
+    const bodyJson = await req.json();
+    const { to, phoneNumberId, message, conversationId, template, sentBy, customerName, customerPhone, replyToWaMessageId } = bodyJson; // v3.33: +customerName/customerPhone; v3.54: +replyToWaMessageId
+
+    if (template) {
+      if (!to || !phoneNumberId || !template.name || !template.language) {
+        return new Response(JSON.stringify({ error: "Missing to/phoneNumberId/template.name/template.language" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const parameters = Array.isArray(template.parameters) ? template.parameters : [];
+      const components = parameters.length
+        ? [{ type: "body", parameters: parameters.map((p: string) => ({ type: "text", text: String(p) })) }]
+        : [];
+
+      const templateRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messaging_product: "whatsapp", to, type: "template",
+          template: { name: template.name, language: { code: template.language }, components },
+        }),
+      });
+      const templateData = await templateRes.json();
+      if (!templateRes.ok) {
+        console.error("Graph API template send error:", templateData);
+        return new Response(JSON.stringify({ error: templateData.error?.message || "ສົ່ງ template ບໍ່ໄດ້", detail: templateData }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const templateWaMessageId = templateData.messages?.[0]?.id || null;
+      // Log a human-readable rendering of the template (name + filled-in params) as the
+      // stored message content, so it reads sensibly in the chat history — we don't have
+      // the exact approved template body text handy here to substitute into, just the name
+      // and the parameter values that were sent.
+      const renderedContent = `[Template: ${template.name}] ` + parameters.join(", ");
+
+      // v3.49 fix: look up the REAL existing conversation by wa_id+phone_number_id (the same
+      // match the webhook itself uses) instead of trusting the client-supplied conversationId
+      // blindly. The client only knows about conversations already in its local cache — if
+      // this customer already has a conversation that the client just doesn't have loaded
+      // (stale cache, or reaching out to someone who messaged in after the page loaded), the
+      // old .eq("id", conversationId) check found nothing and INSERTED A DUPLICATE
+      // conversation row, so the template message landed in a second, empty conversation
+      // instead of the one Tar was actually looking at — "sent successfully" but invisible.
+      const { data: existingConv } = await sb.from("whatsapp_conversations")
+        .select("id").eq("phone_number_id", phoneNumberId).eq("wa_id", to).maybeSingle();
+      const realConversationId = existingConv ? existingConv.id : conversationId;
+
+      // v3.55 fix: the parent whatsapp_conversations row must exist BEFORE a whatsapp_messages
+      // row can reference it (conversation_id is a foreign key). The previous order inserted
+      // the MESSAGE first and only created the brand-new CONVERSATION row afterward — for a
+      // customer who had never messaged before (existingConv is null), that message insert
+      // always violated the foreign key constraint, since realConversationId didn't exist in
+      // whatsapp_conversations yet at that point. This is exactly the bug Tar hit sending a
+      // template to a first-time Pancake customer: "ຂໍ້ຄວາມສົ່ງອອກ WhatsApp ສຳເລັດ ແຕ່ບັນທຶກ
+      // ໃນຖານຂໍ້ມູນບໍ່ໄດ້... whatsapp_messages_conversation_id_fkey". Fix: create/update the
+      // conversation FIRST, then insert the message.
+      if (existingConv) {
+        await sb.from("whatsapp_conversations").update({
+          last_message_at: new Date().toISOString(),
+          last_message_preview: renderedContent,
+        }).eq("id", realConversationId);
+      } else {
+        const { error: convInsertErr } = await sb.from("whatsapp_conversations").insert({
+          id: realConversationId,
+          phone_number_id: phoneNumberId,
+          wa_id: to,
+          customer_name: customerName || "",
+          customer_phone: customerPhone || ("+" + to),
+          last_message_at: new Date().toISOString(),
+          last_message_preview: renderedContent,
+          unread_count: 0,
+        });
+        if (convInsertErr) {
+          console.error("whatsapp_conversations insert failed (template send):", convInsertErr);
+          return new Response(JSON.stringify({ error: "ຂໍ້ຄວາມສົ່ງອອກ WhatsApp ສຳເລັດ ແຕ່ສ້າງແຊັດໃໝ່ໃນລະບົບບໍ່ໄດ້: " + convInsertErr.message }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // v3.50 fix: this insert's result was never checked — if it silently failed for ANY
+      // reason (schema mismatch, constraint violation, etc.), execution just continued on to
+      // update the conversation's preview text (which DID succeed) and returned ok:true. That
+      // exactly explains "the conversation list shows the message preview, but the chat
+      // thread is completely empty" — the conversation row got touched, but the actual
+      // message row was never created. Now this is caught and returned as a real error
+      // instead of a false success.
+      const { error: msgInsertErr } = await sb.from("whatsapp_messages").insert({
+        id: genId("wm"),
+        conversation_id: realConversationId,
+        wa_message_id: templateWaMessageId,
+        direction: "out",
+        message_type: "text",
+        content: renderedContent,
+        status: "sent",
+        sent_by: sentBy || null, // v3.12
+      });
+      if (msgInsertErr) {
+        console.error("whatsapp_messages insert failed (template send):", msgInsertErr);
+        return new Response(JSON.stringify({ error: "ຂໍ້ຄວາມສົ່ງອອກ WhatsApp ສຳເລັດ ແຕ່ບັນທຶກໃນລະບົບບໍ່ໄດ້: " + msgInsertErr.message }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // v3.49: return which conversation id was ACTUALLY used, so the client can reconcile
+      // its local state (e.g. drop a synthetic id it guessed and use the real one instead)
+      // rather than assuming its own guess was correct.
+      return new Response(JSON.stringify({ ok: true, waMessageId: templateWaMessageId, conversationId: realConversationId }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ============================================================
+    // TEXT SEND — unchanged JSON path
+    // ============================================================
+    if (!to || !phoneNumberId || !message) {
+      return new Response(JSON.stringify({ error: "Missing to/phoneNumberId/message" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const graphRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body: message },
+        ...(replyToWaMessageId ? { context: { message_id: replyToWaMessageId } } : {}), // v3.54
+      }),
+    });
+    const graphData = await graphRes.json();
+
+    if (!graphRes.ok) {
+      console.error("Graph API error:", graphData);
+      return new Response(JSON.stringify({
+        error: graphData.error?.message || "Graph API error",
+        detail: graphData,
+        requiresTemplate: isWindowClosedError(graphData),
+      }), {
+        status: 200, // 200 so the app can read the error body cleanly via supabase-js
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const waMessageId = graphData.messages?.[0]?.id || null;
+
+    // Log the outbound message ourselves (the webhook only receives inbound + echo events,
+    // never a copy of what we just sent via the API).
+    const { error: textMsgInsertErr } = await sb.from("whatsapp_messages").insert({
+      id: genId("wm"),
+      conversation_id: conversationId,
+      wa_message_id: waMessageId,
+      direction: "out",
+      message_type: "text",
+      content: message,
+      status: "sent",
+      sent_by: sentBy || null, // v3.12
+      reply_to_wa_message_id: replyToWaMessageId || null, // v3.54
+    });
+    if (textMsgInsertErr) {
+      console.error("whatsapp_messages insert failed (text send):", textMsgInsertErr);
+      return new Response(JSON.stringify({ error: "ຂໍ້ຄວາມສົ່ງອອກ WhatsApp ສຳເລັດ ແຕ່ບັນທຶກໃນລະບົບບໍ່ໄດ້: " + textMsgInsertErr.message }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await sb.from("whatsapp_conversations").update({
+      last_message_at: new Date().toISOString(),
+      last_message_preview: message,
+    }).eq("id", conversationId);
+
+    return new Response(JSON.stringify({ ok: true, waMessageId }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("whatsapp-send error:", e);
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
