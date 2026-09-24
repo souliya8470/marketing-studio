@@ -979,7 +979,25 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "7.90"; // v7.90 FEATURE (Tar 2026-09-23, "ຢາກປະຢັດໂຄຕ້າຂອງໂຄເວີກໃນວຽກຊ້ຳໆ ແລ້ວ
+const APP_VERSION = "7.91"; // v7.91 FEATURE (Tar 2026-09-24, "...ໃຫ້ກົດວ່າກຽມສົ່ງບິນທີ່ເລືອກ ແລະ
+// ສະຖານະໄປກຽມສົ່ງ ແລະ ຈຸດນີ້ແຫລະທີ່ຈະໃຫ້ n8n ຈະເຂົ້າມາຮັບສັນຍານວ່າມີບິນໃດແນ່ທີ່ກຽມສົ່ງ ແລະ ເລີ່ມ
+// ທຳການສົ່ງແຕ່ລະບິນຫ່າງກັນ 30ວິນາທີ (ແລະ ຢາກໃຫ້ແກ້ຈຸດນີ້ ເພາະວ່າລະບົບເກົ່າ ຫລັງຈາກທີ່ກົດສົ່ງແລ້ວ
+// ບາງບີນສົ່ງໄດ້ບາງບິນສົ່ງບໍ່ໄດ້ ຢາກໃຫ້ຊອກວິທີແກ້"): new "🕒 ກຽມສົ່ງ" button + courierBillMarkReadyToSend()
+// on the courier-bill-import page. Unlike the existing "📤 ສົ່ງທັງໝົດທີ່ຕິກໄວ້" button (which sends
+// synchronously from THIS browser tab, the real root cause of "some bills sent, some failed" — a
+// 100-bill Pancake batch needs the tab open for up to ~50 minutes, see courierBillSendSelected's own
+// v7.39 comment), this new button does NOT send anything itself. It only UPDATEs the ticked rows'
+// send_status to "ready_to_send" in courier_bill_import_pages (a real DB write, not just client-side
+// state). A separate self-hosted n8n workflow, running on Tar's own Windows machine independent of
+// any browser tab, polls for rows in that status and does the actual per-bill Pancake sending itself
+// — one bill at a time, 30 seconds apart, reusing the same send-courier-bill-pancake Edge Function
+// this page already calls — so a send no longer depends on staff keeping this tab open at all. The
+// WhatsApp-direct branch is untouched: it already queues into wa_direct_send_queue/wa-worker
+// server-side (v7.37/v7.39) and still goes through the existing "📤 ສົ່ງທັງໝົດທີ່ຕິກໄວ້" button, not
+// this new one. courierBillSendSelected's own toSend filter now also skips rows already marked
+// "ready_to_send" so a staff member clicking the old send button by mistake can't double-send a bill
+// n8n is about to pick up.
+// v7.90 FEATURE (Tar 2026-09-23, "ຢາກປະຢັດໂຄຕ້າຂອງໂຄເວີກໃນວຽກຊ້ຳໆ ແລ້ວ
 // ເອົາໂຄຕ້າໄປເຮັດແນວອື່ນທີ່ຍາກກວ່າ" -- planning an outside automation (n8n or similar, running
 // separately from Cowork) to click into each ຮຸ່ງອາລຸນ bill's detail popup, screenshot/crop just the
 // bill card, and save each one as its OWN image file to the computer -- ຮຸ່ງອາລຸນ has no bulk PDF/
@@ -1255,10 +1273,10 @@ const APP_VERSION = "7.90"; // v7.90 FEATURE (Tar 2026-09-23, "ຢາກປະ�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "7.89"; // v7.89 FEATURE (Tar 2026-09-23) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.88→7.89 now that 7.90 is current).
-const APP_VERSION_PREV_OLDER = "7.88"; // v7.88 FEATURE (Tar 2026-09-23) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.87→7.88 now that 7.90 is current).
+const APP_VERSION_PREV = "7.90"; // v7.90 FEATURE (Tar 2026-09-23) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.89→7.90 now that 7.91 is current).
+const APP_VERSION_PREV_OLDER = "7.89"; // v7.89 FEATURE (Tar 2026-09-23) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.88→7.89 now that 7.91 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -13246,6 +13264,7 @@ function renderCourierBillImport(){
           <button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-test-send-wa-pancake" ${STATE.courierBillTestSendingWaPancake?"disabled":""}>${STATE.courierBillTestSendingWaPancake?"⏳ ກຳລັງທົດລອງ...":"🧪 ທົດລອງ WhatsApp ໃນ Pancake (55279515)"}</button>
           <button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-test-send-wa-direct" ${STATE.courierBillTestSendingWaDirect?"disabled":""}>${STATE.courierBillTestSendingWaDirect?"⏳ ກຳລັງທົດລອງ...":"🧪 ທົດລອງ WhatsApp ໂດຍກົງ (ບໍ່ຕິດ 24h)"}</button>
           <button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-deselect-all">🧹 ຍົກເລີກຕິກທັງໝົດ</button>
+          <button type="button" class="btn btn-sm" id="btn-courier-bill-mark-ready" ${STATE.courierBillMarkingReady?"disabled":""}>${STATE.courierBillMarkingReady?"⏳ ກຳລັງບັນທຶກ...":"🕒 ກຽມສົ່ງ"}</button>
           <button type="button" class="btn btn-sm" id="btn-courier-bill-send-selected" ${STATE.courierBillSending?"disabled":""}>${STATE.courierBillSending?"⏳ ກຳລັງສົ່ງ...":"📤 ສົ່ງທັງໝົດທີ່ຕິກໄວ້"}</button>
         </div>
       </div>
@@ -13352,7 +13371,7 @@ function renderCourierBillPageRow(p, displayIndex){
     <td>${customerCell}</td>
     <td>${channel}</td>
     <td><span style="color:${confColor}; font-weight:600;">${p.matchConfidence||"—"}</span></td>
-    <td>${p.sendStatus==="sent"?"✅ ສົ່ງແລ້ວ":p.sendStatus==="queued"?"📨 ຄິວແລ້ວ (WhatsApp)":p.sendStatus==="failed"?"❌ ບໍ່ສຳເລັດ":"⏳ ລໍ"}</td>
+    <td>${p.sendStatus==="sent"?"✅ ສົ່ງແລ້ວ":p.sendStatus==="queued"?"📨 ຄິວແລ້ວ (WhatsApp)":p.sendStatus==="failed"?"❌ ບໍ່ສຳເລັດ":p.sendStatus==="ready_to_send"?"🕒 ກຽມສົ່ງ (n8n)":"⏳ ລໍ"}</td>
   </tr>`;
 }
 function attachCourierBillImportEvents(){
@@ -13398,6 +13417,8 @@ function attachCourierBillImportEvents(){
   });
   const deselectAllBtn = document.getElementById("btn-courier-bill-deselect-all");
   if(deselectAllBtn) deselectAllBtn.addEventListener("click", courierBillDeselectAll);
+  const markReadyBtn = document.getElementById("btn-courier-bill-mark-ready");
+  if(markReadyBtn) markReadyBtn.addEventListener("click", courierBillMarkReadyToSend);
   // v7.40: bill thumbnail → in-page lightbox instead of a new tab (same overlay pattern as
   // billTransferLightboxUrl/noPickupLightboxUrl elsewhere in this file); clicking the dark
   // background (not the image itself) closes it.
@@ -13454,6 +13475,30 @@ function courierBillDeselectAll(){
   // this is a pure UI reset, no DB write involved.
   (STATE.courierBillPages||[]).forEach(p=>{ p.selected = false; });
   render();
+}
+// v7.91 — see APP_VERSION comment. Unlike courierBillDeselectAll (pure client-side) and
+// courierBillSendSelected (sends synchronously from this tab), this is a real DB write: it flips
+// the ticked, matched, not-yet-sent/queued rows' send_status to "ready_to_send" so the self-hosted
+// n8n workflow can find them and send them itself, one at a time 30s apart, independent of this
+// browser tab staying open.
+async function courierBillMarkReadyToSend(){
+  const toMark = (STATE.courierBillPages||[]).filter(p=>
+    p.selected && (p.matched || p.matchedCrmPurchaseId) &&
+    p.sendStatus!=="sent" && p.sendStatus!=="queued" && p.sendStatus!=="ready_to_send"
+  );
+  if(toMark.length===0){ showToast("⚠️ ບໍ່ມີບິນທີ່ຕິກໄວ້ (ຫຼືທຸກໃບທີ່ຕິກໄວ້ພ້ອມສົ່ງແລ້ວ)", "error"); return; }
+  STATE.courierBillMarkingReady = true; render();
+  try{
+    const ids = toMark.map(p=>p.rowId);
+    const { error } = await sb.from("courier_bill_import_pages").update({ send_status:"ready_to_send" }).in("id", ids);
+    if(error) throw error;
+    toMark.forEach(p=>{ p.sendStatus = "ready_to_send"; });
+    showToast(`🕒 ກຽມສົ່ງ ${toMark.length} ບິນແລ້ວ — n8n ຈະທະຍອຍສົ່ງໃຫ້ອັດຕະໂນມັດ (ຫ່າງກັນ 30 ວິນາທີຕໍ່ໃບ)`, "success");
+  }catch(err){
+    console.error("courierBillMarkReadyToSend failed:", err);
+    showToast("⚠️ ບັນທຶກສະຖານະບໍ່ສຳເລັດ: "+(err.message||""), "error");
+  }
+  STATE.courierBillMarkingReady = false; render();
 }
 // v7.41 (option B): live-queries crm_purchases directly (targeted, same style the "CRM ລູກຄ້າ"
 // page's own search already uses — never bulk-loads the table) by exact order id when the query
@@ -13639,7 +13684,9 @@ async function courierBillSendSelected(){
   //     the next one (lastPancakeSendTime below) — this one DOES need the browser tab to stay
   //     open for the whole run, since there's no separate backend queue for Pancake the way
   //     there now is for WhatsApp (a 100-bill all-Pancake batch takes up to ~50 minutes).
-  const toSend = (STATE.courierBillPages||[]).filter(p=>p.selected && (p.matched || p.matchedCrmPurchaseId) && p.sendStatus!=="sent" && p.sendStatus!=="queued");
+  // v7.91: also skips rows already marked "ready_to_send" (via the new "🕒 ກຽມສົ່ງ" button) — those
+  // are n8n's to send now, so this old in-tab loop must not race it and double-send the same bill.
+  const toSend = (STATE.courierBillPages||[]).filter(p=>p.selected && (p.matched || p.matchedCrmPurchaseId) && p.sendStatus!=="sent" && p.sendStatus!=="queued" && p.sendStatus!=="ready_to_send");
   if(toSend.length===0){ showToast("⚠️ ບໍ່ມີບິນທີ່ຕິກໄວ້", "error"); return; }
   STATE.courierBillSending = true; render();
   let lastPancakeSendTime = 0;
