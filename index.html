@@ -979,7 +979,17 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "7.98"; // v7.98 FIX (Tar 2026-09-27, "ພົບບັນຫາເລກລຳດັບເປັນ NaN ໃນຄັ້ງແລກທີ່ອັບ
+const APP_VERSION = "7.99"; // v7.99 FIX (Tar 2026-09-27, "ເຂົ້າເບິ່ງໃນລະບົບຄືມີແຕ່ 24ບິນ"): courierBillExtractDepositDate's
+// ອານຸສິດ date regex only tolerated a comma between the year and time (`,?\s*`) -- real OCR output
+// sometimes reads that separator as a period instead ("27-09-2026. 12:36"), which the old pattern
+// couldn't match at all, so deposit_at came back NULL for the ENTIRE bill, not just a display
+// glitch. One capture round's 61-page ອານຸສິດ batch had this OCR shape on every single page (0/61
+// got a deposit_at), plus another 30/45 pages in a second batch -- 91 of 106 bills that day,
+// invisible on the "ວັນທີຝາກ = today" filtered review screen even though they were fully
+// imported/matched underneath. Fixed by tolerating any comma OR period (or neither) there:
+// `[,.]?\s*`. Existing NULL rows from before this fix are backfilled directly in Supabase from
+// each row's own already-stored raw_page_text (no re-scraping/re-OCR needed) -- see courier-bill
+// runbook notes for 2026-09-27. v7.98 FIX (Tar 2026-09-27, "ພົບບັນຫາເລກລຳດັບເປັນ NaN ໃນຄັ້ງແລກທີ່ອັບ
 // ລົງ ຕ້ອງກົດປ່ຽນໜ້າ ຫຼື ກົດລີໂຫລດຈື່ງປ່ຽນເປັນໂຕເລກ" — the "ໜ້າ" row-number column on the
 // ສົ່ງບິນອານຸສິດ/ຮຸ່ງອາລຸນ review table (renderCourierBillPageRow's displayIndex) showed NaN for
 // every row the first time a batch's pages loaded): loadCourierBillPages already falls back to
@@ -1361,10 +1371,10 @@ const APP_VERSION = "7.98"; // v7.98 FIX (Tar 2026-09-27, "ພົບບັນຫ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "7.97"; // v7.97 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "7.98"; // v7.98 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.97→7.98 now that 7.99 is current).
+const APP_VERSION_PREV_OLDER = "7.97"; // v7.97 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 7.96→7.97 now that 7.98 is current).
-const APP_VERSION_PREV_OLDER = "7.96"; // v7.96 CHANGE (Tar 2026-09-26) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.95→7.96 now that 7.97 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12398,8 +12408,16 @@ function courierBillExtractDepositDate(text){
   // ("16-09-2026") was read perfectly. Same root pattern as the recipient-phone space-splitting
   // fix (v7.64/65) — now tolerates one optional space inside either the hour or minute pair and
   // strips it before use.
-  // ອານຸສິດ: "ວັນທີຝາກ: DD-MM-YYYY, HH:MM"
-  let m = /(\d{2})-(\d{2})-(\d{4}),?\s*(\d\s?\d):(\d\s?\d)/.exec(text||"");
+  // v7.99 FIX (Tar 2026-09-27, "ເຂົ້າເບິ່ງໃນລະບົບຄືມີແຕ່ 24ບິນ"): 91 of 106 bills captured in one
+  // round all came back with deposit_at NULL. Root cause: the separator OCR'd between the year and
+  // the time is not always a comma -- confirmed directly from stored raw_page_text, e.g.
+  // "27-09-2026. 12:36" (a period, not a comma). The old `,?\s*` only ever tolerated a COMMA (as
+  // zero-or-one), so a period left unmatched right after the year broke the whole regex, not just
+  // that one token -- one entire batch (61/61 pages) had this exact OCR shape and lost its date on
+  // every single page. Now tolerates ANY single stray punctuation/space character there (comma,
+  // period, or nothing) instead of only a comma.
+  // ອານຸສິດ: "ວັນທີຝາກ: DD-MM-YYYY, HH:MM" (separator OCR'd as "," or "." or nothing)
+  let m = /(\d{2})-(\d{2})-(\d{4})[,.]?\s*(\d\s?\d):(\d\s?\d)/.exec(text||"");
   if(m){
     const [, dd, mm, yyyy, hhRaw, miRaw] = m;
     const hh = hhRaw.replace(/\s/g,""); const mi = miRaw.replace(/\s/g,"");
