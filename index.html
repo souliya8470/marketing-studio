@@ -979,7 +979,22 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.02"; // v8.02 FIX (Tar 2026-09-27, "ເວລາກົດເລືອກຊື່ຂົນສົ່ງ ໃຫ້ຊ່ອງ high medium low
+const APP_VERSION = "8.03"; // v8.03 FIX (Tar 2026-09-27, "ອໍເດີນີ້ L00036 ເປັນອໍເດີອອນລາຍ ແຕ່ເປັນຫຍັງຄື
+// ຖືກໄປຈັບຄູ່ກັບແພັນເຄັກ"): COURIER_BILL_HOUNGALOUN_SENDER_PHONE was a single hardcoded number
+// ("52906969") used to detect+skip the shop's OWN outgoing phone when it lands in the
+// recipient-phone slot (v8.00's fix) -- but Tar runs the ຮຸ່ງອາລຸນ pickup through TWO shop phone
+// accounts (52906969 AND 55279515), and the check only ever compared against the first one. On a
+// bill dropped off from the 55279515 account, the shop's own number sat in the recipient-phone
+// slot completely undetected, so extracted_phone got stored as 55279515 (the SHOP's number, not
+// the customer's) -- confirmed directly on order L00036 (raw text "Judy L00036\n55279515
+// 95052205": recipient code L00036, then shop phone 55279515, THEN the real customer phone
+// 95052205 one token further along, exactly the same shape v8.00 already handles for the OTHER
+// account). Wrong extracted_phone meant Tier-2 phone/COD matching couldn't find the real
+// customer, and the order-id guess from the "L00036" recipient code (not a real order reference)
+// coincidentally hit an unrelated live Pancake order # 36, wrongly matching this order to that
+// customer's order. Fixed: COURIER_BILL_HOUNGALOUN_SENDER_PHONE is now a Set of both known shop
+// numbers, and the skip-past logic checks membership instead of exact equality.
+// v8.02 FIX (Tar 2026-09-27, "ເວລາກົດເລືອກຊື່ຂົນສົ່ງ ໃຫ້ຊ່ອງ high medium low
 // ປັບປ່ຽນຈຳນວນໄປຕາມຊື່ຂອງຂົນສົ່ງນັ້ນແທ້"): loadCourierBillPages' stats query computed the
 // high/medium/low/unmatched counts (and the "ພົບ X ບິນ — ຈັບຄູ່ໄດ້ Y ບິນ" header) from EVERY row in
 // the date range, ignoring which courier was picked in the courier dropdown — full note at that
@@ -1400,10 +1415,10 @@ const APP_VERSION = "8.02"; // v8.02 FIX (Tar 2026-09-27, "ເວລາກົດ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.01"; // v8.01 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.02"; // v8.02 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.01→8.02 now that 8.03 is current).
+const APP_VERSION_PREV_OLDER = "8.01"; // v8.01 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.00→8.01 now that 8.02 is current).
-const APP_VERSION_PREV_OLDER = "8.00"; // v8.00 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.99→8.00 now that 8.01 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12479,7 +12494,9 @@ function courierBillExtractDepositDate(text){
 // v7.35: Houngaloun always prints the shop's own outgoing number here (constant across every
 // single bill — confirmed across all 30 sample bills), never the recipient, so it must be
 // filtered out wherever phones are extracted for that courier.
-const COURIER_BILL_HOUNGALOUN_SENDER_PHONE = "52906969";
+// v8.03 FIX: Tar runs ຮຸ່ງອາລຸນ pickups through TWO shop phone accounts, not one — a Set of both
+// known constants now, checked by membership everywhere the old single-string equality was used.
+const COURIER_BILL_HOUNGALOUN_SENDER_PHONES = new Set(["52906969", "55279515"]);
 function courierBillParsePageText(text, courier){
   if((courier||"ອານຸສິດ") === "ຮຸ່ງອາລຸນ") return courierBillParsePageTextHoungaloun(text);
   // v7.89 FIX (Tar 2026-09-23, "ຢາກເອົາເລກບິນ 13 ຫຼັກ ... ກັບມາໃຊ້"): the original labeled match
@@ -12578,12 +12595,12 @@ function courierBillParsePageTextHoungaloun(text){
   // for exactly this reason) -- the true customer number was present in the OCR text every time,
   // just one token further along. If the regex above landed on the shop's own constant number,
   // skip past it and take the NEXT 8-digit run instead.
-  if(recipientPhone === COURIER_BILL_HOUNGALOUN_SENDER_PHONE){
+  if(recipientPhone && COURIER_BILL_HOUNGALOUN_SENDER_PHONES.has(recipientPhone)){
     const afterIdx = text.indexOf(recipientPhone) + recipientPhone.length;
     const m2 = /\b(\d{8})\b/.exec(text.slice(afterIdx));
     recipientPhone = m2 ? m2[1] : null;
   }
-  const otherPhones = courierBillExtractPhones(text).filter(p => p !== COURIER_BILL_HOUNGALOUN_SENDER_PHONE && p !== recipientPhone);
+  const otherPhones = courierBillExtractPhones(text).filter(p => !COURIER_BILL_HOUNGALOUN_SENDER_PHONES.has(p) && p !== recipientPhone);
   const phones = recipientPhone ? [recipientPhone, ...otherPhones] : otherPhones;
   // v7.50 (Tar 2026-09-15, "ໄປກວດເບິ່ງບິນຮຸ່ງອາລຸນ...ດຶງຂໍ້ມູນວັນທີຝາກອອກມາບໍ່ໄດ້" — while investigating,
   // also found cod/total were null for ALL 20 real ຮຸ່ງອາລຸນ rows uploaded so far): v7.35's "K NNN,NNN"
