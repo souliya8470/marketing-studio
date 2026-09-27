@@ -979,7 +979,23 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "7.97"; // v7.97 FIX (Tar 2026-09-27, bill 8262697145557 / order T104333:
+const APP_VERSION = "7.98"; // v7.98 FIX (Tar 2026-09-27, "ພົບບັນຫາເລກລຳດັບເປັນ NaN ໃນຄັ້ງແລກທີ່ອັບ
+// ລົງ ຕ້ອງກົດປ່ຽນໜ້າ ຫຼື ກົດລີໂຫລດຈື່ງປ່ຽນເປັນໂຕເລກ" — the "ໜ້າ" row-number column on the
+// ສົ່ງບິນອານຸສິດ/ຮຸ່ງອາລຸນ review table (renderCourierBillPageRow's displayIndex) showed NaN for
+// every row the first time a batch's pages loaded): loadCourierBillPages already falls back to
+// `STATE.courierBillPage||1` for its own Supabase query (the data itself was always correct —
+// only the on-screen row number broke), but afterward only wrote STATE.courierBillPage back when
+// it exceeded totalPages ("if(STATE.courierBillPage>totalPages)...") — when courierBillPage was
+// still undefined (any fresh page-load before a pagination click or filter change had ever run),
+// `undefined>totalPages` is false, so STATE.courierBillPage stayed undefined and
+// renderCourierBillImport's displayIndex math, `(STATE.courierBillPage-1)*pageSize+idx+1`, read
+// `(undefined-1)` → NaN for the whole page. Clicking a page number or a filter set
+// STATE.courierBillPage=1 explicitly, which is why those "fixed" it — a plain reload only
+// happened to help because Tar's reload usually landed after already having paged/filtered once
+// in the same session. Fixed at the root: loadCourierBillPages now always writes
+// STATE.courierBillPage back to the resolved page number it actually queried (clamped to
+// totalPages), never leaves it undefined; renderCourierBillImport's displayIndex also gained its
+// own `||1` fallback as a second line of defense. v7.97 FIX (Tar 2026-09-27, bill 8262697145557 / order T104333:
 // bill number and order id both read perfectly, but the bill stayed "ບໍ່ພົບ" and "🔍 ເລືອກເອງ"
 // couldn't find it either): match-courier-bills Edge Function had every shipping_labels lookup
 // filtered by .eq("courier_name", batchCourier), so a label whose OWN courier_name field was set
@@ -1345,10 +1361,10 @@ const APP_VERSION = "7.97"; // v7.97 FIX (Tar 2026-09-27, bill 8262697145557 / o
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "7.96"; // v7.96 CHANGE (Tar 2026-09-26) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "7.97"; // v7.97 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.96→7.97 now that 7.98 is current).
+const APP_VERSION_PREV_OLDER = "7.96"; // v7.96 CHANGE (Tar 2026-09-26) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 7.95→7.96 now that 7.97 is current).
-const APP_VERSION_PREV_OLDER = "7.95"; // v7.95 FEATURE (Tar 2026-09-26) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.93→7.94 now that 7.95 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12903,7 +12919,10 @@ async function loadCourierBillPages(opts){
     if(error) throw error;
     STATE.courierBillFilteredTotal = count||0;
     const totalPages = Math.max(1, Math.ceil(STATE.courierBillFilteredTotal/pageSize));
-    if(STATE.courierBillPage>totalPages) STATE.courierBillPage = totalPages;
+    // v7.98 FIX — see APP_VERSION comment: always write the resolved page number back (was only
+    // ever reassigned when it exceeded totalPages, so a still-undefined STATE.courierBillPage on a
+    // fresh load stayed undefined and NaN'd the row-number column).
+    STATE.courierBillPage = Math.min(page, totalPages);
     STATE.courierBillPages = (data||[]).map(r => ({
       rowId: r.id, pageNumber: r.page_number, blob: null, imageUrl: r.page_image_url || "",
       matched: r.matched_shipping_label_id || null, matchedCrmPurchaseId: r.matched_crm_purchase_id || null,
@@ -13475,7 +13494,7 @@ function renderCourierBillImport(){
       ${STATE.courierBillListLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` : (pages.length===0 ? `<p class="small-muted">ບໍ່ມີແຖວທີ່ກົງກັບຟິວເຕີນີ້</p>` : `
       <div style="overflow-x:auto;"><table>
         <thead><tr><th><input type="checkbox" id="courier-bill-select-all" ${allSelectableChecked?"checked":""} ${selectablePages.length===0?"disabled":""}></th><th>ໜ້າ</th><th>ຂົນສົ່ງ</th><th>ວັນທີຝາກ</th><th>ຮູບ</th><th>ເລກບິນ</th><th>ເລກອໍເດີ</th><th>ລູກຄ້າທີ່ຈັບຄູ່ໄດ້</th><th>ຊ່ອງທາງ</th><th>ຄວາມໝັ້ນໃຈ</th><th>ສະຖານະ</th></tr></thead>
-        <tbody>${pages.map((p,idx)=>renderCourierBillPageRow(p, (STATE.courierBillPage-1)*pageSize+idx+1)).join("")}</tbody>
+        <tbody>${pages.map((p,idx)=>renderCourierBillPageRow(p, ((STATE.courierBillPage||1)-1)*pageSize+idx+1)).join("")}</tbody>
       </table></div>
       <div style="margin-top:12px; display:flex; justify-content:center;">${renderPageNumberNav(STATE.courierBillPage||1, totalPages, "courierBill")}</div>
       `)}
