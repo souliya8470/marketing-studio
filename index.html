@@ -979,7 +979,17 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.00"; // v8.00 FIX (Tar 2026-09-27, "ອ້າວແລ້ວບິນຮຸ່ງອາລຸນເປັນຫຍັງຕ້ອງໃຫ້ລະບົບອ່ານເບີຮ້ານ"):
+const APP_VERSION = "8.01"; // v8.01 FIX (found during a scheduled automated check on 2026-09-27,
+// not reported by Tar directly): courierBillCreateBatchAndMatch used to insert a
+// courier_bill_import_batches row (total_pages:0, status:"processing") EVERY time it ran, even
+// when pagesToImport.length was 0 (every page in the upload was a duplicate already in the DB) --
+// which is routine now that the n8n export scripts re-upload the whole day's capture folder each
+// round. That row then never got touched again (matching/status-update code was gated on
+// pagesToImport.length>0), leaving it permanently stuck at "processing" with 0 pages -- confirmed
+// live: batch cbb_1790503484997ynrr4 from the 2026-09-27 17:00 round. No bill data was ever lost
+// (dedupe itself always worked), but it cluttered the batches table with phantom stuck rows.
+// Fixed: skip creating the batch row entirely when there's nothing new to import.
+// v8.00 FIX (Tar 2026-09-27, "ອ້າວແລ້ວບິນຮຸ່ງອາລຸນເປັນຫຍັງຕ້ອງໃຫ້ລະບົບອ່ານເບີຮ້ານ"):
 // courierBillParsePageTextHoungaloun's recipient-phone regex (`/(\d{5})\D{0,3}(\d{8})\b/`) grabs
 // the FIRST 8-digit run right after the 5-digit order-id -- but the card prints THREE tokens in a
 // row (order-id, then the shop's own constant outgoing number 52906969, then the real customer's
@@ -1384,10 +1394,10 @@ const APP_VERSION = "8.00"; // v8.00 FIX (Tar 2026-09-27, "ອ້າວແລ້
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "7.99"; // v7.99 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.00"; // v8.00 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.99→8.00 now that 8.01 is current).
+const APP_VERSION_PREV_OLDER = "7.99"; // v7.99 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 7.98→7.99 now that 8.00 is current).
-const APP_VERSION_PREV_OLDER = "7.98"; // v7.98 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.97→7.98 now that 7.99 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -13134,6 +13144,23 @@ async function courierBillCreateBatchAndMatch(){
     return true;
   });
   const skippedCount = STATE.courierBillPages.length - pagesToImport.length;
+  if(skippedCount>0){
+    showToast(`⚠️ ຂ້າມ ${skippedCount} ໜ້າ ຍ້ອນຊ້ຳກັບທີ່ອັບໂຫຼດແລ້ວ (ອາດອັບໂຫຼດໄຟລ໌ດຽວກັນຊ້ຳ)`, "error");
+  }
+  // v8.xx FIX (Tar 2026-09-27, found during a scheduled automated check, not reported by Tar
+  // directly): when EVERY page in this upload turns out to already exist (pagesToImport.length
+  // === 0 — routine now that the n8n courier-bill export scripts re-upload each day's WHOLE
+  // capture folder on every round, not just the newly-downloaded files, and dedupe correctly
+  // rejects the already-imported ones), this function used to still insert a
+  // courier_bill_import_batches row (total_pages:0, status:"processing") and then never touch it
+  // again, since only the code below this point was gated on pagesToImport.length>0. That left a
+  // permanently stuck "processing"/0-page phantom batch behind on essentially every round —
+  // confirmed live: batch cbb_1790503484997ynrr4 from the 2026-09-27 17:00 round, 0 pages, still
+  // stuck at "processing" ten minutes later with zero courier_bill_import_pages rows. No bill data
+  // was ever lost (the dedupe itself has always worked correctly), but the stuck rows clutter
+  // courier_bill_import_batches and look like a failed/hung import. Fixed by skipping batch
+  // creation entirely when there is nothing new to import.
+  if(pagesToImport.length===0){ await loadCourierBillPages({autoSelectHigh:true}); return; }
 
   const { error: batchErr } = await sb.from("courier_bill_import_batches").insert({
     id: batchId, courier_name: courierName, file_name: STATE.courierBillFileName||"",
@@ -13164,21 +13191,19 @@ async function courierBillCreateBatchAndMatch(){
       deposit_at: p.depositAt||null, courier_name: courierName, image_hash: p.imageHash||null
     });
   }
-  if(skippedCount>0){
-    showToast(`⚠️ ຂ້າມ ${skippedCount} ໜ້າ ຍ້ອນຊ້ຳກັບທີ່ອັບໂຫຼດແລ້ວ (ອາດອັບໂຫຼດໄຟລ໌ດຽວກັນຊ້ຳ)`, "error");
-  }
-  if(pagesToImport.length>0){
-    // v7.52: explicit confirmation that the import itself succeeded, separate from — and shown
-    // before — the match step's own success/failure below, so "imported OK but matching failed"
-    // and "import itself failed" are never confused for one another. See APP_VERSION comment.
-    showToast(`✅ ນຳເຂົ້າ ${pagesToImport.length} ໜ້າສຳເລັດ`, "success");
-    try{
-      const { data, error } = await sb.functions.invoke("match-courier-bills", { body:{ batch_id: batchId } });
-      if(error) throw error;
-    }catch(err){
-      console.error("match-courier-bills failed:", err);
-      showToast("⚠️ ຈັບຄູ່ບໍ່ສຳເລັດ: "+(err.message||""), "error");
-    }
+  // v7.52: explicit confirmation that the import itself succeeded, separate from — and shown
+  // before — the match step's own success/failure below, so "imported OK but matching failed"
+  // and "import itself failed" are never confused for one another. See APP_VERSION comment.
+  // (v8.xx: this whole tail now only runs when pagesToImport.length>0, since the 0-page case
+  // returns early above — the old `if(pagesToImport.length>0)` guard here is gone because it's
+  // now always true.)
+  showToast(`✅ ນຳເຂົ້າ ${pagesToImport.length} ໜ້າສຳເລັດ`, "success");
+  try{
+    const { data, error } = await sb.functions.invoke("match-courier-bills", { body:{ batch_id: batchId } });
+    if(error) throw error;
+  }catch(err){
+    console.error("match-courier-bills failed:", err);
+    showToast("⚠️ ຈັບຄູ່ບໍ່ສຳເລັດ: "+(err.message||""), "error");
   }
   // v7.45: reloads the canonical date-filtered/paginated view straight from DB now that matching
   // has persisted its results there, instead of hand-patching the in-memory array — see
