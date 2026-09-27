@@ -979,7 +979,13 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.01"; // v8.01 FIX (found during a scheduled automated check on 2026-09-27,
+const APP_VERSION = "8.02"; // v8.02 FIX (Tar 2026-09-27, "ເວລາກົດເລືອກຊື່ຂົນສົ່ງ ໃຫ້ຊ່ອງ high medium low
+// ປັບປ່ຽນຈຳນວນໄປຕາມຊື່ຂອງຂົນສົ່ງນັ້ນແທ້"): loadCourierBillPages' stats query computed the
+// high/medium/low/unmatched counts (and the "ພົບ X ບິນ — ຈັບຄູ່ໄດ້ Y ບິນ" header) from EVERY row in
+// the date range, ignoring which courier was picked in the courier dropdown — full note at that
+// function's own comment. Now those counts scope to the selected courier; the courier dropdown's
+// own per-courier counts still come from the unfiltered full list, unchanged.
+// v8.01 FIX (found during a scheduled automated check on 2026-09-27,
 // not reported by Tar directly): courierBillCreateBatchAndMatch used to insert a
 // courier_bill_import_batches row (total_pages:0, status:"processing") EVERY time it ran, even
 // when pagesToImport.length was 0 (every page in the upload was a duplicate already in the DB) --
@@ -1394,10 +1400,10 @@ const APP_VERSION = "8.01"; // v8.01 FIX (found during a scheduled automated che
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.00"; // v8.00 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.01"; // v8.01 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.00→8.01 now that 8.02 is current).
+const APP_VERSION_PREV_OLDER = "8.00"; // v8.00 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 7.99→8.00 now that 8.01 is current).
-const APP_VERSION_PREV_OLDER = "7.99"; // v7.99 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.98→7.99 now that 8.00 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12936,13 +12942,29 @@ async function loadCourierBillPages(opts){
     const confCounts = {high:0, medium:0, low:0, manual:0, unmatched:0};
     const courierCounts = {}; // v7.46 — see APP_VERSION comment
     let matchedCount = 0;
+    // v8.02 FIX (Tar 2026-09-27, "ເວລາກົດເລືອກຊື່ຂົນສົ່ງ ໃຫ້ຊ່ອງ high medium low
+    // ປັບປ່ຽນຈຳນວນໄປຕາມຊື່ຂອງຂົນສົ່ງນັ້ນແທ້"): confCounts/matchedCount/total used to be computed from
+    // EVERY row in the date range regardless of the courier dropdown (#courier-bill-courier-filter,
+    // STATE.courierBillCourierFilter) — so picking "ຮຸ່ງອາລຸນ" there filtered the TABLE rows (see the
+    // paginated query below, unchanged) but the high/medium/low counts above it, and the "ພົບ X
+    // ບິນ — ຈັບຄູ່ໄດ້ Y ບິນ" header, kept showing both couriers combined. courierCounts (which feeds
+    // the courier dropdown's OWN per-courier option counts) still has to come from every row
+    // unfiltered — otherwise picking one courier would zero out the other's count in that same
+    // dropdown — so it's computed first, from the full unfiltered list, same as before. confCounts/
+    // matchedCount/total are now computed from the subset matching the currently-selected courier
+    // filter instead (courierFilter==="all" keeps the old combined behavior). This is a different
+    // axis from the v7.42 confidence-filter design note just above (that one is about the
+    // CONFIDENCE dropdown not narrowing its own counts when you pick a confidence level — still
+    // true here, unchanged: confCounts is never filtered by confFilter, only by courierFilter).
+    const courierFilterForCounts = STATE.courierBillCourierFilter||"all";
     (statsRows||[]).forEach(r=>{
+      if(r.courier_name) courierCounts[r.courier_name] = (courierCounts[r.courier_name]||0) + 1;
+      if(courierFilterForCounts!=="all" && r.courier_name!==courierFilterForCounts) return;
       const hasMatch = !!(r.matched_shipping_label_id || r.matched_crm_purchase_id);
       if(hasMatch){ matchedCount++; if(confCounts.hasOwnProperty(r.match_confidence)) confCounts[r.match_confidence]++; }
       else confCounts.unmatched++;
-      if(r.courier_name) courierCounts[r.courier_name] = (courierCounts[r.courier_name]||0) + 1;
     });
-    STATE.courierBillTotal = (statsRows||[]).length;
+    STATE.courierBillTotal = courierFilterForCounts==="all" ? (statsRows||[]).length : (courierCounts[courierFilterForCounts]||0);
     STATE.courierBillMatchedCount = matchedCount;
     STATE.courierBillConfCounts = confCounts;
     STATE.courierBillCourierCounts = courierCounts;
