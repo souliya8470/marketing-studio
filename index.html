@@ -979,7 +979,20 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "7.99"; // v7.99 FIX (Tar 2026-09-27, "ເຂົ້າເບິ່ງໃນລະບົບຄືມີແຕ່ 24ບິນ"): courierBillExtractDepositDate's
+const APP_VERSION = "8.00"; // v8.00 FIX (Tar 2026-09-27, "ອ້າວແລ້ວບິນຮຸ່ງອາລຸນເປັນຫຍັງຕ້ອງໃຫ້ລະບົບອ່ານເບີຮ້ານ"):
+// courierBillParsePageTextHoungaloun's recipient-phone regex (`/(\d{5})\D{0,3}(\d{8})\b/`) grabs
+// the FIRST 8-digit run right after the 5-digit order-id -- but the card prints THREE tokens in a
+// row (order-id, then the shop's own constant outgoing number 52906969, then the real customer's
+// number), so that first 8-digit run is always the shop's own number, never the customer's.
+// Confirmed on all 5 real bills that landed at "medium" confidence today for exactly this reason
+// (e.g. raw OCR text "ຕຸກ 73165\n52906969 54100571" -- the real customer number 54100571 was
+// sitting right there the whole time, one token further along, never picked). Fixed: if the regex
+// lands on the shop's own constant number, skip past it and take the next 8-digit run instead.
+// 4/5 of today's cases now resolve to the real customer phone; the 5th still can't (OCR itself
+// only read 7 of its 8 digits, "5519929" -- a genuine OCR miss, not a parsing bug, so that one
+// falls back to order-id matching same as before, just without wrongly storing the shop's number
+// as if it were the customer's). Version rolled 7.99→8.00 per the .99 cap.
+// v7.99 FIX (Tar 2026-09-27, "ເຂົ້າເບິ່ງໃນລະບົບຄືມີແຕ່ 24ບິນ"): courierBillExtractDepositDate's
 // ອານຸສິດ date regex only tolerated a comma between the year and time (`,?\s*`) -- real OCR output
 // sometimes reads that separator as a period instead ("27-09-2026. 12:36"), which the old pattern
 // couldn't match at all, so deposit_at came back NULL for the ENTIRE bill, not just a display
@@ -1371,10 +1384,10 @@ const APP_VERSION = "7.99"; // v7.99 FIX (Tar 2026-09-27, "ເຂົ້າເບ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "7.98"; // v7.98 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "7.99"; // v7.99 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.98→7.99 now that 8.00 is current).
+const APP_VERSION_PREV_OLDER = "7.98"; // v7.98 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 7.97→7.98 now that 7.99 is current).
-const APP_VERSION_PREV_OLDER = "7.97"; // v7.97 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.96→7.97 now that 7.98 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12539,6 +12552,20 @@ function courierBillParsePageTextHoungaloun(text){
     // OCR sometimes merges the 5-digit ref and 8-digit phone into one run with no gap at all.
     m = /\b(\d{13})\b/.exec(text);
     if(m){ destRef = m[1].slice(0,5); recipientPhone = m[1].slice(5,13); }
+  }
+  // v7.99b FIX (Tar 2026-09-27, "ເປັນຫຍັງຄືບໍ່ອ່ານເບີລູກຄ້າ"): the card layout prints THREE tokens
+  // in a row -- order-id (5 digits), then the shop's own constant outgoing number (8 digits,
+  // COURIER_BILL_HOUNGALOUN_SENDER_PHONE), then the real recipient's number (8 digits) -- e.g.
+  // "ຕຸກ 73165\n52906969 54100571". The regex above only ever grabs the FIRST 8-digit run after
+  // the order-id, which is always the shop's own number, never the customer's, since it happens to
+  // sit closer to the ref. Confirmed on 5/5 real bills checked (all landed at "medium" confidence
+  // for exactly this reason) -- the true customer number was present in the OCR text every time,
+  // just one token further along. If the regex above landed on the shop's own constant number,
+  // skip past it and take the NEXT 8-digit run instead.
+  if(recipientPhone === COURIER_BILL_HOUNGALOUN_SENDER_PHONE){
+    const afterIdx = text.indexOf(recipientPhone) + recipientPhone.length;
+    const m2 = /\b(\d{8})\b/.exec(text.slice(afterIdx));
+    recipientPhone = m2 ? m2[1] : null;
   }
   const otherPhones = courierBillExtractPhones(text).filter(p => p !== COURIER_BILL_HOUNGALOUN_SENDER_PHONE && p !== recipientPhone);
   const phones = recipientPhone ? [recipientPhone, ...otherPhones] : otherPhones;
