@@ -979,7 +979,23 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "7.96"; // v7.96 CHANGE (Tar 2026-09-26, "ໃຫ້ເຈົ້າແກ້ເອົາລາຍງານນີ້ອອກຈາກໜ້າ
+const APP_VERSION = "7.97"; // v7.97 FIX (Tar 2026-09-27, bill 8262697145557 / order T104333:
+// bill number and order id both read perfectly, but the bill stayed "ບໍ່ພົບ" and "🔍 ເລືອກເອງ"
+// couldn't find it either): match-courier-bills Edge Function had every shipping_labels lookup
+// filtered by .eq("courier_name", batchCourier), so a label whose OWN courier_name field was set
+// wrong at creation (a staff data-entry slip, not an OCR error) was invisible to matching no matter
+// how cleanly the bill read — fixed server-side (Edge Function v36, deployed separately): the exact
+// label_number key lookup no longer filters by courier at all (unique key, trusted regardless of
+// courier field), and a last-resort phone-only fallback now also checks every OTHER courier's
+// labels — both paths land at match_confidence "medium" with a "_courier_mismatch" method suffix
+// so Tar still reviews before sending, never auto-selected. Separately, courierBillManualSearch/
+// courierBillManualAssign ("🔍 ເລືອກເອງ") only ever searched crm_purchases (Pancake orders) — any
+// self-created order (T-code, ພິມໃບບິນ) or online-store order (L-code, checkout.html) lives in
+// shipping_labels instead and could never be found or picked by hand, which is exactly why today's
+// T104333 bill showed "ບໍ່ພົບຜົນການຄົ້ນຫາ" when searched by name/phone/order id. Now queries both
+// tables in parallel, tags each result "crm"/"label", and courierBillManualAssign writes to the
+// correct column (matched_shipping_label_id vs matched_crm_purchase_id) based on which kind was
+// picked. Today's specific T104333 bill was already fixed directly in Supabase. v7.96 CHANGE (Tar 2026-09-26, "ໃຫ້ເຈົ້າແກ້ເອົາລາຍງານນີ້ອອກຈາກໜ້າ
 // ຂອງພະນັກງານທຸກຄົນ ໃຫ້ສະເພາະບັນຊີຂ້ອຍເຫັນຢູ່ລາຍງານລວມຜູ້ດຽວ"): the daily COD/ຕີກັບ checklist
 // ("ລາຍງານ 8ອັນ") floating popup is now OWNER-ONLY-visible — renderDailyChecklistPopup()
 // unconditionally returns "" for every role, so staff/admin accounts never see it anywhere anymore
@@ -1329,9 +1345,9 @@ const APP_VERSION = "7.96"; // v7.96 CHANGE (Tar 2026-09-26, "ໃຫ້ເຈົ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "7.95"; // v7.95 FEATURE (Tar 2026-09-26) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 7.94→7.95 now that 7.96 is current).
-const APP_VERSION_PREV_OLDER = "7.94"; // v7.94 FIX (Tar 2026-09-25) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "7.96"; // v7.96 CHANGE (Tar 2026-09-26) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 7.95→7.96 now that 7.97 is current).
+const APP_VERSION_PREV_OLDER = "7.95"; // v7.95 FEATURE (Tar 2026-09-26) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 7.93→7.94 now that 7.95 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
@@ -13485,10 +13501,10 @@ function renderCourierBillImport(){
           ${(STATE.courierBillManualMatchResults||[]).map(r => `
             <div class="card" style="padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
               <div>
-                <div style="font-weight:600;">${esc(r.customer_name||"")}</div>
-                <div class="small-muted">${esc(r.customer_phone||"")} · #${esc(String(r.id))} · ${fmt(r.amount||0)} ກີບ</div>
+                <div style="font-weight:600;">${r.type==="label" ? "🏷️" : "🛒"} ${esc(r.name||"")}</div>
+                <div class="small-muted">${esc(r.phone||"")} · #${esc(String(r.ref))} · ${fmt(r.amount||0)} ກີບ</div>
               </div>
-              <button type="button" class="btn btn-sm" data-courier-bill-manual-pick="${esc(String(r.id))}">ເລືອກ</button>
+              <button type="button" class="btn btn-sm" data-courier-bill-manual-pick="${r.type}:${esc(String(r.id))}">ເລືອກ</button>
             </div>
           `).join("")}
           ${(!STATE.courierBillManualMatchLoading && STATE.courierBillManualMatchQuery && (STATE.courierBillManualMatchResults||[]).length===0) ? `<p class="small-muted">ບໍ່ພົບຜົນການຄົ້ນຫາ</p>` : ""}
@@ -13645,8 +13661,9 @@ function attachCourierBillImportEvents(){
   if(manualSearchBtn) manualSearchBtn.addEventListener("click", ()=>{ courierBillManualSearch(STATE.courierBillManualMatchQuery); });
   document.querySelectorAll("[data-courier-bill-manual-pick]").forEach(el=>{
     el.addEventListener("click", ()=>{
-      const id = el.getAttribute("data-courier-bill-manual-pick");
-      const result = (STATE.courierBillManualMatchResults||[]).find(r=>String(r.id)===id);
+      const key = el.getAttribute("data-courier-bill-manual-pick"); // "crm:123" or "label:lb..."
+      const [type, id] = key.split(/:(.+)/);
+      const result = (STATE.courierBillManualMatchResults||[]).find(r=>r.type===type && String(r.id)===id);
       if(result) courierBillManualAssign(STATE.courierBillManualMatchOpenRowId, result);
     });
   });
@@ -13685,24 +13702,46 @@ async function courierBillMarkReadyToSend(){
 // v7.41 (option B): live-queries crm_purchases directly (targeted, same style the "CRM ລູກຄ້າ"
 // page's own search already uses — never bulk-loads the table) by exact order id when the query
 // is all digits, otherwise by name/phone ILIKE.
+// v7.97 FIX (Tar 2026-09-27, real bill "8262697145557" -> order T104333: bill number and order id
+// both read perfectly, phone/amount matched exactly, but "🔍 ເລືອກເອງ" still showed "ບໍ່ພົບຜົນການ
+// ຄົ້ນຫາ" for it): this search only ever queried crm_purchases (Pancake orders) — a self-created
+// order (ພິມໃບບິນ page, label_number "Txxxxx") or an online-store order (checkout.html, "Lxxxxx")
+// lives in shipping_labels instead and was completely invisible here, with no way to pick it by
+// hand even though staff could see it existed. Now queries BOTH tables in parallel and tags each
+// result with a "type" ("crm" or "label") plus normalized name/phone/amount/ref fields so the list
+// and the pick/assign logic below can treat either kind the same way.
 async function courierBillManualSearch(query){
   const q = (query||"").trim();
   if(!q){ STATE.courierBillManualMatchResults = []; render(); return; }
   STATE.courierBillManualMatchLoading = true; render();
   try{
-    let req;
-    if(/^\d+$/.test(q)){
-      req = sb.from("crm_purchases").select("id, customer_name, customer_phone, amount, order_date")
-        .or(`id.eq.${q},customer_phone.ilike.%${q}%`)
-        .order("order_date", {ascending:false}).limit(15);
-    } else {
-      req = sb.from("crm_purchases").select("id, customer_name, customer_phone, amount, order_date")
-        .ilike("customer_name", `%${q}%`)
-        .order("order_date", {ascending:false}).limit(15);
-    }
-    const { data, error } = await req;
-    if(error) throw error;
-    STATE.courierBillManualMatchResults = data || [];
+    const isNumeric = /^\d+$/.test(q);
+    const crmReq = isNumeric
+      ? sb.from("crm_purchases").select("id, customer_name, customer_phone, amount, order_date")
+          .or(`id.eq.${q},customer_phone.ilike.%${q}%`)
+          .order("order_date", {ascending:false}).limit(15)
+      : sb.from("crm_purchases").select("id, customer_name, customer_phone, amount, order_date")
+          .ilike("customer_name", `%${q}%`)
+          .order("order_date", {ascending:false}).limit(15);
+    const labelReq = isNumeric
+      ? sb.from("shipping_labels").select("id, label_number, recipient_name, recipient_phone, cod_amount, created_at")
+          .or(`label_number.ilike.%${q}%,recipient_phone.ilike.%${q}%`)
+          .order("created_at", {ascending:false}).limit(15)
+      : sb.from("shipping_labels").select("id, label_number, recipient_name, recipient_phone, cod_amount, created_at")
+          .ilike("recipient_name", `%${q}%`)
+          .order("created_at", {ascending:false}).limit(15);
+    const [crmRes, labelRes] = await Promise.all([crmReq, labelReq]);
+    if(crmRes.error) throw crmRes.error;
+    if(labelRes.error) throw labelRes.error;
+    const crmResults = (crmRes.data||[]).map(r => ({
+      type:"crm", id:r.id, ref:r.id, name:r.customer_name, phone:r.customer_phone,
+      amount:r.amount, order_date:r.order_date
+    }));
+    const labelResults = (labelRes.data||[]).map(r => ({
+      type:"label", id:r.id, ref:r.label_number, name:r.recipient_name, phone:r.recipient_phone,
+      amount:r.cod_amount, label_number:r.label_number
+    }));
+    STATE.courierBillManualMatchResults = [...crmResults, ...labelResults];
   }catch(err){
     console.error("courierBillManualSearch failed:", err);
     showToast("⚠️ ຄົ້ນຫາບໍ່ສຳເລັດ: "+(err.message||""), "error");
@@ -13714,13 +13753,19 @@ async function courierBillManualSearch(query){
 // updates immediately) and in Supabase (so it survives a refresh/resume, same as an automatic
 // match) — match_confidence="manual" so it renders in its own blue tone and, like medium/low,
 // never auto-ticks the row's own checkbox; Tar still reviews and ticks it himself before sending.
+// v7.97 FIX: branches on result.type now that courierBillManualSearch can return a shipping_labels
+// row too — writes matched_shipping_label_id (and clears matched_crm_purchase_id) for a "label"
+// pick instead of always writing matched_crm_purchase_id, otherwise the wrong column gets the id
+// and the bill would still show "ບໍ່ພົບ" after picking it.
 async function courierBillManualAssign(rowId, result){
   const p = (STATE.courierBillPages||[]).find(pg=>pg.rowId===rowId);
   if(!p) return;
-  p.matchedCrmPurchaseId = result.id;
-  p.matchedCustomerName = result.customer_name;
-  p.matchedCustomerPhone = result.customer_phone;
-  p.matchedOrderDate = result.order_date;
+  const isLabel = result.type==="label";
+  p.matchedShippingLabelId = isLabel ? result.id : null;
+  p.matchedCrmPurchaseId = isLabel ? null : result.id;
+  p.matchedCustomerName = result.name;
+  p.matchedCustomerPhone = result.phone;
+  p.matchedOrderDate = isLabel ? null : result.order_date;
   p.matchMethod = "manual";
   p.matchConfidence = "manual";
   STATE.courierBillManualMatchOpenRowId = null;
@@ -13729,12 +13774,15 @@ async function courierBillManualAssign(rowId, result){
   render();
   try{
     const { error } = await sb.from("courier_bill_import_pages").update({
-      matched_crm_purchase_id: result.id, matched_customer_name: result.customer_name,
-      matched_customer_phone: result.customer_phone, matched_order_date: result.order_date,
+      matched_shipping_label_id: isLabel ? result.id : null,
+      matched_crm_purchase_id: isLabel ? null : result.id,
+      matched_customer_name: result.name, matched_customer_phone: result.phone,
+      matched_order_date: isLabel ? null : result.order_date,
+      order_id_guess: isLabel ? result.label_number : String(result.id),
       match_method: "manual", match_confidence: "manual"
     }).eq("id", p.rowId);
     if(error) throw error;
-    showToast(`✅ ຈັບຄູ່ໜ້າ ${p.pageNumber} ກັບ ${result.customer_name||"ອໍເດີ #"+result.id} ແລ້ວ`);
+    showToast(`✅ ຈັບຄູ່ໜ້າ ${p.pageNumber} ກັບ ${result.name||"ອໍເດີ #"+result.ref} ແລ້ວ`);
   }catch(err){
     console.error("courierBillManualAssign persist failed:", err);
     showToast("⚠️ ເລືອກໄດ້ແຕ່ບັນທຶກລົງຖານຂໍ້ມູນບໍ່ສຳເລັດ: "+(err.message||""), "error");
