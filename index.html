@@ -979,7 +979,19 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.03"; // v8.03 FIX (Tar 2026-09-27, "ອໍເດີນີ້ L00036 ເປັນອໍເດີອອນລາຍ ແຕ່ເປັນຫຍັງຄື
+const APP_VERSION = "8.04"; // v8.04 FIX (Tar 2026-09-28, "ໃຫ້ໄປເພີ່ມວັນທີໃສ່ບີນທີ່ສະແກນອອກ ໃນ2ໜ້າ
+// ທີ່ສົ່ງໃຫ້ ຕອນນີ້ ມີແຕ່ເວລາ ບໍມີວັນທີ"): the "ປະຫວັດການສະແກນ" history table shared by both
+// "ສະແກນອອກ" and "ສະແກນອອກ Pancake" (renderScanOutBody → renderScanHistoryHtml, same function
+// for both pages) showed only a bare HH:MM:SS in its "ເວລາ" column via scanTimeStr() -- fine
+// while the table only ever showed a single day's scans, but the date filter on this same page
+// can span multiple days (or "all"), so a bare time was ambiguous about which day it happened on
+// once more than one day's rows were visible together. Fixed: scanTimeStr() now always prefixes
+// DD/MM ahead of the time ("28/09 14:56:11"); the "time" column's default width bumped
+// 80px→115px so the added date doesn't get clipped on a fresh/reset column-width state (Tar's
+// own already-customized widths, if any, are stored separately in STATE.scanHistoryColWidths and
+// untouched by this). Display-only -- does not touch how scans are recorded, matched, or the
+// scannedAt timestamp itself.
+// v8.03 FIX (Tar 2026-09-27, "ອໍເດີນີ້ L00036 ເປັນອໍເດີອອນລາຍ ແຕ່ເປັນຫຍັງຄື
 // ຖືກໄປຈັບຄູ່ກັບແພັນເຄັກ"): COURIER_BILL_HOUNGALOUN_SENDER_PHONE was a single hardcoded number
 // ("52906969") used to detect+skip the shop's OWN outgoing phone when it lands in the
 // recipient-phone slot (v8.00's fix) -- but Tar runs the ຮຸ່ງອາລຸນ pickup through TWO shop phone
@@ -1415,10 +1427,10 @@ const APP_VERSION = "8.03"; // v8.03 FIX (Tar 2026-09-27, "ອໍເດີນີ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.02"; // v8.02 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.03"; // v8.03 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.02→8.03 now that 8.04 is current).
+const APP_VERSION_PREV_OLDER = "8.02"; // v8.02 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.01→8.02 now that 8.03 is current).
-const APP_VERSION_PREV_OLDER = "8.01"; // v8.01 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.00→8.01 now that 8.02 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -30812,7 +30824,15 @@ function renderScanAlertHtml(){
 }
 
 function scanTimeStr(iso){
-  return new Date(iso).toLocaleTimeString("en-GB", {timeZone: LAOS_TZ, hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false});
+  // v8.04 FIX (Tar 2026-09-28, "ໃຫ້ໄປເພີ່ມວັນທີໃສ່ບີນທີ່ສະແກນອອກ...ຕອນນີ້ ມີແຕ່ເວລາ ບໍມີວັນທີ"):
+  // this used to show only the time (no date), which was fine when the history table only ever
+  // showed today's scans, but the date filter here can span multiple days (or "all"), so a
+  // bare "14:56:11" was ambiguous about which day it happened on. Now always shows day/month
+  // ahead of the time.
+  const d = new Date(iso);
+  const dateStr = d.toLocaleDateString("en-GB", {timeZone: LAOS_TZ, day:"2-digit", month:"2-digit"});
+  const timeStr = d.toLocaleTimeString("en-GB", {timeZone: LAOS_TZ, hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false});
+  return `${dateStr} ${timeStr}`;
 }
 
 function getFilteredScans(){
@@ -30898,7 +30918,7 @@ function renderScanHistoryHtml(){
   const pageOffset = (curPage-1)*pageSize;
   const visibleItems = items.slice(pageOffset, pageOffset+pageSize);
   const SH_KEYS = ["idx","code","name","address","courier","cod","free","time"];
-  const SH_DEFAULT_WIDTH = {idx:50, code:110, name:120, address:160, courier:100, cod:100, free:120, time:80};
+  const SH_DEFAULT_WIDTH = {idx:50, code:110, name:120, address:160, courier:100, cod:100, free:120, time:115};
   const shTh = (key, label)=> `<th style="position:relative;">${label}<span class="col-resizer" data-resizer="${SH_KEYS.indexOf(key)}"></span></th>`;
   return `
     <p class="small-muted" style="margin-bottom:8px;">${fmt(items.length)} ລາຍການທັງໝົດ — ໜ້າ ${fmt(curPage)}/${fmt(totalPages)}</p>
