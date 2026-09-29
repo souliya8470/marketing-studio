@@ -979,7 +979,36 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.05"; // v8.05 NEW (Tar 2026-09-29, "ຊິເຮັດແນວໃດໃຫ້ພະນັກງານຮູ້ວ່າ ບິນອານຸສິດ
+const APP_VERSION = "8.06"; // v8.06 NEW (Tar 2026-09-29, "1ກ່ອນອື່ນໃຫ້ເຈົ້າເພີ່ມຊ່ອງ ຟິວເຕີ
+// ສະຖານະ ລໍຖ້າ ກຽມສົ່ງ ສົ່ງແລ້ວ ບໍ່ສຳເລັດ 2ຊ່ອງຄົ້ນຫາ ດ້ວຍເບີໂທ ເລກອໍເດີ ເລກບິນ ສາມາດໃຊ້ຮ່ວມກັນໃນ
+// ຊ່ອງດຽວ ເພື່ອງ່າຍຕໍ່ການຊອກຂໍ້ມູນ" — asked while reconciling the 33/50 real customers whose bill
+// image never actually delivered on 2026-09-29, so this UI needed to make finding those specific
+// order numbers on the "📤 ສົ່ງບິນ" (courierBillImport) page fast): two additions to that page's
+// filter row, both server-side (same pattern as the existing confidence/courier dropdowns) so they
+// stay accurate against the WHOLE filtered date range, not just the current page of 50 rows.
+// (1) New "ສະຖານະ" <select> (#courier-bill-status-filter, STATE.courierBillSendStatusFilter,
+// default "all") with per-status counts computed in loadCourierBillPages alongside confCounts/
+// courierCounts: ⏳ ລໍ (pending — send_status is null OR "pending"), 🕒 ກຽມສົ່ງ (ready_to_send),
+// ✅ ສົ່ງແລ້ວ (sent), ❌ ບໍ່ສຳເລັດ (failed) — matches the exact 4 labels renderCourierBillPageRow's
+// status column already shows (its "queued"/WhatsApp case has no dropdown option, same as before,
+// since Tar only asked for these 4). Applied to the paginated table query as q.eq("send_status",...)
+// for 3 of the 4, or q.or("send_status.is.null,send_status.eq.pending") for "pending" specifically
+// (a NULL column can't be reached with .eq).
+// (2) New unified search box (#courier-bill-search-input + #btn-courier-bill-search,
+// STATE.courierBillSearchQuery) searching phone, order number, AND bill number together in ONE
+// field, exactly as asked — previously the only way to search by any of these was opening each
+// row's own "🔍 ເລືອກເອງ" manual-match modal one at a time. Runs a single Supabase .or() ilike
+// across matched_customer_phone, order_id_guess, courier_bill_number, excel_bill_number, and
+// excel_order_id (the 4 places a phone/order/bill number can actually live on this table), so one
+// typed term like "73335" or "52327264" matches whichever column it's actually stored in. Triggers
+// on button click or Enter key, resets to page 1, and — since it's now possible to search across
+// the WHOLE date range for one specific order — also widens the effective date range to "all" for
+// the duration of a non-empty search term (courierBillDateMode is restored once the search box is
+// cleared), otherwise a search for an order from a different day would silently show zero results
+// while still filtered to "today". New function: courierBillSanitizeSearchTerm. loadCourierBillPages
+// and courierBillRematchVisible both updated to apply the same status+search filters the table
+// itself now uses, so "🔄 ຈັບຄູ່ຄືນ" stays scoped to what's actually visible.
+// v8.05 NEW (Tar 2026-09-29, "ຊິເຮັດແນວໃດໃຫ້ພະນັກງານຮູ້ວ່າ ບິນອານຸສິດ
 // ໂຕໃດ ທີ່ n8n ຍັງບໍ່ທັນໄດ້ສົ່ງຂໍ້ຄວາມຫາ"): new sidebar page "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)"
 // (arrivalTagReport) — reads Supabase table courier_arrival_tag_log (n8n's own arrival-tag
 // automation writes one row per bill it processes) and shows staff which bills are still unsent
@@ -1439,10 +1468,10 @@ const APP_VERSION = "8.05"; // v8.05 NEW (Tar 2026-09-29, "ຊິເຮັດແ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.04"; // v8.04 FIX (Tar 2026-09-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.05"; // v8.05 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.04→8.05 now that 8.06 is current).
+const APP_VERSION_PREV_OLDER = "8.04"; // v8.04 FIX (Tar 2026-09-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.03→8.04 now that 8.05 is current).
-const APP_VERSION_PREV_OLDER = "8.03"; // v8.03 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.02→8.03 now that 8.04 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12719,6 +12748,7 @@ async function courierBillHandleFiles(fileList){
   if(!files.length) return;
   STATE.courierBillLoading = true; STATE.courierBillPages = []; STATE.courierBillBatchId = null; STATE.courierBillOcrProgress = "";
   STATE.courierBillConfidenceFilter = "all"; STATE.courierBillDateMode = "today"; STATE.courierBillDateFrom = ""; STATE.courierBillDateTo = ""; STATE.courierBillPage = 1;
+  STATE.courierBillSendStatusFilter = "all"; STATE.courierBillSearchQuery = ""; // v8.06 — see APP_VERSION comment
   render();
   let ocrWorker = null;
   try{
@@ -12961,6 +12991,13 @@ async function courierBillHandleFiles(fileList){
   STATE.courierBillLoading = false; STATE.courierBillOcrProgress = ""; render();
 }
 
+// v8.06 — see APP_VERSION comment. Strips anything that would break the .or()/ilike query string
+// (commas, parens, %, *) out of the free-typed search box before it goes into the Supabase filter —
+// phone/order/bill numbers are always plain alphanumeric here, so this only ever removes noise, never
+// a real character someone would type.
+function courierBillSanitizeSearchTerm(raw){
+  return String(raw||"").trim().replace(/[,()%*]/g, "");
+}
 async function loadCourierBillPages(opts){
   // v7.45 — see APP_VERSION comment. Replaces courierBillResumeIfNeeded(). opts.autoSelectHigh
   // (only ever passed true right after a fresh upload+match) ticks "high" rows on this load only;
@@ -12972,18 +13009,30 @@ async function loadCourierBillPages(opts){
     const range = resolvePresetDateRange(STATE.courierBillDateMode||"today", STATE.courierBillDateFrom, STATE.courierBillDateTo);
     const pageSize = STATE.courierBillPageSize||50;
     const page = STATE.courierBillPage||1;
+    // v8.06 — see APP_VERSION comment. A typed search is almost always for one specific order/bill
+    // that could be from any day, not just whatever date preset happens to be selected — so a
+    // non-empty search term skips the date range entirely (searches all time) instead of silently
+    // returning zero rows because it's still scoped to "today". The date preset UI itself is left
+    // untouched; this only affects what these two queries actually search while a term is typed.
+    const searchTerm = courierBillSanitizeSearchTerm(STATE.courierBillSearchQuery);
 
     // Lean stats query — every column needed for the header total/matched counts and the
     // confidence-dropdown counts, across the WHOLE date range (not just the visible page). A
     // single day's bills are always far under Supabase's 1,000-row silent-truncation cap, so no
     // pagination is needed here even for a busy day.
-    let statsQ = sb.from("courier_bill_import_pages").select("match_confidence, matched_shipping_label_id, matched_crm_purchase_id, courier_name");
-    if(range.from) statsQ = statsQ.gte("deposit_at", range.from+"T00:00:00");
-    if(range.to) statsQ = statsQ.lte("deposit_at", range.to+"T23:59:59");
+    let statsQ = sb.from("courier_bill_import_pages").select("match_confidence, matched_shipping_label_id, matched_crm_purchase_id, courier_name, send_status");
+    if(!searchTerm){
+      if(range.from) statsQ = statsQ.gte("deposit_at", range.from+"T00:00:00");
+      if(range.to) statsQ = statsQ.lte("deposit_at", range.to+"T23:59:59");
+    }
     const { data: statsRows, error: statsErr } = await statsQ;
     if(statsErr) throw statsErr;
     const confCounts = {high:0, medium:0, low:0, manual:0, unmatched:0};
     const courierCounts = {}; // v7.46 — see APP_VERSION comment
+    // v8.06 — see APP_VERSION comment: same 4 buckets renderCourierBillPageRow's status column
+    // already shows; a null/unrecognized send_status (including the "queued"/WhatsApp case, which
+    // has no dropdown option of its own) falls into "pending", matching that column's own "⏳ ລໍ" fallback.
+    const sendStatusCounts = {pending:0, ready_to_send:0, sent:0, failed:0};
     let matchedCount = 0;
     // v8.02 FIX (Tar 2026-09-27, "ເວລາກົດເລືອກຊື່ຂົນສົ່ງ ໃຫ້ຊ່ອງ high medium low
     // ປັບປ່ຽນຈຳນວນໄປຕາມຊື່ຂອງຂົນສົ່ງນັ້ນແທ້"): confCounts/matchedCount/total used to be computed from
@@ -13002,6 +13051,13 @@ async function loadCourierBillPages(opts){
     const courierFilterForCounts = STATE.courierBillCourierFilter||"all";
     (statsRows||[]).forEach(r=>{
       if(r.courier_name) courierCounts[r.courier_name] = (courierCounts[r.courier_name]||0) + 1;
+      // v8.06: sendStatusCounts intentionally computed from the courier-filtered subset too (same
+      // axis as confCounts/matchedCount just below), so picking a courier in that other dropdown
+      // narrows the status counts the same way it already narrows high/medium/low.
+      if(!(courierFilterForCounts!=="all" && r.courier_name!==courierFilterForCounts)){
+        const sBucket = (r.send_status==="ready_to_send"||r.send_status==="sent"||r.send_status==="failed") ? r.send_status : "pending";
+        sendStatusCounts[sBucket]++;
+      }
       if(courierFilterForCounts!=="all" && r.courier_name!==courierFilterForCounts) return;
       const hasMatch = !!(r.matched_shipping_label_id || r.matched_crm_purchase_id);
       if(hasMatch){ matchedCount++; if(confCounts.hasOwnProperty(r.match_confidence)) confCounts[r.match_confidence]++; }
@@ -13011,6 +13067,7 @@ async function loadCourierBillPages(opts){
     STATE.courierBillMatchedCount = matchedCount;
     STATE.courierBillConfCounts = confCounts;
     STATE.courierBillCourierCounts = courierCounts;
+    STATE.courierBillSendStatusCounts = sendStatusCounts; // v8.06 — see APP_VERSION comment
 
     // Paginated full-row query for the visible table — the confidence AND courier filters are
     // applied here TOO (not just client-side), so the page-count/nav stays accurate against what's
@@ -13027,13 +13084,24 @@ async function loadCourierBillPages(opts){
       // reflects the true single sequence Cowork processed them in, so it replaces page_number
       // here as the secondary sort key.
       .order("deposit_at", {ascending:false, nullsFirst:false}).order("created_at", {ascending:true});
-    if(range.from) q = q.gte("deposit_at", range.from+"T00:00:00");
-    if(range.to) q = q.lte("deposit_at", range.to+"T23:59:59");
+    if(!searchTerm){
+      if(range.from) q = q.gte("deposit_at", range.from+"T00:00:00");
+      if(range.to) q = q.lte("deposit_at", range.to+"T23:59:59");
+    }
     const confFilter = STATE.courierBillConfidenceFilter||"all";
     if(confFilter==="unmatched") q = q.is("matched_shipping_label_id", null).is("matched_crm_purchase_id", null);
     else if(confFilter!=="all") q = q.eq("match_confidence", confFilter);
     const courierFilter = STATE.courierBillCourierFilter||"all"; // v7.46 — see APP_VERSION comment
     if(courierFilter!=="all") q = q.eq("courier_name", courierFilter);
+    // v8.06 — see APP_VERSION comment. "pending" has to be an .or() since send_status is stored as
+    // NULL (never the literal string "pending") until something actually moves it forward.
+    const sendStatusFilter = STATE.courierBillSendStatusFilter||"all";
+    if(sendStatusFilter==="pending") q = q.or("send_status.is.null,send_status.eq.pending");
+    else if(sendStatusFilter!=="all") q = q.eq("send_status", sendStatusFilter);
+    // v8.06 — see APP_VERSION comment. One typed term matched against whichever of the 4 columns a
+    // phone/order/bill number actually lives in for a given row (searchTerm computed once, above,
+    // where it's also used to decide whether to skip the date-range filter).
+    if(searchTerm) q = q.or(`matched_customer_phone.ilike.%${searchTerm}%,order_id_guess.ilike.%${searchTerm}%,courier_bill_number.ilike.%${searchTerm}%,excel_bill_number.ilike.%${searchTerm}%,excel_order_id.ilike.%${searchTerm}%`);
     q = q.range((page-1)*pageSize, page*pageSize-1);
     const { data, error, count } = await q;
     if(error) throw error;
@@ -13087,6 +13155,13 @@ async function courierBillRematchVisible(){
     else if(confFilter!=="all") q = q.eq("match_confidence", confFilter);
     const courierFilter = STATE.courierBillCourierFilter||"all";
     if(courierFilter!=="all") q = q.eq("courier_name", courierFilter);
+    // v8.06 — see APP_VERSION comment: keep this scoped to the same status/search filters the table
+    // itself is currently showing, same as confFilter/courierFilter just above.
+    const sendStatusFilter = STATE.courierBillSendStatusFilter||"all";
+    if(sendStatusFilter==="pending") q = q.or("send_status.is.null,send_status.eq.pending");
+    else if(sendStatusFilter!=="all") q = q.eq("send_status", sendStatusFilter);
+    const searchTerm = courierBillSanitizeSearchTerm(STATE.courierBillSearchQuery);
+    if(searchTerm) q = q.or(`matched_customer_phone.ilike.%${searchTerm}%,order_id_guess.ilike.%${searchTerm}%,courier_bill_number.ilike.%${searchTerm}%,excel_bill_number.ilike.%${searchTerm}%,excel_order_id.ilike.%${searchTerm}%`);
     const { data, error } = await q;
     if(error){ showToast("⚠️ ຄົ້ນຫາ batch ບໍ່ສຳເລັດ: "+error.message, "error"); return; }
     const batchIds = Array.from(new Set((data||[]).map(r=>r.batch_id).filter(Boolean)));
@@ -13558,6 +13633,9 @@ function renderCourierBillImport(){
   // filter now, same pattern as the confidence filter.
   const courierCounts = STATE.courierBillCourierCounts || {};
   const courierFilter = STATE.courierBillCourierFilter || "all";
+  // v8.06 — see APP_VERSION comment.
+  const sendStatusCounts = STATE.courierBillSendStatusCounts || {pending:0, ready_to_send:0, sent:0, failed:0};
+  const sendStatusFilter = STATE.courierBillSendStatusFilter || "all";
   const filteredTotal = STATE.courierBillFilteredTotal||0;
   const pageSize = STATE.courierBillPageSize||50;
   const totalPages = Math.max(1, Math.ceil(filteredTotal/pageSize));
@@ -13610,6 +13688,18 @@ function renderCourierBillImport(){
             <option value="ອານຸສິດ" ${courierFilter==="ອານຸສິດ"?"selected":""}>ອານຸສິດ (${fmt(courierCounts["ອານຸສິດ"]||0)})</option>
             <option value="ຮຸ່ງອາລຸນ" ${courierFilter==="ຮຸ່ງອາລຸນ"?"selected":""}>ຮຸ່ງອາລຸນ (${fmt(courierCounts["ຮຸ່ງອາລຸນ"]||0)})</option>
           </select>
+          <select id="courier-bill-status-filter" style="margin-bottom:0;">
+            <option value="all" ${sendStatusFilter==="all"?"selected":""}>ທຸກສະຖານະ (${fmt(total)})</option>
+            <option value="pending" ${sendStatusFilter==="pending"?"selected":""}>⏳ ລໍຖ້າ (${fmt(sendStatusCounts.pending)})</option>
+            <option value="ready_to_send" ${sendStatusFilter==="ready_to_send"?"selected":""}>🕒 ກຽມສົ່ງ (${fmt(sendStatusCounts.ready_to_send)})</option>
+            <option value="sent" ${sendStatusFilter==="sent"?"selected":""}>✅ ສົ່ງແລ້ວ (${fmt(sendStatusCounts.sent)})</option>
+            <option value="failed" ${sendStatusFilter==="failed"?"selected":""}>❌ ບໍ່ສຳເລັດ (${fmt(sendStatusCounts.failed)})</option>
+          </select>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="courier-bill-search-input" placeholder="ຄົ້ນຫາ: ເບີໂທ / ເລກອໍເດີ / ເລກບິນ..." value="${esc(STATE.courierBillSearchQuery||"")}" style="margin-bottom:0; width:220px;">
+            <button type="button" class="btn btn-sm" id="btn-courier-bill-search">🔍 ຄົ້ນຫາ</button>
+            ${STATE.courierBillSearchQuery ? `<button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-search-clear">✖</button>` : ""}
+          </div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-test-send" ${STATE.courierBillTestSending?"disabled":""}>${STATE.courierBillTestSending?"⏳ ກຳລັງທົດລອງ...":"🧪 ທົດລອງສົ່ງຫາຕົນເອງ (Pancake)"}</button>
@@ -13748,6 +13838,18 @@ function attachCourierBillImportEvents(){
   // v7.46: courier filter — same server-side pattern as confidence.
   const courierFilterEl = document.getElementById("courier-bill-courier-filter");
   if(courierFilterEl) courierFilterEl.addEventListener("change", ()=>{ STATE.courierBillCourierFilter = courierFilterEl.value; STATE.courierBillPage = 1; loadCourierBillPages(); });
+  // v8.06 — see APP_VERSION comment: status filter, same server-side pattern as confidence/courier.
+  const statusFilterEl = document.getElementById("courier-bill-status-filter");
+  if(statusFilterEl) statusFilterEl.addEventListener("change", ()=>{ STATE.courierBillSendStatusFilter = statusFilterEl.value; STATE.courierBillPage = 1; loadCourierBillPages(); });
+  // v8.06 — see APP_VERSION comment: unified phone/order/bill search — button click, Enter key, or
+  // the ✖ clear button (only rendered once a search is active).
+  const searchInputEl = document.getElementById("courier-bill-search-input");
+  const runSearch = ()=>{ STATE.courierBillSearchQuery = searchInputEl ? searchInputEl.value : ""; STATE.courierBillPage = 1; loadCourierBillPages(); };
+  const searchBtnEl = document.getElementById("btn-courier-bill-search");
+  if(searchBtnEl) searchBtnEl.addEventListener("click", runSearch);
+  if(searchInputEl) searchInputEl.addEventListener("keydown", (e)=>{ if(e.key==="Enter") runSearch(); });
+  const searchClearEl = document.getElementById("btn-courier-bill-search-clear");
+  if(searchClearEl) searchClearEl.addEventListener("click", ()=>{ STATE.courierBillSearchQuery = ""; STATE.courierBillPage = 1; loadCourierBillPages(); });
   // v7.45: shared date-preset filter (same renderDatePresetFilter/attachDatePresetFilter every
   // other paginated table in this app uses) — replaces v7.44's ad-hoc single-batch date dropdown.
   attachDatePresetFilter("courier-bill-date", "courierBillDateMode", "courierBillDateFrom", "courierBillDateTo", ()=>{ STATE.courierBillPage = 1; loadCourierBillPages(); });
