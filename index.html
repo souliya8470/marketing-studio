@@ -979,7 +979,19 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.04"; // v8.04 FIX (Tar 2026-09-28, "ໃຫ້ໄປເພີ່ມວັນທີໃສ່ບີນທີ່ສະແກນອອກ ໃນ2ໜ້າ
+const APP_VERSION = "8.05"; // v8.05 NEW (Tar 2026-09-29, "ຊິເຮັດແນວໃດໃຫ້ພະນັກງານຮູ້ວ່າ ບິນອານຸສິດ
+// ໂຕໃດ ທີ່ n8n ຍັງບໍ່ທັນໄດ້ສົ່ງຂໍ້ຄວາມຫາ"): new sidebar page "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)"
+// (arrivalTagReport) — reads Supabase table courier_arrival_tag_log (n8n's own arrival-tag
+// automation writes one row per bill it processes) and shows staff which bills are still unsent
+// (verify_mismatch/message_failed/error_timeout/order_id_not_found/error_stale_detail), not just
+// the owner's private Telegram summary. Default filter is "ຍັງບໍ່ໄດ້ສົ່ງ" (unsent) for today's
+// date, with a date picker, account filter, status filter, and search by bill/order/customer.
+// Read-only — does not touch the n8n automation or its data, just displays it. New functions:
+// arrivalTagStatusLabel, arrivalTagRowCustomer, arrivalTagRowReason, loadArrivalTagReport,
+// renderArrivalTagReport, attachArrivalTagReportEvents. New STATE fields: arrivalTagLogList/
+// arrivalTagLogLoading/arrivalTagLogSearch/arrivalTagLogDate/arrivalTagLogStatusFilter/
+// arrivalTagLogAccountFilter.
+// v8.04 FIX (Tar 2026-09-28, "ໃຫ້ໄປເພີ່ມວັນທີໃສ່ບີນທີ່ສະແກນອອກ ໃນ2ໜ້າ
 // ທີ່ສົ່ງໃຫ້ ຕອນນີ້ ມີແຕ່ເວລາ ບໍມີວັນທີ"): the "ປະຫວັດການສະແກນ" history table shared by both
 // "ສະແກນອອກ" and "ສະແກນອອກ Pancake" (renderScanOutBody → renderScanHistoryHtml, same function
 // for both pages) showed only a bare HH:MM:SS in its "ເວລາ" column via scanTimeStr() -- fine
@@ -1427,10 +1439,10 @@ const APP_VERSION = "8.04"; // v8.04 FIX (Tar 2026-09-28, "ໃຫ້ໄປເພ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.03"; // v8.03 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.04"; // v8.04 FIX (Tar 2026-09-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.03→8.04 now that 8.05 is current).
+const APP_VERSION_PREV_OLDER = "8.03"; // v8.03 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.02→8.03 now that 8.04 is current).
-const APP_VERSION_PREV_OLDER = "8.02"; // v8.02 FIX (Tar 2026-09-27) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.01→8.02 now that 8.03 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -7648,6 +7660,8 @@ const STATE = {
   // v6.84: "ປະຫວັດສະແກນບາໂຄດ" — camera-snapshot audit trail, separate list/lightbox state from
   // packing's own (different source table, needs its own feature-name filter too).
   barcodeScanLogList: [], barcodeScanLogLoading: false, barcodeScanLogSearch: "", barcodeScanLogFeatureFilter: "", barcodeScanLogLightboxUrl: "",
+  // v8.05: "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)" -- courier_arrival_tag_log viewer, default filter is "unsent only" for today
+  arrivalTagLogList: [], arrivalTagLogLoading: false, arrivalTagLogSearch: "", arrivalTagLogDate: "", arrivalTagLogStatusFilter: "unsent", arrivalTagLogAccountFilter: "",
   // v6.64 (Tar 2026-08-21): "ປະຫວັດ" tab filters — event-type + the app's standard date-preset
   // filter — and a reason-required delete-mode toggle (see loadPackingHistory/deletePackingRecord).
   packingHistoryTypeFilter: "", // "" = ທັງໝົດ, "collected" | "sealed"
@@ -25080,7 +25094,8 @@ const BASE_NAV = [
   {id:"customerChat", label:"ແຊັດແອັບລູກຄ້າ", icon:"&#127804;"}, // v5.82
   {id:"deletionLog", label:"ປະຫວັດການລືບຂໍ້ມູນ", icon:"&#128465;"},
   {id:"barcodeScanLog", label:"ປະຫວັດສະແກນບາໂຄດ", icon:"&#128247;"},
-  {id:"editLog", label:"ປະຫວັດການແກ້ໄຂຂໍ້ມູນ", icon:"&#128221;"}
+  {id:"editLog", label:"ປະຫວັດການແກ້ໄຂຂໍ້ມູນ", icon:"&#128221;"},
+  {id:"arrivalTagReport", label:"📬 ລາຍງານ ຮອດປາຍທາງ (n8n)", icon:"&#128228;"} // v8.05 (Tar 2026-09-29): staff-facing view of courier_arrival_tag_log so anyone can see which Anousith bills the n8n automation has/hasn't messaged yet, without needing the owner's private Telegram
 ];
 function getNav(){
   const visibleBase = BASE_NAV.filter(n=>isPageEnabledForCurrentUser(n.id));
@@ -25423,6 +25438,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="loginHistory") loadLoginHistory();
   if(STATE.page==="deletionLog") loadDeletionLog();
   if(STATE.page==="barcodeScanLog") loadBarcodeScanLog();
+  if(STATE.page==="arrivalTagReport") loadArrivalTagReport();
   if(STATE.page==="codReviewHistory") loadCodReviewHistory();
   if(STATE.page==="editLog") loadEditLog();
   if(STATE.page==="pancakeCrm"){ loadCrmCount(); loadCrmResults(true); loadCodReceivedMap(); loadSyncStatus(); }
@@ -25491,6 +25507,56 @@ async function loadEditLog(){
     STATE.editLogList = [];
   }
   STATE.editLogLoading = false;
+  render();
+}
+
+// v8.05 (Tar 2026-09-29, "ຊິເຮັດແນວໃດໃຫ້ພະນັກງານຮູ້ວ່າ ບິນອານຸສິດໂຕໃດ ທີ່ n8n ຍັງບໍ່ທັນໄດ້ສົ່ງ
+// ຂໍ້ຄວາມຫາ"): the n8n arrival-tag automation (anousith-arrival-tag.js) already logs every bill it
+// touches to Supabase table courier_arrival_tag_log, and already sends a Telegram summary -- but
+// that Telegram report only goes to Tar's own private chat, so staff had no way to see it. This
+// pulls that same table into a normal Marketing Studio page any logged-in staff member can open.
+function arrivalTagStatusLabel(status){
+  const map = {
+    messaged: "✅ ສົ່ງແລ້ວ",
+    verify_mismatch: "⚠️ ຂໍ້ມູນບໍ່ກົງ (ເບີ/ຍອດເງິນ)",
+    message_failed: "❌ ຫາແຊັດພົບແຕ່ສົ່ງບໍ່ໄດ້",
+    error_timeout: "⏱️ ຊ້າເກີນເວລາ",
+    order_id_not_found: "❓ ຫາເລກອໍເດີບໍ່ພົບ",
+    error_stale_detail: "🔄 ອ່ານຂໍ້ມູນບໍ່ໝັ້ນໃຈ (ຈະລອງໃໝ່)",
+  };
+  if(map[status]) return map[status];
+  if((status||"").startsWith("error_")) return "❌ ຜິດພາດ ("+status+")";
+  return status||"-";
+}
+// Detail JSON shape differs by status (see anousith-arrival-tag.js) -- normalize the bits worth
+// showing in one place instead of repeating this per-row in the render function.
+function arrivalTagRowCustomer(r){
+  const d = r.detail||{};
+  return (d.lookup && d.lookup.matched_customer_name) || d.matched_customer_name || "";
+}
+function arrivalTagRowReason(r){
+  const d = r.detail||{};
+  if(r.status==="messaged") return "";
+  if(r.status==="verify_mismatch") return `${d.error||""} (ບິນ: ${d.input_amount!=null?d.input_amount.toLocaleString():"?"} KIP / Pancake: ${d.order_amount!=null?d.order_amount.toLocaleString():"?"} KIP)`;
+  if(r.status==="message_failed") return (d.ui && d.ui.reason) || d.error || "";
+  if(r.status==="order_id_not_found") return "ໜ້າລາຍລະອຽດບໍ່ມີເລກອໍເດີ";
+  return d.error || d.reason || "";
+}
+async function loadArrivalTagReport(){
+  STATE.arrivalTagLogLoading = true;
+  render();
+  try{
+    const dateStr = STATE.arrivalTagLogDate || new Date().toISOString().slice(0,10);
+    STATE.arrivalTagLogDate = dateStr; // lock the picker to whatever was actually queried
+    const {data, error} = await sb.from("courier_arrival_tag_log").select("*")
+      .eq("tagged_date", dateStr).order("created_at", {ascending:false}).limit(1000);
+    if(error) throw error;
+    STATE.arrivalTagLogList = data||[];
+  }catch(err){
+    console.error("loadArrivalTagReport failed:", err);
+    STATE.arrivalTagLogList = [];
+  }
+  STATE.arrivalTagLogLoading = false;
   render();
 }
 
@@ -25635,6 +25701,7 @@ function renderPage(){
     case "loginHistory": return isOwner() ? renderLoginHistory() : renderDashboard();
     case "deletionLog": return renderDeletionLog();
     case "barcodeScanLog": return renderBarcodeScanLog();
+    case "arrivalTagReport": return renderArrivalTagReport();
     case "codReviewHistory": return renderCodReviewHistory();
     case "editLog": return renderEditLog();
     case "pagePermissions": return isOwner() ? renderPagePermissions() : renderDashboard();
@@ -32128,6 +32195,88 @@ function renderDeletionLogDetailModal(r){
 // "the code shown doesn't match the real item" report (like the T102666→T002631 one) can be
 // checked against a real photo instead of guessing — click 🖼️ to see it right on this page, no
 // navigating elsewhere.
+function renderArrivalTagReport(){
+  const q = (STATE.arrivalTagLogSearch||"").trim().toLowerCase();
+  const statusFilter = STATE.arrivalTagLogStatusFilter||"unsent"; // "unsent" (default), "all", or an exact status value
+  const accountFilter = STATE.arrivalTagLogAccountFilter||"";
+  const accounts = [...new Set((STATE.arrivalTagLogList||[]).map(r=>r.phone_account))].sort();
+  let list = (STATE.arrivalTagLogList||[]).filter(r=>{
+    if(accountFilter && r.phone_account!==accountFilter) return false;
+    if(statusFilter==="unsent" && r.status==="messaged") return false;
+    if(statusFilter!=="unsent" && statusFilter!=="all" && r.status!==statusFilter) return false;
+    if(q){
+      const hay = [r.courier_bill_number, r.pancake_order_id, arrivalTagRowCustomer(r)].join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const sentCount = (STATE.arrivalTagLogList||[]).filter(r=>r.status==="messaged").length;
+  const unsentCount = (STATE.arrivalTagLogList||[]).length - sentCount;
+  return `
+    <div class="page-head">
+      <h1>📬 ລາຍງານ ຮອດປາຍທາງ (n8n)</h1>
+      <p>ບິນອານຸສິດ "ຮອດປາຍທາງ" ທີ່ລະບົບ n8n ແຈ້ງເຕືອນລູກຄ້າອັດຕະໂນມັດ — ໃຊ້ກວດວ່າຄົນໃດຍັງບໍ່ໄດ້ຮັບຂໍ້ຄວາມ ເພື່ອຕິດຕາມມືເອງ</p>
+    </div>
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin:0;">ວັນທີ ${esc(STATE.arrivalTagLogDate || new Date().toISOString().slice(0,10))} — ສົ່ງແລ້ວ ${sentCount} / ຍັງບໍ່ໄດ້ສົ່ງ ${unsentCount}</h3>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input type="date" id="arrival-tag-log-date" value="${esc(STATE.arrivalTagLogDate || new Date().toISOString().slice(0,10))}" style="margin-bottom:0;"/>
+          <select id="arrival-tag-log-account-filter" style="margin-bottom:0;">
+            <option value="">ທຸກບັນຊີ</option>
+            ${accounts.map(a=>`<option value="${esc(a)}" ${accountFilter===a?'selected':''}>${esc(a)}</option>`).join("")}
+          </select>
+          <select id="arrival-tag-log-status-filter" style="margin-bottom:0;">
+            <option value="unsent" ${statusFilter==="unsent"?'selected':''}>ຍັງບໍ່ໄດ້ສົ່ງ (ຄ່າເລີ່ມຕົ້ນ)</option>
+            <option value="all" ${statusFilter==="all"?'selected':''}>ທັງໝົດ</option>
+            <option value="messaged" ${statusFilter==="messaged"?'selected':''}>ສົ່ງແລ້ວ</option>
+            <option value="verify_mismatch" ${statusFilter==="verify_mismatch"?'selected':''}>ຂໍ້ມູນບໍ່ກົງ</option>
+            <option value="message_failed" ${statusFilter==="message_failed"?'selected':''}>ຫາແຊັດພົບແຕ່ສົ່ງບໍ່ໄດ້</option>
+            <option value="error_timeout" ${statusFilter==="error_timeout"?'selected':''}>ຊ້າເກີນເວລາ</option>
+          </select>
+          <span style="position:relative; display:inline-flex; align-items:center;">
+            <input type="text" id="arrival-tag-log-search" placeholder="ຄົ້ນຫາເລກບິນ, ອໍເດີ, ຊື່ລູກຄ້າ..." value="${esc(STATE.arrivalTagLogSearch||"")}" style="width:220px; margin-bottom:0; ${STATE.arrivalTagLogSearch?'padding-right:26px;':''}"/>
+            ${STATE.arrivalTagLogSearch ? searchClearBtn("arrival-tag-log-search") : ""}
+          </span>
+          <button class="btn btn-outline btn-sm" id="btn-reload-arrival-tag-log">🔄 ໂຫຼດຄືນໃໝ່</button>
+        </div>
+      </div>
+      ${STATE.arrivalTagLogLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` : (list.length===0 ? `<p class="small-muted">ບໍ່ພົບລາຍການທີ່ກົງກັບການກອງ</p>` : `
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>ບັນຊີ</th><th>ເລກບິນ</th><th>ອໍເດີ</th><th>ລູກຄ້າ</th><th>ວັນ ${'(ຮອດ)'}</th><th>ສະຖານະ</th><th>ລາຍລະອຽດ</th><th>ວັນ-ເວລາບັນທຶກ</th></tr></thead>
+            <tbody>
+              ${list.map(r=>`
+                <tr>
+                  <td>${esc(r.phone_account)}</td>
+                  <td>${esc(r.courier_bill_number)}</td>
+                  <td>${esc(r.pancake_order_id||"-")}</td>
+                  <td>${esc(arrivalTagRowCustomer(r)||"-")}</td>
+                  <td>${r.day_count===0?"ມື້ນີ້":(r.day_count!=null?r.day_count+" ມື້":"-")}</td>
+                  <td>${arrivalTagStatusLabel(r.status)}</td>
+                  <td style="max-width:260px; white-space:normal;">${esc(arrivalTagRowReason(r))}</td>
+                  <td>${fmtDateTimeSec(r.created_at)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `)}
+    </div>
+  `;
+}
+function attachArrivalTagReportEvents(){
+  const dateEl = document.getElementById("arrival-tag-log-date");
+  if(dateEl) dateEl.addEventListener("change", ()=>{ STATE.arrivalTagLogDate = dateEl.value; loadArrivalTagReport(); });
+  const accountEl = document.getElementById("arrival-tag-log-account-filter");
+  if(accountEl) accountEl.addEventListener("change", ()=>{ STATE.arrivalTagLogAccountFilter = accountEl.value; render(); });
+  const statusEl = document.getElementById("arrival-tag-log-status-filter");
+  if(statusEl) statusEl.addEventListener("change", ()=>{ STATE.arrivalTagLogStatusFilter = statusEl.value; render(); });
+  const searchEl = document.getElementById("arrival-tag-log-search");
+  if(searchEl) searchEl.addEventListener("input", ()=>{ STATE.arrivalTagLogSearch = searchEl.value; render(); });
+  const reloadBtn = document.getElementById("btn-reload-arrival-tag-log");
+  if(reloadBtn) reloadBtn.addEventListener("click", loadArrivalTagReport);
+}
 function renderBarcodeScanLog(){
   const q = (STATE.barcodeScanLogSearch||"").trim().toLowerCase();
   const featureFilter = STATE.barcodeScanLogFeatureFilter||"";
@@ -35534,6 +35683,7 @@ function attachPageEvents(){
   if(STATE.page==="loginHistory") attachLoginHistoryEvents();
   if(STATE.page==="deletionLog") attachDeletionLogEvents();
   if(STATE.page==="barcodeScanLog") attachBarcodeScanLogEvents();
+  if(STATE.page==="arrivalTagReport") attachArrivalTagReportEvents();
   if(STATE.page==="codReviewHistory") attachCodReviewHistoryEvents();
   if(STATE.page==="editLog") attachEditLogEvents();
   if(STATE.page==="pagePermissions") attachPagePermissionsEvents();
