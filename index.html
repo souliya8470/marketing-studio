@@ -979,7 +979,30 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.07"; // v8.07 NEW (Tar 2026-09-29, "ເລັ່ງສົ່ງບິນໃຫ້ຄົບກ່ອນມື້ນີ້" — rushing
+const APP_VERSION = "8.08"; // v8.08 NEW (Tar 2026-09-29, "ເພີ່ມຊ່ອງຟິວເຕີອີກຊ່ອງ1 ຊ່ອງທາງອໍເດີ
+// ແພັນເຄັກ ສ້າງເອງ ອອນລາຍ ແລ້ວເອົາປຸ່ມລີເຊັດ 33ຮູບອອກໄປນຳແນ່ ຖ້າວ່າບໍ່ໄດ້ໃຊ້ແລ້ວ", after confirming
+// the v8.07 33-row correction was done): two changes to the "📤 ສົ່ງບິນ" page (courierBillImport).
+// (1) REMOVED the one-off v8.07 "🔁 ຣີເຊັດ 33 ລາຍການ" button — the COURIER_BILL_RESEND_29SEP_ORDER_IDS
+// array and courierBillResetFalseSent29Sep() function (Tar confirmed those 33 orders are fixed and
+// this is no longer needed), plus its button-rendering line and click-listener wiring.
+// (2) NEW "ຊ່ອງທາງອໍເດີ" <select> (#courier-bill-channel-filter, STATE.courierBillChannelFilter,
+// default "all") — same filter-row pattern as the existing confidence/courier/status dropdowns, with
+// 4 buckets: 💬 Pancake, 🏷️ ສ້າງເອງ, 🛒 ອອນລາຍ, and a catch-all ອື່ນໆ (WhatsApp/Touk Pancake/customer-
+// chat/unmatched, so nothing is silently hidden). Channel is NOT a real column on
+// courier_bill_import_pages — it's derived per-row from matched_shipping_label_id/
+// matched_crm_purchase_id looked up against the already-loaded STATE.data.shippingLabels, same as
+// renderCourierBillPageRow's own channel column already does — so a new courierBillChannelBucketOf()
+// helper (next to courierBillShippingLabelFor) reuses that exact same isPancakeLabel/label.source
+// logic, collapsed to the 4 buckets. channelCounts (for the dropdown's own per-option counts) is
+// computed in loadCourierBillPages()'s existing stats-query loop, same subset as confCounts/
+// sendStatusCounts — no extra query needed since the shipping-label lookup is all in-memory already.
+// For the paginated table query: when the channel filter is "all" (default/common case) NOTHING
+// changes — the existing DB-side .range() pagination runs exactly as before, zero regression risk.
+// Only when a specific channel is picked does it switch to fetching a bounded batch (up to 2000 rows,
+// comfortably above a single day's bill count) across the whole filtered date range with no DB-side
+// .range(), filtering that batch to the picked channel in JS, then paginating the filtered result in
+// JS instead — same confidence/courier/status/search filters still applied server-side first.
+// v8.07 NEW (Tar 2026-09-29, "ເລັ່ງສົ່ງບິນໃຫ້ຄົບກ່ອນມື້ນີ້" — rushing
 // to get all of today's bills genuinely delivered before end of day, right after the 8.06 search/
 // filter tools above were used to individually re-check and confirm which of today's 50 Pancake
 // bill-image sends actually reached the customer): one-off "🔁 ຣີເຊັດ 33 ລາຍການ (ຮູບບໍ່ໄດ້ເຂົ້າ
@@ -1483,10 +1506,10 @@ const APP_VERSION = "8.07"; // v8.07 NEW (Tar 2026-09-29, "ເລັ່ງສົ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.06"; // v8.06 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.07"; // v8.07 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.06→8.07 now that 8.08 is current).
+const APP_VERSION_PREV_OLDER = "8.06"; // v8.06 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.05→8.06 now that 8.07 is current).
-const APP_VERSION_PREV_OLDER = "8.05"; // v8.05 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.04→8.05 now that 8.06 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -13048,6 +13071,10 @@ async function loadCourierBillPages(opts){
     // already shows; a null/unrecognized send_status (including the "queued"/WhatsApp case, which
     // has no dropdown option of its own) falls into "pending", matching that column's own "⏳ ລໍ" fallback.
     const sendStatusCounts = {pending:0, ready_to_send:0, sent:0, failed:0};
+    // v8.08 — see APP_VERSION comment: channelCounts for the new "ຊ່ອງທາງອໍເດີ" dropdown, computed
+    // from the same courier-filtered subset as confCounts/sendStatusCounts just below (courierBillChannelBucketOf
+    // needs STATE.data.shippingLabels, already fully loaded — no extra query needed).
+    const channelCounts = {pancake:0, self:0, online:0, other:0};
     let matchedCount = 0;
     // v8.02 FIX (Tar 2026-09-27, "ເວລາກົດເລືອກຊື່ຂົນສົ່ງ ໃຫ້ຊ່ອງ high medium low
     // ປັບປ່ຽນຈຳນວນໄປຕາມຊື່ຂອງຂົນສົ່ງນັ້ນແທ້"): confCounts/matchedCount/total used to be computed from
@@ -13077,12 +13104,15 @@ async function loadCourierBillPages(opts){
       const hasMatch = !!(r.matched_shipping_label_id || r.matched_crm_purchase_id);
       if(hasMatch){ matchedCount++; if(confCounts.hasOwnProperty(r.match_confidence)) confCounts[r.match_confidence]++; }
       else confCounts.unmatched++;
+      const chBucket = courierBillChannelBucketOf(r.matched_shipping_label_id, r.matched_crm_purchase_id);
+      channelCounts[chBucket] = (channelCounts[chBucket]||0) + 1;
     });
     STATE.courierBillTotal = courierFilterForCounts==="all" ? (statsRows||[]).length : (courierCounts[courierFilterForCounts]||0);
     STATE.courierBillMatchedCount = matchedCount;
     STATE.courierBillConfCounts = confCounts;
     STATE.courierBillCourierCounts = courierCounts;
     STATE.courierBillSendStatusCounts = sendStatusCounts; // v8.06 — see APP_VERSION comment
+    STATE.courierBillChannelCounts = channelCounts; // v8.08 — see APP_VERSION comment
 
     // Paginated full-row query for the visible table — the confidence AND courier filters are
     // applied here TOO (not just client-side), so the page-count/nav stays accurate against what's
@@ -13117,16 +13147,43 @@ async function loadCourierBillPages(opts){
     // phone/order/bill number actually lives in for a given row (searchTerm computed once, above,
     // where it's also used to decide whether to skip the date-range filter).
     if(searchTerm) q = q.or(`matched_customer_phone.ilike.%${searchTerm}%,order_id_guess.ilike.%${searchTerm}%,courier_bill_number.ilike.%${searchTerm}%,excel_bill_number.ilike.%${searchTerm}%,excel_order_id.ilike.%${searchTerm}%`);
-    q = q.range((page-1)*pageSize, page*pageSize-1);
-    const { data, error, count } = await q;
-    if(error) throw error;
-    STATE.courierBillFilteredTotal = count||0;
+    // v8.08 — see APP_VERSION comment. "channel" isn't a real column on this table -- it's derived
+    // per-row from the already-loaded STATE.data.shippingLabels (courierBillChannelBucketOf, same
+    // lookup renderCourierBillPageRow uses), so it can't be pushed into the .eq()/.range() filters
+    // above like the other dropdowns. When the channel filter is "all" (default/common case) this
+    // is 100% unchanged from before -- the existing DB-side .range() pagination runs exactly as it
+    // always has, zero regression risk. Only when a specific channel is picked does this switch to
+    // fetching a generous bounded batch (up to 2000 rows) across the whole filtered range with NO
+    // DB-side .range(), filtering that batch down to the picked channel in JS, then paginating the
+    // filtered result in JS instead. A single day's bills are always far under 2000 rows, so this
+    // stays accurate for the "today"/date-range views this page is actually used with.
+    const channelFilter = STATE.courierBillChannelFilter||"all";
+    let rows, totalCount;
+    if(channelFilter==="all"){
+      q = q.range((page-1)*pageSize, page*pageSize-1);
+      const { data, error, count } = await q;
+      if(error) throw error;
+      rows = data||[]; totalCount = count||0;
+    } else {
+      q = q.limit(2000);
+      const { data, error } = await q;
+      if(error) throw error;
+      rows = (data||[]).filter(r => courierBillChannelBucketOf(r.matched_shipping_label_id, r.matched_crm_purchase_id)===channelFilter);
+      totalCount = rows.length;
+    }
+    STATE.courierBillFilteredTotal = totalCount;
     const totalPages = Math.max(1, Math.ceil(STATE.courierBillFilteredTotal/pageSize));
     // v7.98 FIX — see APP_VERSION comment: always write the resolved page number back (was only
     // ever reassigned when it exceeded totalPages, so a still-undefined STATE.courierBillPage on a
     // fresh load stayed undefined and NaN'd the row-number column).
     STATE.courierBillPage = Math.min(page, totalPages);
-    STATE.courierBillPages = (data||[]).map(r => ({
+    // v8.08 — see APP_VERSION comment: when the channel filter is active, `rows` is the full
+    // (up to 2000-row) filtered batch, not just the current page -- slice it down to this page's
+    // rows here before mapping, same as the DB-side .range() already does for the "all" case.
+    if(channelFilter!=="all"){
+      rows = rows.slice((STATE.courierBillPage-1)*pageSize, STATE.courierBillPage*pageSize);
+    }
+    STATE.courierBillPages = rows.map(r => ({
       rowId: r.id, pageNumber: r.page_number, blob: null, imageUrl: r.page_image_url || "",
       matched: r.matched_shipping_label_id || null, matchedCrmPurchaseId: r.matched_crm_purchase_id || null,
       matchedCustomerName: r.matched_customer_name || "", matchedCustomerPhone: r.matched_customer_phone || "",
@@ -13587,6 +13644,25 @@ function courierBillShippingLabelFor(id){
   if(!id) return null;
   return (STATE.data.shippingLabels||[]).find(l=>l.id===id) || null;
 }
+// v8.08 — see APP_VERSION comment. Same channel logic renderCourierBillPageRow already computes
+// per-row (isPancakeLabel + label.source), collapsed down to the 4 buckets the new
+// "ຊ່ອງທາງອໍເດີ" filter dropdown offers: "pancake" (💬 Pancake + the crm_purchases-only match,
+// which can only originate from Pancake), "self" (🏷️ ສ້າງເອງ), "online" (🛒 ອອນລາຍ), and "other"
+// (catch-all: 📱 WhatsApp, 📦 Touk Pancake, 💬 ແຊັດລູກຄ້າ, any unrecognized source, or genuinely
+// unmatched) — kept separate from renderCourierBillPageRow's own channel string so that function is
+// completely untouched and this is purely additive.
+function courierBillChannelBucketOf(matchedShippingLabelId, matchedCrmPurchaseId){
+  const label = courierBillShippingLabelFor(matchedShippingLabelId);
+  if(label){
+    if(isPancakeLabel(label)) return "pancake";
+    if(label.source==="online_store") return "online";
+    if(label.source==="normal" || label.source==="quick") return "self";
+    return "other";
+  } else if(matchedCrmPurchaseId){
+    return "pancake";
+  }
+  return "other";
+}
 function courierBillMessageText(p, orderNumber, opts){
   // v7.27 (Tar 2026-09-13, gave the exact wording to use): orderNumber is whatever
   // pancakeOrderIdForStatus already resolves to — Pancake numeric order id (e.g. 71898), a
@@ -13651,6 +13727,9 @@ function renderCourierBillImport(){
   // v8.06 — see APP_VERSION comment.
   const sendStatusCounts = STATE.courierBillSendStatusCounts || {pending:0, ready_to_send:0, sent:0, failed:0};
   const sendStatusFilter = STATE.courierBillSendStatusFilter || "all";
+  // v8.08 — see APP_VERSION comment.
+  const channelCounts = STATE.courierBillChannelCounts || {pancake:0, self:0, online:0, other:0};
+  const channelFilter = STATE.courierBillChannelFilter || "all";
   const filteredTotal = STATE.courierBillFilteredTotal||0;
   const pageSize = STATE.courierBillPageSize||50;
   const totalPages = Math.max(1, Math.ceil(filteredTotal/pageSize));
@@ -13710,6 +13789,13 @@ function renderCourierBillImport(){
             <option value="sent" ${sendStatusFilter==="sent"?"selected":""}>✅ ສົ່ງແລ້ວ (${fmt(sendStatusCounts.sent)})</option>
             <option value="failed" ${sendStatusFilter==="failed"?"selected":""}>❌ ບໍ່ສຳເລັດ (${fmt(sendStatusCounts.failed)})</option>
           </select>
+          <select id="courier-bill-channel-filter" style="margin-bottom:0;">
+            <option value="all" ${channelFilter==="all"?"selected":""}>ທຸກຊ່ອງທາງ (${fmt(total)})</option>
+            <option value="pancake" ${channelFilter==="pancake"?"selected":""}>💬 Pancake (${fmt(channelCounts.pancake||0)})</option>
+            <option value="self" ${channelFilter==="self"?"selected":""}>🏷️ ສ້າງເອງ (${fmt(channelCounts.self||0)})</option>
+            <option value="online" ${channelFilter==="online"?"selected":""}>🛒 ອອນລາຍ (${fmt(channelCounts.online||0)})</option>
+            <option value="other" ${channelFilter==="other"?"selected":""}>ອື່ນໆ (${fmt(channelCounts.other||0)})</option>
+          </select>
           <div style="display:flex; gap:6px; align-items:center;">
             <input type="text" id="courier-bill-search-input" placeholder="ຄົ້ນຫາ: ເບີໂທ / ເລກອໍເດີ / ເລກບິນ..." value="${esc(STATE.courierBillSearchQuery||"")}" style="margin-bottom:0; width:220px;">
             <button type="button" class="btn btn-sm" id="btn-courier-bill-search">🔍 ຄົ້ນຫາ</button>
@@ -13723,7 +13809,6 @@ function renderCourierBillImport(){
           <button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-deselect-all">🧹 ຍົກເລີກຕິກທັງໝົດ</button>
           <button type="button" class="btn btn-sm" id="btn-courier-bill-mark-ready" ${STATE.courierBillMarkingReady?"disabled":""}>${STATE.courierBillMarkingReady?"⏳ ກຳລັງບັນທຶກ...":"🕒 ກຽມສົ່ງ"}</button>
           <button type="button" class="btn btn-sm" id="btn-courier-bill-send-selected" ${STATE.courierBillSending?"disabled":""}>${STATE.courierBillSending?"⏳ ກຳລັງສົ່ງ...":"📤 ສົ່ງທັງໝົດທີ່ຕິກໄວ້"}</button>
-          ${COURIER_BILL_RESEND_29SEP_ORDER_IDS.length ? `<button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-resend-29sep" style="border-color:#c0392b; color:#c0392b;" ${STATE.courierBillResend29SepRunning?"disabled":""}>${STATE.courierBillResend29SepRunning?"⏳ ກຳລັງຣີເຊັດ...":`🔁 ຣີເຊັດ ${COURIER_BILL_RESEND_29SEP_ORDER_IDS.length} ລາຍການ (ຮູບບໍ່ໄດ້ເຂົ້າ 29ກ.ຍ.)`}</button>` : ""}
         </div>
       </div>
     </div>
@@ -13857,6 +13942,11 @@ function attachCourierBillImportEvents(){
   // v8.06 — see APP_VERSION comment: status filter, same server-side pattern as confidence/courier.
   const statusFilterEl = document.getElementById("courier-bill-status-filter");
   if(statusFilterEl) statusFilterEl.addEventListener("change", ()=>{ STATE.courierBillSendStatusFilter = statusFilterEl.value; STATE.courierBillPage = 1; loadCourierBillPages(); });
+  // v8.08 — see APP_VERSION comment: channel filter (Pancake/self-created/online/other) — same UI
+  // pattern as confidence/courier/status, but loadCourierBillPages() handles it with a different
+  // query strategy internally since channel isn't a real DB column.
+  const channelFilterEl = document.getElementById("courier-bill-channel-filter");
+  if(channelFilterEl) channelFilterEl.addEventListener("change", ()=>{ STATE.courierBillChannelFilter = channelFilterEl.value; STATE.courierBillPage = 1; loadCourierBillPages(); });
   // v8.06 — see APP_VERSION comment: unified phone/order/bill search — button click, Enter key, or
   // the ✖ clear button (only rendered once a search is active).
   const searchInputEl = document.getElementById("courier-bill-search-input");
@@ -13889,9 +13979,6 @@ function attachCourierBillImportEvents(){
   if(deselectAllBtn) deselectAllBtn.addEventListener("click", courierBillDeselectAll);
   const markReadyBtn = document.getElementById("btn-courier-bill-mark-ready");
   if(markReadyBtn) markReadyBtn.addEventListener("click", courierBillMarkReadyToSend);
-  // v8.07 — see APP_VERSION comment.
-  const resend29SepBtn = document.getElementById("btn-courier-bill-resend-29sep");
-  if(resend29SepBtn) resend29SepBtn.addEventListener("click", courierBillResetFalseSent29Sep);
   // v7.40: bill thumbnail → in-page lightbox instead of a new tab (same overlay pattern as
   // billTransferLightboxUrl/noPickupLightboxUrl elsewhere in this file); clicking the dark
   // background (not the image itself) closes it.
@@ -13955,50 +14042,9 @@ function courierBillDeselectAll(){
 // the ticked, matched, not-yet-sent/queued rows' send_status to "ready_to_send" so the self-hosted
 // n8n workflow can find them and send them itself, one at a time 30s apart, independent of this
 // browser tab staying open.
-// v8.07 — see APP_VERSION comment. One-off, hand-verified list: these 33 order_id_guess values were
-// individually checked (read-only, via pancake-verify-send.js against the live Pancake conversation)
-// on 2026-09-29 and confirmed to have NO bill-image message actually delivered, despite
-// courier_bill_import_pages showing send_status="sent" — the customer-facing symptom of the
-// send-verification bug just fixed in pancake-send-bill-image.js (it used to trust a fixed 4s wait
-// instead of confirming the image actually rendered in the thread). The other 17 rows sent on the
-// same date/batch WERE individually confirmed delivered and are deliberately left off this list —
-// do not add them. This array (and the button/function below that use it) exist purely to make that
-// one correction fast instead of Tar re-typing 33 order numbers into the new search box one at a
-// time; nothing else in the app reads this constant, and it's safe to delete once the correction has
-// been made and confirmed.
-const COURIER_BILL_RESEND_29SEP_ORDER_IDS = ["73335","73418","73345","73343","73332","73391","73393","73330","73415","73338","73356","73342","73385","73339","73326","73384","73411","73409","73400","73349","73334","73365","73350","73419","73325","73404","73348","73328","73414","73417","73413","73359","73367"];
-// v8.07 — see APP_VERSION comment. Resets exactly the rows in COURIER_BILL_RESEND_29SEP_ORDER_IDS
-// that are STILL showing send_status="sent" (re-checks live, right before writing, in case some were
-// already corrected) back to a clean pending state (send_status, send_channel, sent_at, sent_by all
-// cleared to null) — NOT "ready_to_send", because the Pancake image auto-picker (pancake-send-bill-
-// image.js, mode=live, rowId=auto) specifically queries send_status=eq.pending; "ready_to_send" is a
-// different status used by the separate WhatsApp automation and would never get picked up by it.
-// match_confidence/matched_shipping_label_id/matched_crm_purchase_id etc. are untouched — the MATCH
-// was correct, only the earlier "sent" claim was false, so nothing needs re-matching, only re-sending
-// (with the now-fixed script, which will genuinely verify delivery this time before marking sent).
-async function courierBillResetFalseSent29Sep(){
-  if(!await customConfirm(`ຈະຣີເຊັດສະຖານະ ${COURIER_BILL_RESEND_29SEP_ORDER_IDS.length} ອໍເດີ (ທີ່ກວດແລ້ວວ່າຮູບບໍ່ໄດ້ເຂົ້າຫາລູກຄ້າແທ້ ທັ້ງທີ່ຂຶ້ນວ່າ "ສົ່ງແລ້ວ") ກັບເປັນ "ລໍຖ້າ" ເພື່ອໃຫ້ສົ່ງຄືນໃໝ່. ດຳເນີນຕໍ່ບໍ່?`)) return;
-  STATE.courierBillResend29SepRunning = true; render();
-  try{
-    const { data: rows, error: findErr } = await sb.from("courier_bill_import_pages")
-      .select("id, order_id_guess, send_status")
-      .in("order_id_guess", COURIER_BILL_RESEND_29SEP_ORDER_IDS)
-      .eq("send_status", "sent");
-    if(findErr) throw findErr;
-    if(!rows || rows.length===0){ showToast("ບໍ່ມີແຖວໃນລາຍການນີ້ທີ່ຍັງຄ້າງສະຖານະ \"ສົ່ງແລ້ວ\" (ອາດຖືກແກ້ໄປແລ້ວ)", "success"); return; }
-    const ids = rows.map(r=>r.id);
-    const { error: updErr } = await sb.from("courier_bill_import_pages")
-      .update({ send_status:null, send_channel:null, sent_at:null, sent_by:null })
-      .in("id", ids);
-    if(updErr) throw updErr;
-    showToast(`✅ ຣີເຊັດແລ້ວ ${ids.length} ລາຍການກັບເປັນ "ລໍຖ້າ" — n8n ຈະທະຍອຍສົ່ງຄືນໃຫ້ (ມີການກວດແທ້ວ່າຮູບເຂົ້າແທ້ກ່ອນຈຶ່ງ mark ສົ່ງແລ້ວຄັ້ງນີ້)`, "success");
-    await loadCourierBillPages();
-  }catch(err){
-    console.error("courierBillResetFalseSent29Sep failed:", err);
-    showToast("⚠️ ຣີເຊັດບໍ່ສຳເລັດ: "+(err.message||""), "error");
-  }
-  STATE.courierBillResend29SepRunning = false; render();
-}
+// v8.07's one-off "🔁 ຣີເຊັດ 33 ລາຍການ" button/constant/function (COURIER_BILL_RESEND_29SEP_ORDER_IDS
+// + courierBillResetFalseSent29Sep) lived here — removed in v8.08 (Tar confirmed done/no longer
+// needed) — see the v8.08 APP_VERSION comment.
 async function courierBillMarkReadyToSend(){
   const toMark = (STATE.courierBillPages||[]).filter(p=>
     p.selected && (p.matched || p.matchedCrmPurchaseId) &&
