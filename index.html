@@ -979,7 +979,22 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.06"; // v8.06 NEW (Tar 2026-09-29, "1ກ່ອນອື່ນໃຫ້ເຈົ້າເພີ່ມຊ່ອງ ຟິວເຕີ
+const APP_VERSION = "8.07"; // v8.07 NEW (Tar 2026-09-29, "ເລັ່ງສົ່ງບິນໃຫ້ຄົບກ່ອນມື້ນີ້" — rushing
+// to get all of today's bills genuinely delivered before end of day, right after the 8.06 search/
+// filter tools above were used to individually re-check and confirm which of today's 50 Pancake
+// bill-image sends actually reached the customer): one-off "🔁 ຣີເຊັດ 33 ລາຍການ (ຮູບບໍ່ໄດ້ເຂົ້າ
+// 29ກ.ຍ.)" button on the "📤 ສົ່ງບິນ" page (courierBillImport) — COURIER_BILL_RESEND_29SEP_ORDER_IDS
+// (the exact 33 order numbers hand-verified as NOT delivered, out of today's 50) +
+// courierBillResetFalseSent29Sep(). Re-checks each row is still send_status="sent" right before
+// writing (in case some were already fixed by hand), then clears send_status/send_channel/sent_at/
+// sent_by back to null (plain "ລໍຖ້າ"/pending) — deliberately NOT "ready_to_send", since the Pancake
+// image auto-picker (pancake-send-bill-image.js mode=live rowId=auto) queries send_status=eq.pending
+// specifically; "ready_to_send" only feeds the separate WhatsApp automation and would never be picked
+// up by it. Does not touch matching data (match_confidence/matched_shipping_label_id/
+// matched_crm_purchase_id) — the match itself was correct, only the earlier "sent" claim was false.
+// Exists purely so Tar doesn't have to re-type 33 order numbers into the new v8.06 search box one at
+// a time; safe to delete this button/constant/function once the correction is done and confirmed.
+// v8.06 NEW (Tar 2026-09-29, "1ກ່ອນອື່ນໃຫ້ເຈົ້າເພີ່ມຊ່ອງ ຟິວເຕີ
 // ສະຖານະ ລໍຖ້າ ກຽມສົ່ງ ສົ່ງແລ້ວ ບໍ່ສຳເລັດ 2ຊ່ອງຄົ້ນຫາ ດ້ວຍເບີໂທ ເລກອໍເດີ ເລກບິນ ສາມາດໃຊ້ຮ່ວມກັນໃນ
 // ຊ່ອງດຽວ ເພື່ອງ່າຍຕໍ່ການຊອກຂໍ້ມູນ" — asked while reconciling the 33/50 real customers whose bill
 // image never actually delivered on 2026-09-29, so this UI needed to make finding those specific
@@ -1468,10 +1483,10 @@ const APP_VERSION = "8.06"; // v8.06 NEW (Tar 2026-09-29, "1ກ່ອນອື�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.05"; // v8.05 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.06"; // v8.06 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.05→8.06 now that 8.07 is current).
+const APP_VERSION_PREV_OLDER = "8.05"; // v8.05 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.04→8.05 now that 8.06 is current).
-const APP_VERSION_PREV_OLDER = "8.04"; // v8.04 FIX (Tar 2026-09-28) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.03→8.04 now that 8.05 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -13708,6 +13723,7 @@ function renderCourierBillImport(){
           <button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-deselect-all">🧹 ຍົກເລີກຕິກທັງໝົດ</button>
           <button type="button" class="btn btn-sm" id="btn-courier-bill-mark-ready" ${STATE.courierBillMarkingReady?"disabled":""}>${STATE.courierBillMarkingReady?"⏳ ກຳລັງບັນທຶກ...":"🕒 ກຽມສົ່ງ"}</button>
           <button type="button" class="btn btn-sm" id="btn-courier-bill-send-selected" ${STATE.courierBillSending?"disabled":""}>${STATE.courierBillSending?"⏳ ກຳລັງສົ່ງ...":"📤 ສົ່ງທັງໝົດທີ່ຕິກໄວ້"}</button>
+          ${COURIER_BILL_RESEND_29SEP_ORDER_IDS.length ? `<button type="button" class="btn btn-sm btn-outline" id="btn-courier-bill-resend-29sep" style="border-color:#c0392b; color:#c0392b;" ${STATE.courierBillResend29SepRunning?"disabled":""}>${STATE.courierBillResend29SepRunning?"⏳ ກຳລັງຣີເຊັດ...":`🔁 ຣີເຊັດ ${COURIER_BILL_RESEND_29SEP_ORDER_IDS.length} ລາຍການ (ຮູບບໍ່ໄດ້ເຂົ້າ 29ກ.ຍ.)`}</button>` : ""}
         </div>
       </div>
     </div>
@@ -13873,6 +13889,9 @@ function attachCourierBillImportEvents(){
   if(deselectAllBtn) deselectAllBtn.addEventListener("click", courierBillDeselectAll);
   const markReadyBtn = document.getElementById("btn-courier-bill-mark-ready");
   if(markReadyBtn) markReadyBtn.addEventListener("click", courierBillMarkReadyToSend);
+  // v8.07 — see APP_VERSION comment.
+  const resend29SepBtn = document.getElementById("btn-courier-bill-resend-29sep");
+  if(resend29SepBtn) resend29SepBtn.addEventListener("click", courierBillResetFalseSent29Sep);
   // v7.40: bill thumbnail → in-page lightbox instead of a new tab (same overlay pattern as
   // billTransferLightboxUrl/noPickupLightboxUrl elsewhere in this file); clicking the dark
   // background (not the image itself) closes it.
@@ -13936,6 +13955,50 @@ function courierBillDeselectAll(){
 // the ticked, matched, not-yet-sent/queued rows' send_status to "ready_to_send" so the self-hosted
 // n8n workflow can find them and send them itself, one at a time 30s apart, independent of this
 // browser tab staying open.
+// v8.07 — see APP_VERSION comment. One-off, hand-verified list: these 33 order_id_guess values were
+// individually checked (read-only, via pancake-verify-send.js against the live Pancake conversation)
+// on 2026-09-29 and confirmed to have NO bill-image message actually delivered, despite
+// courier_bill_import_pages showing send_status="sent" — the customer-facing symptom of the
+// send-verification bug just fixed in pancake-send-bill-image.js (it used to trust a fixed 4s wait
+// instead of confirming the image actually rendered in the thread). The other 17 rows sent on the
+// same date/batch WERE individually confirmed delivered and are deliberately left off this list —
+// do not add them. This array (and the button/function below that use it) exist purely to make that
+// one correction fast instead of Tar re-typing 33 order numbers into the new search box one at a
+// time; nothing else in the app reads this constant, and it's safe to delete once the correction has
+// been made and confirmed.
+const COURIER_BILL_RESEND_29SEP_ORDER_IDS = ["73335","73418","73345","73343","73332","73391","73393","73330","73415","73338","73356","73342","73385","73339","73326","73384","73411","73409","73400","73349","73334","73365","73350","73419","73325","73404","73348","73328","73414","73417","73413","73359","73367"];
+// v8.07 — see APP_VERSION comment. Resets exactly the rows in COURIER_BILL_RESEND_29SEP_ORDER_IDS
+// that are STILL showing send_status="sent" (re-checks live, right before writing, in case some were
+// already corrected) back to a clean pending state (send_status, send_channel, sent_at, sent_by all
+// cleared to null) — NOT "ready_to_send", because the Pancake image auto-picker (pancake-send-bill-
+// image.js, mode=live, rowId=auto) specifically queries send_status=eq.pending; "ready_to_send" is a
+// different status used by the separate WhatsApp automation and would never get picked up by it.
+// match_confidence/matched_shipping_label_id/matched_crm_purchase_id etc. are untouched — the MATCH
+// was correct, only the earlier "sent" claim was false, so nothing needs re-matching, only re-sending
+// (with the now-fixed script, which will genuinely verify delivery this time before marking sent).
+async function courierBillResetFalseSent29Sep(){
+  if(!await customConfirm(`ຈະຣີເຊັດສະຖານະ ${COURIER_BILL_RESEND_29SEP_ORDER_IDS.length} ອໍເດີ (ທີ່ກວດແລ້ວວ່າຮູບບໍ່ໄດ້ເຂົ້າຫາລູກຄ້າແທ້ ທັ້ງທີ່ຂຶ້ນວ່າ "ສົ່ງແລ້ວ") ກັບເປັນ "ລໍຖ້າ" ເພື່ອໃຫ້ສົ່ງຄືນໃໝ່. ດຳເນີນຕໍ່ບໍ່?`)) return;
+  STATE.courierBillResend29SepRunning = true; render();
+  try{
+    const { data: rows, error: findErr } = await sb.from("courier_bill_import_pages")
+      .select("id, order_id_guess, send_status")
+      .in("order_id_guess", COURIER_BILL_RESEND_29SEP_ORDER_IDS)
+      .eq("send_status", "sent");
+    if(findErr) throw findErr;
+    if(!rows || rows.length===0){ showToast("ບໍ່ມີແຖວໃນລາຍການນີ້ທີ່ຍັງຄ້າງສະຖານະ \"ສົ່ງແລ້ວ\" (ອາດຖືກແກ້ໄປແລ້ວ)", "success"); return; }
+    const ids = rows.map(r=>r.id);
+    const { error: updErr } = await sb.from("courier_bill_import_pages")
+      .update({ send_status:null, send_channel:null, sent_at:null, sent_by:null })
+      .in("id", ids);
+    if(updErr) throw updErr;
+    showToast(`✅ ຣີເຊັດແລ້ວ ${ids.length} ລາຍການກັບເປັນ "ລໍຖ້າ" — n8n ຈະທະຍອຍສົ່ງຄືນໃຫ້ (ມີການກວດແທ້ວ່າຮູບເຂົ້າແທ້ກ່ອນຈຶ່ງ mark ສົ່ງແລ້ວຄັ້ງນີ້)`, "success");
+    await loadCourierBillPages();
+  }catch(err){
+    console.error("courierBillResetFalseSent29Sep failed:", err);
+    showToast("⚠️ ຣີເຊັດບໍ່ສຳເລັດ: "+(err.message||""), "error");
+  }
+  STATE.courierBillResend29SepRunning = false; render();
+}
 async function courierBillMarkReadyToSend(){
   const toMark = (STATE.courierBillPages||[]).filter(p=>
     p.selected && (p.matched || p.matchedCrmPurchaseId) &&
