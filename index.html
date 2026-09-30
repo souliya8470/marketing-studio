@@ -979,7 +979,20 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.09"; // v8.09 FIX (Tar 2026-09-30, "ແກ້ໃຫ້ລາຍງານແຕ່ເທື່ອດຽວ ແລະ ເພີ່ມ
+const APP_VERSION = "8.10"; // v8.10 FIX (Tar 2026-09-30, "ດຶງເອົາຊື່ທີ່ລະບົບບັນທຶກເປັນຊື່ຕາມຮູບບິນມາໃສ່ເລີຍບໍ່ໄດ້ຫວາ" --
+// asked after finding that OCR could not read ອານຸສິດ's 13-digit bill number at all since ~Sep 27, and
+// misread HAL's "VTE" prefix as a Lao letter on a few bills, leaving the "ເລກບິນ" column empty): n8n's
+// anousith-billimages-export.js / hal-billimages-export.js already read the exact bill number straight off
+// the courier's own web page and bake it into each downloaded image's filename
+// (anousith-bill-8262730053311-<phone>-<date>.jpg, hal-bill-VTE69551806635-<phone>-<date>.jpg), but
+// courierBillHandleFiles ignored the filename and re-derived the number by OCR. FIX: new
+// courierBillTrackingFromFilename(name) pulls ONLY the number (13 digits for ອານຸສິດ, VTE+digits for HAL,
+// no prefix/suffix) out of such a filename, and courierBillHandleFiles uses it as courierBillNumber
+// (extractionDebug.billNumberSource="filename") in place of the OCR guess whenever the filename carries one.
+// A file without that naming pattern (staff manually uploading a PDF/photo) falls back to OCR exactly as
+// before. Nothing else in matching/sending changed. Stored as courier_bill_number, which the existing
+// duplicate-bill check and table column already read -- no schema change.
+// v8.09 FIX (Tar 2026-09-30, "ແກ້ໃຫ້ລາຍງານແຕ່ເທື່ອດຽວ ແລະ ເພີ່ມ
 // ຊ່ອງລຳດັບໃສ່ເພື່ອໃຫ້ເບິ່ງງ່າຍ" -- asked right after Tar noticed the "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)"
 // page (arrivalTagReport, built v8.05) showed 240 rows for one account/one day when only ~30-34
 // bills were actually still stuck): the n8n arrival-tag automation (anousith-arrival-tag.js)
@@ -1524,10 +1537,10 @@ const APP_VERSION = "8.09"; // v8.09 FIX (Tar 2026-09-30, "ແກ້ໃຫ້ລ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.08"; // v8.08 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.07→8.08 now that 8.09 is current).
-const APP_VERSION_PREV_OLDER = "8.07"; // v8.07 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.06→8.07 now that 8.08 is current).
+const APP_VERSION_PREV = "8.09"; // v8.09 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.08→8.09 now that 8.10 is current).
+const APP_VERSION_PREV_OLDER = "8.08"; // v8.08 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.07→8.08 now that 8.09 is previous).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -12799,6 +12812,17 @@ window.ensureTesseractLib = function(timeoutMs){
   });
 };
 
+// v8.10 — see APP_VERSION comment. Returns just the bill number embedded in an n8n-downloaded bill
+// image filename ("anousith-bill-8262730053311-55279515-2026-09-30.jpg" -> "8262730053311",
+// "hal-bill-VTE69551806635-55279515-2026-09-30.jpg" -> "VTE69551806635"), or "" for any other filename.
+function courierBillTrackingFromFilename(name){
+  const base = String(name||"").split(/[\\/]/).pop();
+  let m = /^anousith-bill-(\d{13})-/i.exec(base);
+  if(m) return m[1];
+  m = /^hal-bill-(VTE\d{8,})-/i.exec(base);
+  if(m) return m[1].toUpperCase();
+  return "";
+}
 async function courierBillHandleFiles(fileList){
   const files = Array.from(fileList||[]).filter(Boolean);
   if(!files.length) return;
@@ -13022,7 +13046,10 @@ async function courierBillHandleFiles(fileList){
       }catch(ocrErr){ console.error("OCR failed for page", i, ocrErr); }
 
       const parsed = courierBillParsePageText(text, STATE.courierBillCourierName);
-      const billNumberSource = parsed.courierBillNumber ? "text" : "none";
+      // v8.10: an exact number from the filename beats the OCR guess (see APP_VERSION comment).
+      const fileTracking = isImageFile ? courierBillTrackingFromFilename(file.name) : "";
+      if(fileTracking) parsed.courierBillNumber = fileTracking;
+      const billNumberSource = fileTracking ? "filename" : (parsed.courierBillNumber ? "text" : "none");
       const depositAt = courierBillExtractDepositDate(text); // v7.44 — see function comment
       const extractionDebug = { method:"ocr", ocrConfidence, textLength: text.length, billNumberSource };
       pages.push(Object.assign({pageNumber:pageCounter, blob, imageHash, matched:null, matchMethod:null, matchConfidence:null, orderIdGuess:null, depositAt, selected:false, sendStatus:"pending", rawText:text, extractionDebug}, parsed));
