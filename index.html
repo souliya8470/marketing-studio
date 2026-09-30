@@ -979,7 +979,25 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.08"; // v8.08 NEW (Tar 2026-09-29, "ເພີ່ມຊ່ອງຟິວເຕີອີກຊ່ອງ1 ຊ່ອງທາງອໍເດີ
+const APP_VERSION = "8.09"; // v8.09 FIX (Tar 2026-09-30, "ແກ້ໃຫ້ລາຍງານແຕ່ເທື່ອດຽວ ແລະ ເພີ່ມ
+// ຊ່ອງລຳດັບໃສ່ເພື່ອໃຫ້ເບິ່ງງ່າຍ" -- asked right after Tar noticed the "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)"
+// page (arrivalTagReport, built v8.05) showed 240 rows for one account/one day when only ~30-34
+// bills were actually still stuck): the n8n arrival-tag automation (anousith-arrival-tag.js)
+// retries any bill it couldn't tag EVERY hourly round and logs each attempt as its OWN new row in
+// courier_arrival_tag_log -- it never updates/overwrites a bill's earlier row -- so a single
+// still-stuck bill can accumulate 5-10+ rows across one day. The report page queried and rendered
+// that raw table as-is with no dedup, so it looked like far more distinct problem bills existed
+// than really did (confirmed live via SQL: 240 raw rows for phone_account 52906969 on 2026-09-30
+// were really only 152 distinct bills, of which 118 eventually succeeded and 34 never did).
+// FIX: new dedupeArrivalTagLatest(list) helper -- since the underlying query already orders by
+// created_at descending, keeping only the FIRST row seen per phone_account+courier_bill_number IS
+// that bill's latest known status, no extra sort needed. renderArrivalTagReport now dedupes
+// STATE.arrivalTagLogList once at the top (dedupedAll) before computing the account-filter
+// dropdown, applying the existing status/search filters, AND the ສົ່ງແລ້ວ/ຍັງບໍ່ໄດ້ສົ່ງ header
+// counts -- all of those previously ran against the raw multi-row-per-bill list. Also added a
+// "ລຳດັບ" (row number) column as the first column of the table, numbered 1..N from the filtered
+// list, purely a readability aid Tar asked for alongside the dedup fix -- no data/logic behind it.
+// v8.08 NEW (Tar 2026-09-29, "ເພີ່ມຊ່ອງຟິວເຕີອີກຊ່ອງ1 ຊ່ອງທາງອໍເດີ
 // ແພັນເຄັກ ສ້າງເອງ ອອນລາຍ ແລ້ວເອົາປຸ່ມລີເຊັດ 33ຮູບອອກໄປນຳແນ່ ຖ້າວ່າບໍ່ໄດ້ໃຊ້ແລ້ວ", after confirming
 // the v8.07 33-row correction was done): two changes to the "📤 ສົ່ງບິນ" page (courierBillImport).
 // (1) REMOVED the one-off v8.07 "🔁 ຣີເຊັດ 33 ລາຍການ" button — the COURIER_BILL_RESEND_29SEP_ORDER_IDS
@@ -1506,10 +1524,10 @@ const APP_VERSION = "8.08"; // v8.08 NEW (Tar 2026-09-29, "ເພີ່ມຊ່
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.07"; // v8.07 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.08"; // v8.08 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.07→8.08 now that 8.09 is current).
+const APP_VERSION_PREV_OLDER = "8.07"; // v8.07 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.06→8.07 now that 8.08 is current).
-const APP_VERSION_PREV_OLDER = "8.06"; // v8.06 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.05→8.06 now that 8.07 is current).
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -32406,12 +32424,31 @@ function renderDeletionLogDetailModal(r){
 // "the code shown doesn't match the real item" report (like the T102666→T002631 one) can be
 // checked against a real photo instead of guessing — click 🖼️ to see it right on this page, no
 // navigating elsewhere.
+// v8.09 (Tar 2026-09-30, "ແກ້ໃຫ້ລາຍງານແຕ່ເທື່ອດຽວ"): the n8n automation retries a bill it
+// couldn't tag EVERY hourly round and logs each attempt as its own row, so one still-stuck bill
+// can show up 5-10+ times in a single day (confirmed live: 240 raw rows for one account on one
+// day were really only 152 distinct bills). Dedupe to the single latest row per bill (query
+// already orders created_at desc, so "first row seen per bill" IS the latest) before any of the
+// existing filters/counts run, so both the table and the ສົ່ງແລ້ວ/ຍັງບໍ່ໄດ້ສົ່ງ header counts
+// reflect real distinct bills, not raw attempt-log rows.
+function dedupeArrivalTagLatest(list){
+  const seen = new Set();
+  const out = [];
+  for(const r of (list||[])){
+    const key = r.phone_account+"|"+r.courier_bill_number;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
 function renderArrivalTagReport(){
   const q = (STATE.arrivalTagLogSearch||"").trim().toLowerCase();
   const statusFilter = STATE.arrivalTagLogStatusFilter||"unsent"; // "unsent" (default), "all", or an exact status value
   const accountFilter = STATE.arrivalTagLogAccountFilter||"";
-  const accounts = [...new Set((STATE.arrivalTagLogList||[]).map(r=>r.phone_account))].sort();
-  let list = (STATE.arrivalTagLogList||[]).filter(r=>{
+  const dedupedAll = dedupeArrivalTagLatest(STATE.arrivalTagLogList);
+  const accounts = [...new Set(dedupedAll.map(r=>r.phone_account))].sort();
+  let list = dedupedAll.filter(r=>{
     if(accountFilter && r.phone_account!==accountFilter) return false;
     if(statusFilter==="unsent" && r.status==="messaged") return false;
     if(statusFilter!=="unsent" && statusFilter!=="all" && r.status!==statusFilter) return false;
@@ -32421,8 +32458,8 @@ function renderArrivalTagReport(){
     }
     return true;
   });
-  const sentCount = (STATE.arrivalTagLogList||[]).filter(r=>r.status==="messaged").length;
-  const unsentCount = (STATE.arrivalTagLogList||[]).length - sentCount;
+  const sentCount = dedupedAll.filter(r=>r.status==="messaged").length;
+  const unsentCount = dedupedAll.length - sentCount;
   return `
     <div class="page-head">
       <h1>📬 ລາຍງານ ຮອດປາຍທາງ (n8n)</h1>
@@ -32455,10 +32492,11 @@ function renderArrivalTagReport(){
       ${STATE.arrivalTagLogLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` : (list.length===0 ? `<p class="small-muted">ບໍ່ພົບລາຍການທີ່ກົງກັບການກອງ</p>` : `
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>ບັນຊີ</th><th>ເລກບິນ</th><th>ອໍເດີ</th><th>ລູກຄ້າ</th><th>ວັນ ${'(ຮອດ)'}</th><th>ສະຖານະ</th><th>ລາຍລະອຽດ</th><th>ວັນ-ເວລາບັນທຶກ</th></tr></thead>
+            <thead><tr><th>ລຳດັບ</th><th>ບັນຊີ</th><th>ເລກບິນ</th><th>ອໍເດີ</th><th>ລູກຄ້າ</th><th>ວັນ ${'(ຮອດ)'}</th><th>ສະຖານະ</th><th>ລາຍລະອຽດ</th><th>ວັນ-ເວລາບັນທຶກ</th></tr></thead>
             <tbody>
-              ${list.map(r=>`
+              ${list.map((r,i)=>`
                 <tr>
+                  <td>${i+1}</td>
                   <td>${esc(r.phone_account)}</td>
                   <td>${esc(r.courier_bill_number)}</td>
                   <td>${esc(r.pancake_order_id||"-")}</td>
