@@ -979,7 +979,13 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.10"; // v8.10 FIX (Tar 2026-09-30, "ດຶງເອົາຊື່ທີ່ລະບົບບັນທຶກເປັນຊື່ຕາມຮູບບິນມາໃສ່ເລີຍບໍ່ໄດ້ຫວາ" --
+const APP_VERSION = "8.11"; // v8.11 FIX (Tar 2026-09-30, "ເວລາກົດຟິວເຕີສະຖານະ ລໍ ແລ້ວບໍ່ສະແດງ ທັງທີ່ຕົວເລກບອກ 67")
+// -- the ⏳ ລໍ dropdown COUNT bucketed every send_status that is not ready_to_send/sent/failed as
+// "pending" (so "sending", "queued", null all counted), but the FILTER only matched null/"pending",
+// so the count said 67 while the list showed 0. Both query sites (loadCourierBillPages and
+// courierBillRematchVisible) now use send_status IS NULL OR NOT IN (ready_to_send,sent,failed),
+// exactly the same rule as the count. No other filter/matching logic touched.
+// v8.10 FIX (Tar 2026-09-30, "ດຶງເອົາຊື່ທີ່ລະບົບບັນທຶກເປັນຊື່ຕາມຮູບບິນມາໃສ່ເລີຍບໍ່ໄດ້ຫວາ" --
 // asked after finding that OCR could not read ອານຸສິດ's 13-digit bill number at all since ~Sep 27, and
 // misread HAL's "VTE" prefix as a Lao letter on a few bills, leaving the "ເລກບິນ" column empty): n8n's
 // anousith-billimages-export.js / hal-billimages-export.js already read the exact bill number straight off
@@ -1537,10 +1543,10 @@ const APP_VERSION = "8.10"; // v8.10 FIX (Tar 2026-09-30, "ດຶງເອົາ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.09"; // v8.09 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.08→8.09 now that 8.10 is current).
-const APP_VERSION_PREV_OLDER = "8.08"; // v8.08 NEW (Tar 2026-09-29) — full note is in the APP_VERSION
-// comment block above (this slot shifted from 8.07→8.08 now that 8.09 is previous).
+const APP_VERSION_PREV = "8.10"; // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
+const APP_VERSION_PREV_OLDER = "8.09"; // v8.09 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.08→8.09 now that 8.10 is previous). (v8.08 NEW, Tar 2026-09-29, note is in the APP_VERSION comment block above.)
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
 // MINUTE, correct for ອານຸສິດ but wrong for ຮຸ່ງອາລຸນ — its bills print no time component at all,
@@ -13186,7 +13192,7 @@ async function loadCourierBillPages(opts){
     // v8.06 — see APP_VERSION comment. "pending" has to be an .or() since send_status is stored as
     // NULL (never the literal string "pending") until something actually moves it forward.
     const sendStatusFilter = STATE.courierBillSendStatusFilter||"all";
-    if(sendStatusFilter==="pending") q = q.or("send_status.is.null,send_status.eq.pending");
+    if(sendStatusFilter==="pending") q = q.or("send_status.is.null,send_status.not.in.(ready_to_send,sent,failed)");
     else if(sendStatusFilter!=="all") q = q.eq("send_status", sendStatusFilter);
     // v8.06 — see APP_VERSION comment. One typed term matched against whichever of the 4 columns a
     // phone/order/bill number actually lives in for a given row (searchTerm computed once, above,
@@ -13275,7 +13281,7 @@ async function courierBillRematchVisible(){
     // v8.06 — see APP_VERSION comment: keep this scoped to the same status/search filters the table
     // itself is currently showing, same as confFilter/courierFilter just above.
     const sendStatusFilter = STATE.courierBillSendStatusFilter||"all";
-    if(sendStatusFilter==="pending") q = q.or("send_status.is.null,send_status.eq.pending");
+    if(sendStatusFilter==="pending") q = q.or("send_status.is.null,send_status.not.in.(ready_to_send,sent,failed)");
     else if(sendStatusFilter!=="all") q = q.eq("send_status", sendStatusFilter);
     const searchTerm = courierBillSanitizeSearchTerm(STATE.courierBillSearchQuery);
     if(searchTerm) q = q.or(`matched_customer_phone.ilike.%${searchTerm}%,order_id_guess.ilike.%${searchTerm}%,courier_bill_number.ilike.%${searchTerm}%,excel_bill_number.ilike.%${searchTerm}%,excel_order_id.ilike.%${searchTerm}%`);
