@@ -979,7 +979,11 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.11"; // v8.11 FIX (Tar 2026-09-30, "ເວລາກົດຟິວເຕີສະຖານະ ລໍ ແລ້ວບໍ່ສະແດງ ທັງທີ່ຕົວເລກບອກ 67")
+const APP_VERSION = "8.12"; // v8.12 FIX (Tar 2026-10-01, "ໄປກວດເບິ່ງວ່າເປັນຫຍັງຄືບໍ່ມີຊື່ Su ໃນຕາຕະລາງ" ລາຍງານປະຈຳເດືອນ ໜ້າລົງໂມງ)
+// -- renderAttendanceMonthlyGrid only shows the staff in MONTHLY_REPORT_STAFF_WHITELIST (fixed in v3.84 to 7 names).
+// Su is an approved admin who really clocks in (37 attendance rows) but was never added, so no column appeared.
+// Added "su" to the whitelist (one word, nothing else changed). Anna/Austin/Tin/Vern are still excluded on purpose.
+// v8.11 FIX (Tar 2026-09-30, "ເວລາກົດຟິວເຕີສະຖານະ ລໍ ແລ້ວບໍ່ສະແດງ ທັງທີ່ຕົວເລກບອກ 67")
 // -- the ⏳ ລໍ dropdown COUNT bucketed every send_status that is not ready_to_send/sent/failed as
 // "pending" (so "sending", "queued", null all counted), but the FILTER only matched null/"pending",
 // so the count said 67 while the list showed 0. Both query sites (loadCourierBillPages and
@@ -1543,9 +1547,13 @@ const APP_VERSION = "8.11"; // v8.11 FIX (Tar 2026-09-30, "ເວລາກົດ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.10"; // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.11"; // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
+// (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.09"; // v8.09 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.10"; // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.09→8.10 now that 8.11 is previous).
+// (previous text of this slot, kept) // v8.09 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.08→8.09 now that 8.10 is previous). (v8.08 NEW, Tar 2026-09-29, note is in the APP_VERSION comment block above.)
 // v7.72 FIX (Tar 2026-09-16, caught same-day as v7.71: "ບິນຂອງຮຸ່ງອາລຸນ
 // ບໍ່ມີວັນທີເວລາຝາກສະແດງຢູ່"): v7.71's phone+deposit-time dedupe fingerprint keyed on the exact
@@ -32099,7 +32107,7 @@ function renderAttendanceMonthlyGrid(d){
   // excluded from this particular report even if they're an approved user. Comparison is
   // case-insensitive against the whitelist, but the NAME DISPLAYED keeps whatever casing is
   // actually stored in the system (Phone/Mek/Larnoy/Ky/ALiSa/TAN/Loy or however it's spelled).
-  const MONTHLY_REPORT_STAFF_WHITELIST = ["phone","mek","larnoy","ky","alisa","tan","loy"];
+  const MONTHLY_REPORT_STAFF_WHITELIST = ["phone","mek","larnoy","ky","alisa","tan","loy","su"]; // v8.12: + su
   const employees = [...new Set([
     ...(STATE.usersList||[]).filter(u=>u.approved).map(u=>u.name),
     ...d.attendance.filter(a=>{
