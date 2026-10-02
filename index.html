@@ -979,7 +979,13 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.12"; // v8.12 FIX (Tar 2026-10-01, "ໄປກວດເບິ່ງວ່າເປັນຫຍັງຄືບໍ່ມີຊື່ Su ໃນຕາຕະລາງ" ລາຍງານປະຈຳເດືອນ ໜ້າລົງໂມງ)
+const APP_VERSION = "8.13"; // v8.13 FIX (Tar 2026-10-02, "ໄປຫາເຫດຜົນກ່ອນວ່າເປັນຫຍັງຄືລົ້ມ" -- HAL bill VTE82767393738 produced a batch with 0 page rows)
+// -- OCR read the bill time "12:53:31" as "12:63:31"; courierBillExtractDepositDate returned the invalid timestamp "2026-10-01T12:63:31", Postgres rejected the
+// page insert (400, 22008 date/time out of range) and courierBillCreateBatchAndMatch never checked the insert result, so the bill silently vanished while the batch row stayed.
+// The n8n hal-billimages script then saw the bill missing, retried it every hour and tripped its circuit breaker after 3 failures (HAL bills for 52906969 stopped for ~15h).
+// FIX: (1) courierBillExtractDepositDate now validates month/day/hour/minute/second ranges and, if the time is impossible, keeps the printed DATE with 00:00:00 (never an invalid timestamp);
+// (2) the page insert result is now checked: on error it retries once with deposit_at=null, and if that still fails shows an error toast + console.error so it can never be silent again.
+// v8.12 FIX (Tar 2026-10-01, "ໄປກວດເບິ່ງວ່າເປັນຫຍັງຄືບໍ່ມີຊື່ Su ໃນຕາຕະລາງ" ລາຍງານປະຈຳເດືອນ ໜ້າລົງໂມງ)
 // -- renderAttendanceMonthlyGrid only shows the staff in MONTHLY_REPORT_STAFF_WHITELIST (fixed in v3.84 to 7 names).
 // Su is an approved admin who really clocks in (37 attendance rows) but was never added, so no column appeared.
 // Added "su" to the whitelist (one word, nothing else changed). Anna/Austin/Tin/Vern are still excluded on purpose.
@@ -1547,11 +1553,15 @@ const APP_VERSION = "8.12"; // v8.12 FIX (Tar 2026-10-01, "ໄປກວດເບ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.11"; // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.12"; // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.11→8.12 now that 8.13 is current).
+// (previous text of this slot, kept) // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.10"; // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.11"; // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.10→8.11 now that 8.12 is previous).
+// (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is previous).
 // (previous text of this slot, kept) // v8.09 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.08→8.09 now that 8.10 is previous). (v8.08 NEW, Tar 2026-09-29, note is in the APP_VERSION comment block above.)
@@ -12582,6 +12592,19 @@ function courierBillExtractPhones(text){
 // Returns a "floating" local ISO string (no timezone suffix) either way — deliberately NOT
 // converted through a JS Date's local-timezone getters anywhere downstream, so the wall-clock
 // date/time printed on the bill is what's stored and displayed, unchanged either direction.
+// v8.13: validates a parsed bill timestamp; OCR can misread a digit (e.g. 12:53:31 -> 12:63:31) and an
+// out-of-range value makes Postgres reject the whole page insert. Impossible date -> null; impossible
+// time -> keep the printed date at 00:00:00 (the same date-only convention used for HAL's old bulk export).
+function courierBillBuildIso(yyyy, mm, dd, hh, mi, ss){
+  const Y=+yyyy, M=+mm, D=+dd;
+  if(!(Y>=2000 && Y<=2100 && M>=1 && M<=12 && D>=1 && D<=31)) return null;
+  const dim = new Date(Date.UTC(Y, M, 0)).getUTCDate();
+  if(D>dim) return null;
+  const H=+hh, I=+mi, S=+(ss==null?0:ss);
+  const p2=n=>String(n).padStart(2,"0");
+  if(!(H>=0 && H<=23 && I>=0 && I<=59 && S>=0 && S<=59)) return `${yyyy}-${p2(M)}-${p2(D)}T00:00:00`;
+  return `${yyyy}-${p2(M)}-${p2(D)}T${p2(H)}:${p2(I)}:${p2(S)}`;
+}
 function courierBillExtractDepositDate(text){
   // v7.68 (Tar 2026-09-16, "ວັນທີ16ມີ 74ບິນ ແຕ່ໃນລະບົບຕອນນີ້ເຫັນແຕ່ 73ບິນ"): the missing 74th bill
   // wasn't actually missing — its deposit_at was null because OCR read the minute as "2 1" (a
@@ -12603,7 +12626,7 @@ function courierBillExtractDepositDate(text){
   if(m){
     const [, dd, mm, yyyy, hhRaw, miRaw] = m;
     const hh = hhRaw.replace(/\s/g,""); const mi = miRaw.replace(/\s/g,"");
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}:00`;
+    return courierBillBuildIso(yyyy, mm, dd, hh, mi, 0);
   }
   // v7.94 FIX (Tar 2026-09-25, "ຢາກໃຫ້ເຈົ້າໄປແກ້ໂຄດໃນລະບົບ ໃຫ້ອ່ານເອົາເວລານີ້ມາໃຊ້"): the NEW
   // ຮຸ່ງອາລຸນ capture method (click into each bill's own detail popup + screenshot, replacing the
@@ -12619,13 +12642,13 @@ function courierBillExtractDepositDate(text){
   m = /\b(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\b/.exec(text||"");
   if(m){
     const [, yyyy, mm, dd, hh, mi, ss] = m;
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
+    return courierBillBuildIso(yyyy, mm, dd, hh, mi, ss);
   }
   // ຮຸ່ງອາລຸນ (old bulk PDF export path): "ວັນທີສ້າງບົນ ... YYYY-MM-DD" (date only, no time printed)
   m = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(text||"");
   if(m){
     const [, yyyy, mm, dd] = m;
-    return `${yyyy}-${mm}-${dd}T00:00:00`;
+    return courierBillBuildIso(yyyy, mm, dd, 0, 0, 0);
   }
   return null;
 }
@@ -13454,13 +13477,23 @@ async function courierBillCreateBatchAndMatch(){
     const bestPhone = (p.phones && p.phones.length) ? p.phones[0] : "";
     const pageRowId = "cbp_"+Date.now()+Math.random().toString(36).slice(2,7);
     p.rowId = pageRowId;
-    await sb.from("courier_bill_import_pages").insert({
+    const pageRow = {
       id: pageRowId, batch_id: batchId, page_number: p.pageNumber,
       courier_bill_number: p.courierBillNumber||null, raw_destination_text: p.destText||null,
       extracted_phone: bestPhone||null, cod_amount: p.codAmount, total_amount: p.totalAmount,
       page_image_url: imageUrl||null, raw_page_text: p.rawText||null, extraction_debug: p.extractionDebug||null,
       deposit_at: p.depositAt||null, courier_name: courierName, image_hash: p.imageHash||null
-    });
+    };
+    // v8.13: the insert result used to be ignored, so a rejected row (e.g. invalid OCR timestamp) vanished silently.
+    let { error: pageInsErr } = await sb.from("courier_bill_import_pages").insert(pageRow);
+    if(pageInsErr){
+      console.error("courier_bill_import_pages insert failed for", p.courierBillNumber, pageInsErr);
+      ({ error: pageInsErr } = await sb.from("courier_bill_import_pages").insert({ ...pageRow, deposit_at: null }));
+      if(pageInsErr){
+        console.error("courier_bill_import_pages insert retry (deposit_at=null) failed for", p.courierBillNumber, pageInsErr);
+        showToast("⚠️ ບັນທຶກບິນ "+(p.courierBillNumber||("ໜ້າ "+p.pageNumber))+" ບໍ່ສຳເລັດ: "+pageInsErr.message, "error");
+      }
+    }
   }
   // v7.52: explicit confirmation that the import itself succeeded, separate from — and shown
   // before — the match step's own success/failure below, so "imported OK but matching failed"
