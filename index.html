@@ -979,7 +979,10 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.13"; // v8.13 FIX (Tar 2026-10-02, "ໄປຫາເຫດຜົນກ່ອນວ່າເປັນຫຍັງຄືລົ້ມ" -- HAL bill VTE82767393738 produced a batch with 0 page rows)
+const APP_VERSION = "8.14"; // v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບິ່ງແນ່ວ່າບິນອານຸສິດທີ່ອັບເຂົ້າລະບົບເປັນບໍ່ພົບຂໍ້ມູນ ໃຫ້ເລືອກເອງ ແຕ່ວ່າ ເປັນ high ມັນຍ້ອນຫຍັງ" -- courier bill import rows showed "ບໍ່ພົບ / ເລືອກເອງ" in the customer column while the match itself was correct (confidence high, matched_shipping_label_id set in the DB).
+// ROOT CAUSE: the customer cell, the channel column and the channel filter/counts are all derived from STATE.data.shippingLabels, which is loaded ONCE at app start (and by refreshScanOutData when stale). In a long-open PWA, shipping labels created later (e.g. "Pancake Sync" labels made by n8n after the app was opened) were missing from that cache, so courierBillShippingLabelFor() returned null and the row fell back to "ບໍ່ພົບ" even though the DB match was fine (sending was unaffected: it goes by the order number via Pancake).
+// FIX: new courierBillEnsureLabelsLoaded(ids) -- loadCourierBillPages() calls it right after the lean stats query with every matched_shipping_label_id in range; it fetches ONLY the ids missing from STATE.data.shippingLabels (shipping_labels .in("id", ids), chunks of 100, same row mapper as the app-start load) and merges them in without duplicates, BEFORE the counts and the table rows are computed/rendered. Failure is non-fatal (console warning only; the page renders as before). No schema/edge-function change.
+// v8.13 FIX (Tar 2026-10-02, "ໄປຫາເຫດຜົນກ່ອນວ່າເປັນຫຍັງຄືລົ້ມ" -- HAL bill VTE82767393738 produced a batch with 0 page rows)
 // -- OCR read the bill time "12:53:31" as "12:63:31"; courierBillExtractDepositDate returned the invalid timestamp "2026-10-01T12:63:31", Postgres rejected the
 // page insert (400, 22008 date/time out of range) and courierBillCreateBatchAndMatch never checked the insert result, so the bill silently vanished while the batch row stayed.
 // The n8n hal-billimages script then saw the bill missing, retried it every hour and tripped its circuit breaker after 3 failures (HAL bills for 52906969 stopped for ~15h).
@@ -1553,13 +1556,17 @@ const APP_VERSION = "8.13"; // v8.13 FIX (Tar 2026-10-02, "ໄປຫາເຫດ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.12"; // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.13"; // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.12→8.13 now that 8.14 is current).
+// (previous text of this slot, kept) // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.11→8.12 now that 8.13 is current).
 // (previous text of this slot, kept) // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.11"; // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.12"; // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.11→8.12 now that 8.13 is previous).
+// (previous text of this slot, kept) // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is previous).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is previous).
@@ -13147,6 +13154,9 @@ async function loadCourierBillPages(opts){
     }
     const { data: statsRows, error: statsErr } = await statsQ;
     if(statsErr) throw statsErr;
+    // v8.14 — see APP_VERSION comment: make sure every matched shipping label of these rows is in the
+    // local cache BEFORE counts/channel buckets/table rows read it (stale-cache "ບໍ່ພົບ" fix).
+    await courierBillEnsureLabelsLoaded((statsRows||[]).map(r=>r.matched_shipping_label_id));
     const confCounts = {high:0, medium:0, low:0, manual:0, unmatched:0};
     const courierCounts = {}; // v7.46 — see APP_VERSION comment
     // v8.06 — see APP_VERSION comment: same 4 buckets renderCourierBillPageRow's status column
@@ -13730,6 +13740,37 @@ async function matchAnousithActivityExcelRows(dateISO, rows, fileMeta){
     console.error("matchAnousithActivityExcelRows failed:", err);
     STATE.courierBillExcelLoading = false; render();
     return { ok:false, error: err.message||String(err) };
+  }
+}
+// v8.14 — see APP_VERSION comment. Fetches only the shipping labels that are referenced by the
+// courier-bill rows but missing from the app-start cache, and merges them into STATE.data.shippingLabels.
+async function courierBillEnsureLabelsLoaded(ids){
+  try{
+    const have = new Set((STATE.data.shippingLabels||[]).map(l=>l.id));
+    const missing = Array.from(new Set((ids||[]).filter(Boolean))).filter(id=>!have.has(id));
+    if(missing.length===0) return;
+    const added = [];
+    for(let i=0; i<missing.length; i+=100){
+      const chunk = missing.slice(i, i+100);
+      const { data, error } = await sb.from("shipping_labels").select("*").in("id", chunk);
+      if(error) throw error;
+      (data||[]).forEach(r=>added.push({
+        id:r.id, labelNumber:r.label_number||"", recipientName:r.recipient_name||"", recipientPhone:r.recipient_phone||"",
+        address:r.address||"", itemText:r.item_text||"", qty:r.qty||1, note:r.note||"", codAmount:r.cod_amount||0,
+        courierName:r.courier_name||"", freeShipping: !!r.free_shipping,
+        format:r.format||"normal", quickText:r.quick_text||"", direction:r.direction||"", customFooter:r.custom_footer||"",
+        printCount:r.print_count||0, status: r.status ?? 0,
+        source:r.source||"normal", waConversationId:r.wa_conversation_id||"", customerChatConversationId:r.customer_chat_conversation_id||"",
+        createdAt:r.created_at||"", createdBy:r.created_by||"",
+        updatedAt:r.updated_at||"", updatedBy:r.updated_by||""
+      }));
+    }
+    if(added.length){
+      const known = new Set((STATE.data.shippingLabels||[]).map(l=>l.id));
+      STATE.data.shippingLabels = (STATE.data.shippingLabels||[]).concat(added.filter(l=>!known.has(l.id)));
+    }
+  }catch(e){
+    console.warn("courierBillEnsureLabelsLoaded failed (non-fatal):", e);
   }
 }
 function courierBillShippingLabelFor(id){
