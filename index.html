@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.14"; // v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບິ່ງແນ່ວ່າບິນອານຸສິດທີ່ອັບເຂົ້າລະບົບເປັນບໍ່ພົບຂໍ້ມູນ ໃຫ້ເລືອກເອງ ແຕ່ວ່າ ເປັນ high ມັນຍ້ອນຫຍັງ" -- courier bill import rows showed "ບໍ່ພົບ / ເລືອກເອງ" in the customer column while the match itself was correct (confidence high, matched_shipping_label_id set in the DB).
+const APP_VERSION = "8.15"; // v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່ມມາເບິ່ງ" -- daily report "ອັບໂຫລດ COD ແລະ ເຄື່ອງຕີກັບ"): the green dot only meant "at least one file uploaded today", so it could not show that the hourly rounds keep adding newly returned bills during the day. Each courier on the two ເຄື່ອງຕີກັບ lines now shows the number of distinct bills uploaded today and the time of the latest upload, e.g. "ອານຸສິດ ✓ 2 ບິນ · ອັບລ່າສຸດ 10:01". loadDailyChecklistStatus now also selects bill_number + imported_at from courier_return_costs and computes retStats(); dailyChecklistPartsLine appends it. Display only -- no change to what counts as done, no schema change. COD lines unchanged.
+// v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບິ່ງແນ່ວ່າບິນອານຸສິດທີ່ອັບເຂົ້າລະບົບເປັນບໍ່ພົບຂໍ້ມູນ ໃຫ້ເລືອກເອງ ແຕ່ວ່າ ເປັນ high ມັນຍ້ອນຫຍັງ" -- courier bill import rows showed "ບໍ່ພົບ / ເລືອກເອງ" in the customer column while the match itself was correct (confidence high, matched_shipping_label_id set in the DB).
 // ROOT CAUSE: the customer cell, the channel column and the channel filter/counts are all derived from STATE.data.shippingLabels, which is loaded ONCE at app start (and by refreshScanOutData when stale). In a long-open PWA, shipping labels created later (e.g. "Pancake Sync" labels made by n8n after the app was opened) were missing from that cache, so courierBillShippingLabelFor() returned null and the row fell back to "ບໍ່ພົບ" even though the DB match was fine (sending was unaffected: it goes by the order number via Pancake).
 // FIX: new courierBillEnsureLabelsLoaded(ids) -- loadCourierBillPages() calls it right after the lean stats query with every matched_shipping_label_id in range; it fetches ONLY the ids missing from STATE.data.shippingLabels (shipping_labels .in("id", ids), chunks of 100, same row mapper as the app-start load) and merges them in without duplicates, BEFORE the counts and the table rows are computed/rendered. Failure is non-fatal (console warning only; the page renders as before). No schema/edge-function change.
 // v8.13 FIX (Tar 2026-10-02, "ໄປຫາເຫດຜົນກ່ອນວ່າເປັນຫຍັງຄືລົ້ມ" -- HAL bill VTE82767393738 produced a batch with 0 page rows)
@@ -1556,7 +1557,9 @@ const APP_VERSION = "8.14"; // v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.13"; // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.14"; // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.13→8.14 now that 8.15 is current).
+// (previous text of this slot, kept) // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.12→8.13 now that 8.14 is current).
 // (previous text of this slot, kept) // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.11→8.12 now that 8.13 is current).
@@ -1564,7 +1567,9 @@ const APP_VERSION_PREV = "8.13"; // v8.13 FIX (Tar 2026-10-02) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.12"; // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.13"; // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.12→8.13 now that 8.14 is previous).
+// (previous text of this slot, kept) // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.11→8.12 now that 8.13 is previous).
 // (previous text of this slot, kept) // v8.11 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is previous).
@@ -8436,7 +8441,7 @@ async function loadDailyChecklistStatus(){
     const [codRes, codSettleRes, retRes, noActRes] = await Promise.all([
       sb.from("cod_import_batches").select("courier_name, file_identifier").gte("imported_at", dayStart).lte("imported_at", dayEnd),
       sb.from("cod_settlements").select("courier_name, sender_phone").eq("courier_name", "ຮຸ່ງອາລຸນ").gte("imported_at", dayStart).lte("imported_at", dayEnd),
-      sb.from("courier_return_costs").select("courier_name, sender_phone").gte("imported_at", dayStart).lte("imported_at", dayEnd),
+      sb.from("courier_return_costs").select("courier_name, sender_phone, bill_number, imported_at").gte("imported_at", dayStart).lte("imported_at", dayEnd),
       sb.from("daily_checklist_no_activity").select("phone, courier_name, item_type").eq("checklist_date", today),
     ]);
     if(codRes.error) throw codRes.error;
@@ -8450,6 +8455,15 @@ async function loadDailyChecklistStatus(){
     const codHoungalouneDone = (phoneFull)=> codSettleRows.some(r=>normalizeSenderPhone(r.sender_phone)===phoneFull);
     const retRows = retRes.data||[];
     const retDone = (courier, phoneFull)=> retRows.some(r=>r.courier_name===courier && normalizeSenderPhone(r.sender_phone)===phoneFull);
+    // v8.15 — see APP_VERSION comment: distinct bill count + latest upload time (Laos clock) per courier+phone.
+    const retStats = (courier, phoneFull)=>{
+      const mine = retRows.filter(r=>r.courier_name===courier && normalizeSenderPhone(r.sender_phone)===phoneFull);
+      if(!mine.length) return null;
+      const bills = new Set(mine.map(r=>r.bill_number).filter(Boolean));
+      const lastMs = Math.max(...mine.map(r=>new Date(r.imported_at).getTime()).filter(n=>!isNaN(n)));
+      const last = isFinite(lastMs) ? new Date(lastMs).toLocaleTimeString("en-GB", {timeZone: LAOS_TZ, hour:"2-digit", minute:"2-digit"}) : "";
+      return {count: bills.size || mine.length, last};
+    };
     // v5.93: key now includes item_type ("cod"/"return") so the two never bleed into each other.
     const noAct = new Set((noActRes.data||[]).map(r=>`${r.item_type}|${r.phone}|${r.courier_name}`));
     const noActivity = (itemType, phone, courier)=> noAct.has(`${itemType}|${phone}|${courier}`);
@@ -8479,8 +8493,8 @@ async function loadDailyChecklistStatus(){
       cod52906969Parts: {ອານຸສິດ: {done: codAnousith1, noActivity: !codAnousith1Real && codAnousith1}, ຮຸ່ງອາລຸນ: {done: codHoungaloune1, noActivity: !codHoungaloune1Real && codHoungaloune1}},
       cod55279515Parts: {ອານຸສິດ: {done: codAnousith2, noActivity: !codAnousith2Real && codAnousith2}, ຮຸ່ງອາລຸນ: {done: codHoungaloune2, noActivity: !codHoungaloune2Real && codHoungaloune2}},
       return52906969: retAnousith1 && retHoungaloune1, return55279515: retAnousith2 && retHoungaloune2,
-      return52906969Parts: {ອານຸສິດ: {done: retAnousith1, noActivity: !retAnousith1Real && retAnousith1}, ຮຸ່ງອາລຸນ: {done: retHoungaloune1, noActivity: !retHoungaloune1Real && retHoungaloune1}},
-      return55279515Parts: {ອານຸສິດ: {done: retAnousith2, noActivity: !retAnousith2Real && retAnousith2}, ຮຸ່ງອາລຸນ: {done: retHoungaloune2, noActivity: !retHoungaloune2Real && retHoungaloune2}},
+      return52906969Parts: {ອານຸສິດ: {done: retAnousith1, noActivity: !retAnousith1Real && retAnousith1, stats: retStats("ອານຸສິດ","02052906969")}, ຮຸ່ງອາລຸນ: {done: retHoungaloune1, noActivity: !retHoungaloune1Real && retHoungaloune1, stats: retStats("ຮຸ່ງອາລຸນ","02052906969")}},
+      return55279515Parts: {ອານຸສິດ: {done: retAnousith2, noActivity: !retAnousith2Real && retAnousith2, stats: retStats("ອານຸສິດ","02055279515")}, ຮຸ່ງອາລຸນ: {done: retHoungaloune2, noActivity: !retHoungaloune2Real && retHoungaloune2, stats: retStats("ຮຸ່ງອາລຸນ","02055279515")}},
     };
   }catch(e){
     console.error("loadDailyChecklistStatus failed:", e);
@@ -8525,7 +8539,10 @@ function dailyChecklistPartsLine(parts, phone, itemType){
   return Object.entries(parts).map(([name, info])=>{
     const done = info && typeof info==="object" ? info.done : info; // tolerate old plain-boolean shape too
     const viaNoActivity = info && typeof info==="object" && info.noActivity;
-    const nameLabel = viaNoActivity ? `${esc(name)} <span style="opacity:.7;">(ມື້ນີ້ບໍ່ມີ)</span>` : esc(name);
+    // v8.15 — see APP_VERSION comment: for returns, show how many bills were uploaded today and when the last upload ran.
+    const st = info && typeof info==="object" ? info.stats : null;
+    const statsLabel = (st && !viaNoActivity) ? ` <span style="opacity:.75; font-size:.92em;">· ${st.count} ບິນ${st.last ? " · ອັບລ່າສຸດ "+esc(st.last) : ""}</span>` : "";
+    const nameLabel = (viaNoActivity ? `${esc(name)} <span style="opacity:.7;">(ມື້ນີ້ບໍ່ມີ)</span>` : esc(name)) + statsLabel;
     if(done) return `<span>${statusDot(true)} ${nameLabel}</span>`;
     if(!phone) return `<span>${statusDot(false)} ${esc(name)}</span>`;
     return `<span>${statusDot(false)} ${esc(name)} <button type="button" class="btn btn-sm btn-outline" data-daily-no-activity="${esc(itemType)}|${esc(phone)}|${esc(name)}" style="padding:1px 6px; font-size:9.5px; margin-left:2px;">ບໍ່ມີມື້ນີ້</button></span>`;
