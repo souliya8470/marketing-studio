@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.15"; // v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່ມມາເບິ່ງ" -- daily report "ອັບໂຫລດ COD ແລະ ເຄື່ອງຕີກັບ"): the green dot only meant "at least one file uploaded today", so it could not show that the hourly rounds keep adding newly returned bills during the day. Each courier on the two ເຄື່ອງຕີກັບ lines now shows the number of distinct bills uploaded today and the time of the latest upload, e.g. "ອານຸສິດ ✓ 2 ບິນ · ອັບລ່າສຸດ 10:01". loadDailyChecklistStatus now also selects bill_number + imported_at from courier_return_costs and computes retStats(); dailyChecklistPartsLine appends it. Display only -- no change to what counts as done, no schema change. COD lines unchanged.
+const APP_VERSION = "8.16"; // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)": "ໃນໜ້າສົ່ງບິນ ໃຫ້ເພີ່ມເລກອໍເດີ ໃສ່ນຳ ມີຊ່ອງແລ້ວ ແຕ່ບໍ່ມີຂໍ້ມູນຂຶ້ນມາສະແດງ") -- the ອໍເດີ column always showed "-". Cause: the page read courier_arrival_tag_log.pancake_order_id, a column the n8n arrival-tag script never fills (0 of 1,000+ rows); the order number it found is saved inside detail.orderId. New arrivalTagRowOrderId(r) = pancake_order_id || detail.orderId || detail.lookup.orderId, used for the cell and for the search box (so typing an order number now finds the row). Older rows (before 2026-10-02, found by phone only) have no order number stored and still show "-". Display only, no schema change; the ລູກຄ້າ column is unchanged (its source field is not stored either).
+// v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່ມມາເບິ່ງ" -- daily report "ອັບໂຫລດ COD ແລະ ເຄື່ອງຕີກັບ"): the green dot only meant "at least one file uploaded today", so it could not show that the hourly rounds keep adding newly returned bills during the day. Each courier on the two ເຄື່ອງຕີກັບ lines now shows the number of distinct bills uploaded today and the time of the latest upload, e.g. "ອານຸສິດ ✓ 2 ບິນ · ອັບລ່າສຸດ 10:01". loadDailyChecklistStatus now also selects bill_number + imported_at from courier_return_costs and computes retStats(); dailyChecklistPartsLine appends it. Display only -- no change to what counts as done, no schema change. COD lines unchanged.
 // v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບິ່ງແນ່ວ່າບິນອານຸສິດທີ່ອັບເຂົ້າລະບົບເປັນບໍ່ພົບຂໍ້ມູນ ໃຫ້ເລືອກເອງ ແຕ່ວ່າ ເປັນ high ມັນຍ້ອນຫຍັງ" -- courier bill import rows showed "ບໍ່ພົບ / ເລືອກເອງ" in the customer column while the match itself was correct (confidence high, matched_shipping_label_id set in the DB).
 // ROOT CAUSE: the customer cell, the channel column and the channel filter/counts are all derived from STATE.data.shippingLabels, which is loaded ONCE at app start (and by refreshScanOutData when stale). In a long-open PWA, shipping labels created later (e.g. "Pancake Sync" labels made by n8n after the app was opened) were missing from that cache, so courierBillShippingLabelFor() returned null and the row fell back to "ບໍ່ພົບ" even though the DB match was fine (sending was unaffected: it goes by the order number via Pancake).
 // FIX: new courierBillEnsureLabelsLoaded(ids) -- loadCourierBillPages() calls it right after the lean stats query with every matched_shipping_label_id in range; it fetches ONLY the ids missing from STATE.data.shippingLabels (shipping_labels .in("id", ids), chunks of 100, same row mapper as the app-start load) and merges them in without duplicates, BEFORE the counts and the table rows are computed/rendered. Failure is non-fatal (console warning only; the page renders as before). No schema/edge-function change.
@@ -1557,7 +1558,9 @@ const APP_VERSION = "8.15"; // v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.14"; // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.15"; // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.14→8.15 now that 8.16 is current).
+// (previous text of this slot, kept) // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.13→8.14 now that 8.15 is current).
 // (previous text of this slot, kept) // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.12→8.13 now that 8.14 is current).
@@ -1567,7 +1570,9 @@ const APP_VERSION_PREV = "8.14"; // v8.14 FIX (Tar 2026-10-04) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.13"; // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.14"; // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.13→8.14 now that 8.15 is previous).
+// (previous text of this slot, kept) // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.12→8.13 now that 8.14 is previous).
 // (previous text of this slot, kept) // v8.12 FIX (Tar 2026-10-01) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.11→8.12 now that 8.13 is previous).
@@ -25891,6 +25896,12 @@ function arrivalTagStatusLabel(status){
 }
 // Detail JSON shape differs by status (see anousith-arrival-tag.js) -- normalize the bits worth
 // showing in one place instead of repeating this per-row in the render function.
+// v8.16 — see APP_VERSION comment: courier_arrival_tag_log.pancake_order_id is never filled by the n8n
+// script (always null); the order number it found is stored inside detail.orderId instead.
+function arrivalTagRowOrderId(r){
+  const d = r.detail||{};
+  return String(r.pancake_order_id || d.orderId || (d.lookup && d.lookup.orderId) || "").trim();
+}
 function arrivalTagRowCustomer(r){
   const d = r.detail||{};
   return (d.lookup && d.lookup.matched_customer_name) || d.matched_customer_name || "";
@@ -32585,7 +32596,7 @@ function renderArrivalTagReport(){
     if(statusFilter==="unsent" && r.status==="messaged") return false;
     if(statusFilter!=="unsent" && statusFilter!=="all" && r.status!==statusFilter) return false;
     if(q){
-      const hay = [r.courier_bill_number, r.pancake_order_id, arrivalTagRowCustomer(r)].join(" ").toLowerCase();
+      const hay = [r.courier_bill_number, arrivalTagRowOrderId(r), arrivalTagRowCustomer(r)].join(" ").toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -32631,7 +32642,7 @@ function renderArrivalTagReport(){
                   <td>${i+1}</td>
                   <td>${esc(r.phone_account)}</td>
                   <td>${esc(r.courier_bill_number)}</td>
-                  <td>${esc(r.pancake_order_id||"-")}</td>
+                  <td>${esc(arrivalTagRowOrderId(r)||"-")}</td>
                   <td>${esc(arrivalTagRowCustomer(r)||"-")}</td>
                   <td>${r.day_count===0?"ມື້ນີ້":(r.day_count!=null?r.day_count+" ມື້":"-")}</td>
                   <td>${arrivalTagStatusLabel(r.status)}</td>
