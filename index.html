@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.16"; // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)": "ໃນໜ້າສົ່ງບິນ ໃຫ້ເພີ່ມເລກອໍເດີ ໃສ່ນຳ ມີຊ່ອງແລ້ວ ແຕ່ບໍ່ມີຂໍ້ມູນຂຶ້ນມາສະແດງ") -- the ອໍເດີ column always showed "-". Cause: the page read courier_arrival_tag_log.pancake_order_id, a column the n8n arrival-tag script never fills (0 of 1,000+ rows); the order number it found is saved inside detail.orderId. New arrivalTagRowOrderId(r) = pancake_order_id || detail.orderId || detail.lookup.orderId, used for the cell and for the search box (so typing an order number now finds the row). Older rows (before 2026-10-02, found by phone only) have no order number stored and still show "-". Display only, no schema change; the ລູກຄ້າ column is unchanged (its source field is not stored either).
+const APP_VERSION = "8.17"; // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂປຣແກຣມດູດ CF ໄລ່ສົດ ... ດູດຮະຫັດມາເຂົ້າ Marketing Studio ໃຫ້ພະນັກງານກວດສະລິບ ແລ້ວສົ່ງໄປ POS ຂຶ້ນບິນ+ລົບສະຕັອກ ແບບຄົບວົງຈອນ") -- new page "🔴 Live CF". Comments "CF [ລະຫັດ] [ຈຳນວນ]" on a Facebook Live arrive via the fb-live-webhook Edge Function (Meta page "feed" webhook) and/or the manual backfill button (fb-live-admin) and become live_cf_items that SOFT-RESERVE stock (cf_reserved_qty; physical stock untouched), one live_cf_orders row per customer per Live. Staff fill in delivery details, upload the transfer slip (cf-slip-ocr reads the amount, shows match/mismatch + duplicate-slip warning), then "✅ ຢືນຢັນສະລິບ → ສົ່ງ POS" hands the order to online_orders (pending_review) and runs the EXISTING confirmOnlineOrder() (now takes opts.skipConfirm) which creates the POS bill, deducts stock and creates the shipping label. Unpaid holds auto-release via pg_cron job cf-release-expired (DB-side). Data loads only on page open/manual reload; live updates are an opt-in Realtime toggle (no polling/timers). Schema: live_cf_migration.sql. 
+// (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)": "ໃນໜ້າສົ່ງບິນ ໃຫ້ເພີ່ມເລກອໍເດີ ໃສ່ນຳ ມີຊ່ອງແລ້ວ ແຕ່ບໍ່ມີຂໍ້ມູນຂຶ້ນມາສະແດງ") -- the ອໍເດີ column always showed "-". Cause: the page read courier_arrival_tag_log.pancake_order_id, a column the n8n arrival-tag script never fills (0 of 1,000+ rows); the order number it found is saved inside detail.orderId. New arrivalTagRowOrderId(r) = pancake_order_id || detail.orderId || detail.lookup.orderId, used for the cell and for the search box (so typing an order number now finds the row). Older rows (before 2026-10-02, found by phone only) have no order number stored and still show "-". Display only, no schema change; the ລູກຄ້າ column is unchanged (its source field is not stored either).
 // v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່ມມາເບິ່ງ" -- daily report "ອັບໂຫລດ COD ແລະ ເຄື່ອງຕີກັບ"): the green dot only meant "at least one file uploaded today", so it could not show that the hourly rounds keep adding newly returned bills during the day. Each courier on the two ເຄື່ອງຕີກັບ lines now shows the number of distinct bills uploaded today and the time of the latest upload, e.g. "ອານຸສິດ ✓ 2 ບິນ · ອັບລ່າສຸດ 10:01". loadDailyChecklistStatus now also selects bill_number + imported_at from courier_return_costs and computes retStats(); dailyChecklistPartsLine appends it. Display only -- no change to what counts as done, no schema change. COD lines unchanged.
 // v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບິ່ງແນ່ວ່າບິນອານຸສິດທີ່ອັບເຂົ້າລະບົບເປັນບໍ່ພົບຂໍ້ມູນ ໃຫ້ເລືອກເອງ ແຕ່ວ່າ ເປັນ high ມັນຍ້ອນຫຍັງ" -- courier bill import rows showed "ບໍ່ພົບ / ເລືອກເອງ" in the customer column while the match itself was correct (confidence high, matched_shipping_label_id set in the DB).
 // ROOT CAUSE: the customer cell, the channel column and the channel filter/counts are all derived from STATE.data.shippingLabels, which is loaded ONCE at app start (and by refreshScanOutData when stale). In a long-open PWA, shipping labels created later (e.g. "Pancake Sync" labels made by n8n after the app was opened) were missing from that cache, so courierBillShippingLabelFor() returned null and the row fell back to "ບໍ່ພົບ" even though the DB match was fine (sending was unaffected: it goes by the order number via Pancake).
@@ -1558,7 +1559,9 @@ const APP_VERSION = "8.16"; // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 �
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.15"; // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.16"; // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.15→8.16 now that 8.17 is current).
+// (previous text of this slot, kept) // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.14→8.15 now that 8.16 is current).
 // (previous text of this slot, kept) // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.13→8.14 now that 8.15 is current).
@@ -1570,7 +1573,9 @@ const APP_VERSION_PREV = "8.15"; // v8.15 NEW (Tar 2026-10-05) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.14"; // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.15"; // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.14→8.15 now that 8.16 is previous).
+// (previous text of this slot, kept) // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.13→8.14 now that 8.15 is previous).
 // (previous text of this slot, kept) // v8.13 FIX (Tar 2026-10-02) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.12→8.13 now that 8.14 is previous).
@@ -12583,6 +12588,656 @@ function attachOnlineOrdersEvents(){
   });
   if(STATE.printingLabels.length>0) attachLabelPrintPreviewEvents();
 }
+/* ====================== LIVE CF (🔴 Live CF) — v8.17 ======================
+   Customers type "CF" (+ optional product code / qty) in the comments of a Facebook Live. Comments reach
+   the database through the fb-live-webhook Edge Function (Meta "feed" webhook) and/or the manual
+   "ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ" backfill (fb-live-admin). Each CF comment becomes a live_cf_items row that RESERVES
+   stock (soft hold — physical stock is untouched), grouped into one live_cf_orders row per customer per Live.
+   Staff then: fill in the customer's delivery details -> upload the customer's transfer slip (cf-slip-ocr reads the
+   amount) -> compare with the bill total -> "ຢືນຢັນສະລິບ → ສົ່ງ POS", which hands the order to the existing
+   🛒 ອໍເດີອອນລາຍ flow (online_orders) and runs confirmOnlineOrder() — that existing code creates the POS bill,
+   deducts stock and creates the shipping label, so none of that logic is duplicated here.
+   Unpaid holds are released automatically by the pg_cron job `cf-release-expired` (DB-side, no client timers).
+   Data is loaded only on page open / manual reload (no polling); live updates are an opt-in Realtime toggle.
+   Schema + functions: live_cf_migration.sql (tables live_sessions, live_cf_orders, live_cf_items, live_comments). */
+function lcf(){
+  if(!STATE.liveCf) STATE.liveCf = {
+    sessions:[], sessionId:"", orders:[], items:[], comments:[], currentProduct:null,
+    loading:false, tab:"open", drafts:{}, busy:{}, slip:{}, pages:[], videos:[], webhookInfo:null,
+    productQuery:"", productResults:[], productTarget:"", assigningComment:"", showNew:false,
+    realtime:false, newForm:{title:"", pageId:"", holdMinutes:120}
+  };
+  return STATE.liveCf;
+}
+function lcfSession(){ const L=lcf(); return L.sessions.find(s=>s.id===L.sessionId)||null; }
+function lcfTime(iso){
+  if(!iso) return "";
+  try{ return new Date(iso).toLocaleString("en-GB",{timeZone:"Asia/Vientiane",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+  catch(e){ return String(iso); }
+}
+function lcfErr(e){ return (e && (e.message||e.error_description)) || String(e||""); }
+
+async function loadLiveCfSessions(keepSelection){
+  const L = lcf();
+  L.loading = true; render();
+  try{
+    const {data, error} = await sb.from("live_sessions").select("*").order("created_at",{ascending:false}).limit(40);
+    if(error) throw error;
+    L.sessions = data||[];
+    if(!L.sessionId || !keepSelection || !L.sessions.find(s=>s.id===L.sessionId)){
+      const live = L.sessions.find(s=>s.status==="live") || L.sessions.find(s=>s.status==="draft") || L.sessions[0];
+      L.sessionId = live ? live.id : "";
+    }
+    if(!L.pages.length) lcfLoadPages(true);
+    await loadLiveCfSessionData(true);
+  }catch(e){
+    console.error("loadLiveCfSessions failed:", e);
+    showToast("⚠️ ໂຫຼດ Live CF ບໍ່ສຳເລັດ: "+lcfErr(e), "error");
+  }
+  L.loading = false; render();
+}
+// silent=true: don't toggle the loading flag / re-render (caller renders)
+async function loadLiveCfSessionData(silent){
+  const L = lcf();
+  const s = lcfSession();
+  if(!s){ L.orders=[]; L.items=[]; L.comments=[]; L.currentProduct=null; if(!silent) render(); return; }
+  try{
+    const [oRes, iRes, cRes] = await Promise.all([
+      sb.from("live_cf_orders").select("*").eq("session_id", s.id).order("created_at",{ascending:true}),
+      sb.from("live_cf_items").select("*").eq("session_id", s.id).order("created_at",{ascending:true}),
+      sb.from("live_comments").select("*").eq("session_id", s.id).eq("parse_status","cf_no_product").is("cf_item_id", null).order("received_at",{ascending:false}).limit(100)
+    ]);
+    if(oRes.error) throw oRes.error;
+    if(iRes.error) throw iRes.error;
+    if(cRes.error) throw cRes.error;
+    L.orders = oRes.data||[]; L.items = iRes.data||[]; L.comments = cRes.data||[];
+    if(s.current_product_id){
+      if(!L.currentProduct || L.currentProduct.id!==s.current_product_id){
+        const {data} = await sb.from("pos_products").select("id,name,barcode,price_1,online_price_kip,stock_qty").eq("id", s.current_product_id).maybeSingle();
+        L.currentProduct = data||null;
+      }
+    } else L.currentProduct = null;
+  }catch(e){
+    console.error("loadLiveCfSessionData failed:", e);
+    showToast("⚠️ ໂຫຼດຂໍ້ມູນ Live ບໍ່ສຳເລັດ: "+lcfErr(e), "error");
+  }
+  if(!silent) render();
+}
+async function lcfLoadPages(silent){
+  const L = lcf();
+  try{
+    const {data, error} = await sb.functions.invoke("fb-list-pages", {body:{}});
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"");
+    L.pages = (data && data.pages)||[];
+    if(!silent) render();
+  }catch(e){
+    console.error("lcfLoadPages failed:", e);
+    if(!silent) showToast("⚠️ ໂຫຼດລາຍການເພຈບໍ່ສຳເລັດ (ໃສ່ Page ID ເອງໄດ້): "+lcfErr(e), "error");
+  }
+}
+async function lcfAdmin(action, extra){
+  const {data, error} = await sb.functions.invoke("fb-live-admin", {body:Object.assign({action}, extra||{})});
+  if(error) throw new Error(await extractFunctionErrorMessage(error));
+  if(!data || data.ok===false) throw new Error((data && data.error)||"ຜິດພາດ");
+  return data;
+}
+async function lcfRpc(fn, args){
+  const {data, error} = await sb.rpc(fn, args);
+  if(error) throw error;
+  return data;
+}
+function lcfItemsFor(orderId){ return lcf().items.filter(i=>i.order_id===orderId && i.status!=="cancelled"); }
+function lcfOrderName(o){ return o.customer_name || "—"; }
+
+/* ---------- Realtime (opt-in) ---------- */
+let lcfChannel = null, lcfReloadTimer = null;
+function lcfStopRealtime(){
+  if(lcfChannel){ try{ sb.removeChannel(lcfChannel); }catch(e){} lcfChannel = null; }
+  if(lcfReloadTimer){ clearTimeout(lcfReloadTimer); lcfReloadTimer = null; }
+  lcf().realtime = false;
+}
+function lcfStartRealtime(){
+  const L = lcf();
+  lcfStopRealtime();
+  if(!L.sessionId) return;
+  const kick = ()=>{
+    if(lcfReloadTimer) clearTimeout(lcfReloadTimer);
+    lcfReloadTimer = setTimeout(async ()=>{
+      if(STATE.page!=="liveCf") return;
+      await loadLiveCfSessionData(true); render();
+    }, 600);
+  };
+  lcfChannel = sb.channel("live_cf_"+L.sessionId)
+    .on("postgres_changes",{event:"*",schema:"public",table:"live_cf_orders",filter:`session_id=eq.${L.sessionId}`}, kick)
+    .on("postgres_changes",{event:"*",schema:"public",table:"live_cf_items",filter:`session_id=eq.${L.sessionId}`}, kick)
+    .subscribe();
+  L.realtime = true;
+}
+
+/* ---------- Render ---------- */
+const LCF_STATUS = {open:"🕒 ລໍສະລິບ", slip_attached:"🧾 ມີສະລິບ ລໍກວດ", handed_off:"✅ ສົ່ງ POS ແລ້ວ", cancelled:"❌ ຍົກເລີກ", expired:"⌛ ໝົດເວລາຈອງ"};
+const LCF_ITEM_STATUS = {reserved:"ຈອງແລ້ວ", oos:"❌ ສະຕັອກບໍ່ພໍ", released:"⌛ ປ່ອຍຈອງແລ້ວ", cancelled:"ຍົກເລີກ", handed_off:"ສົ່ງແລ້ວ"};
+function renderLiveCf(){
+  const L = lcf();
+  const s = lcfSession();
+  return `
+    <div class="page-head">
+      <h1>🔴 Live CF</h1>
+      <p>ດູດຄອມເມັ້ນ "CF" ຈາກ Facebook Live → ຈອງສະຕັອກ → ກວດສະລິບ → ສົ່ງ POS ຂຶ້ນບິນ + ຕັດສະຕັອກ</p>
+    </div>
+    <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between;">
+      <button type="button" class="btn btn-sm" id="lcf-new-toggle">➕ ເປີດ Live ໃໝ່</button>
+      <button type="button" class="btn btn-sm btn-outline" id="lcf-reload">🔄 ໂຫຼດຄືນ</button>
+    </div>
+    ${L.showNew ? renderLcfNewForm() : ""}
+    ${L.loading ? `<div class="card"><p class="small-muted">ກຳລັງໂຫຼດ...</p></div>` : (L.sessions.length===0
+      ? `<div class="card"><p class="small-muted">ຍັງບໍ່ມີ Live — ກົດ "➕ ເປີດ Live ໃໝ່"</p></div>`
+      : renderLcfSession(s))}
+  `;
+}
+function renderLcfNewForm(){
+  const L = lcf(), f = L.newForm;
+  return `
+    <div class="card" style="margin-bottom:14px;">
+      <h3 style="margin-top:0;">➕ Live ໃໝ່</h3>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;">
+        <label>ຊື່ Live<input type="text" id="lcf-new-title" value="${esc(f.title)}" placeholder="ເຊັ່ນ Live ຄືນວັນສຸກ"></label>
+        <label>Facebook Page
+          ${L.pages.length ? `<select id="lcf-new-page"><option value="">— ເລືອກເພຈ —</option>${L.pages.map(p=>`<option value="${esc(p.id)}" ${String(f.pageId)===String(p.id)?"selected":""}>${esc(p.name||p.id)}</option>`).join("")}</select>`
+            : `<input type="text" id="lcf-new-page-text" value="${esc(f.pageId)}" placeholder="Page ID">`}
+        </label>
+        <label>ຈອງສະຕັອກ (ນາທີ, 0 = ບໍ່ປ່ອຍ)<input type="number" id="lcf-new-hold" min="0" value="${esc(f.holdMinutes)}"></label>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn btn-sm" id="lcf-new-save">💾 ສ້າງ</button>
+        <button class="btn btn-sm btn-outline" id="lcf-new-cancel">ຍົກເລີກ</button>
+      </div>
+    </div>`;
+}
+function renderLcfSession(s){
+  const L = lcf();
+  if(!s) return "";
+  const live = s.status==="live";
+  return `
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px;">
+        <select id="lcf-session-select" style="max-width:100%; flex:1; min-width:200px;">
+          ${L.sessions.map(x=>`<option value="${esc(x.id)}" ${x.id===s.id?"selected":""}>${x.status==="live"?"🔴":(x.status==="draft"?"⚪":"⚫")} ${esc(x.title||"(ບໍ່ມີຊື່)")} — ${esc(lcfTime(x.created_at))}</option>`).join("")}
+        </select>
+        <span class="small-muted">${live?"🔴 ກຳລັງ Live":(s.status==="draft"?"⚪ ຮ່າງ (ຍັງບໍ່ເຊື່ອມ Live)":"⚫ ຈົບແລ້ວ")}</span>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; background:var(--tint-highlight); border-radius:8px; padding:10px 14px; margin-bottom:10px;">
+        <div><span class="small-muted">Page ID</span><div>${esc(s.fb_page_id||"—")}</div></div>
+        <div><span class="small-muted">Video ID</span><div>${esc(s.fb_video_id||"—")}</div></div>
+        <div><span class="small-muted">ຈອງສະຕັອກ (ນາທີ)</span>
+          <div style="display:flex; gap:6px;"><input type="number" min="0" id="lcf-hold-input" value="${esc(s.reserve_minutes)}" style="width:90px;">
+          <button class="btn btn-sm btn-outline" id="lcf-hold-save">💾</button></div></div>
+        <div><span class="small-muted">ສິນຄ້າທີ່ກຳລັງຂາຍ (ຄອມເມັ້ນ "CF" ເປົ່າໆ ຈະຖືກນັບເປັນສິນຄ້ານີ້)</span>
+          <div><b>${L.currentProduct ? esc(L.currentProduct.name)+` <span class="small-muted">(${fmt(L.currentProduct.online_price_kip||L.currentProduct.price_1)} ກີບ · ສະຕັອກ ${fmt(L.currentProduct.stock_qty)})</span>` : "— ຍັງບໍ່ໄດ້ຕັ້ງ —"}</b></div></div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+        <button class="btn btn-sm btn-outline" id="lcf-set-product">🎯 ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ</button>
+        ${L.currentProduct ? `<button class="btn btn-sm btn-outline" id="lcf-clear-product">ລ້າງສິນຄ້າ</button>` : ""}
+        ${s.status!=="ended" ? `<button class="btn btn-sm btn-outline" id="lcf-find-video">🔍 ຫາ Live ຈາກເພຈ</button>` : ""}
+        ${s.fb_video_id ? `<button class="btn btn-sm btn-outline" id="lcf-backfill">📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ</button>` : ""}
+        <button class="btn btn-sm btn-outline" id="lcf-webhook-check">🔌 ກວດ Webhook</button>
+        <button class="btn btn-sm btn-outline" id="lcf-realtime">${L.realtime?"🟢 ອັບເດດສົດ: ເປີດ (ກົດປິດ)":"⚪ ເປີດອັບເດດສົດ"}</button>
+        ${s.status!=="ended" ? `<button class="btn btn-sm btn-outline" id="lcf-end" style="color:var(--danger); border-color:var(--danger);">⏹️ ຈົບ Live</button>` : ""}
+      </div>
+      ${L.productTarget==="current" ? renderLcfProductSearch("ຄົ້ນຫາສິນຄ້າທີ່ຈະຂາຍ (ຊື່ ຫຼື ບາໂຄດ)") : ""}
+      ${L.videos.length ? `<div style="margin-top:8px;"><b>ເລືອກ Live ທີ່ກຳລັງອອກອາກາດ:</b>${L.videos.map(v=>`
+        <div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border,#eee);">
+          <div style="flex:1;"><div>${esc(v.title||"(ບໍ່ມີຊື່)")}</div><div class="small-muted">${esc(v.status)} · ${esc(v.video_id)}</div></div>
+          <button class="btn btn-sm" data-lcf-pick-video="${esc(v.video_id)}">ໃຊ້ອັນນີ້</button>
+        </div>`).join("")}</div>` : ""}
+      ${s.status!=="ended" ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+        <span class="small-muted">ຫຼືໃສ່ Video ID ເອງ:</span><input type="text" id="lcf-video-manual" placeholder="Video ID" style="max-width:200px;">
+        <button class="btn btn-sm btn-outline" id="lcf-video-manual-save">ເຊື່ອມ</button></div>` : ""}
+      ${L.webhookInfo ? `<div class="small-muted" style="margin-top:8px;">${L.webhookInfo}</div>` : ""}
+    </div>
+    ${renderLcfTabs()}
+  `;
+}
+function renderLcfProductSearch(label){
+  const L = lcf();
+  return `
+    <div style="margin-top:8px; padding:10px; border:1px dashed var(--border,#ccc); border-radius:8px;">
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="lcf-product-q" value="${esc(L.productQuery)}" placeholder="${esc(label)}" style="flex:1;">
+        <button class="btn btn-sm" id="lcf-product-search">🔎</button>
+        <button class="btn btn-sm btn-outline" id="lcf-product-close">✖</button>
+      </div>
+      ${L.productResults.map(p=>`
+        <div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border,#eee);">
+          <div style="flex:1;"><div>${esc(p.name)}</div><div class="small-muted">${esc(p.barcode||"")} · ${fmt(p.online_price_kip||p.price_1)} ກີບ · ສະຕັອກ ${fmt(p.stock_qty)}</div></div>
+          <button class="btn btn-sm" data-lcf-pick-product="${esc(p.id)}">ເລືອກ</button>
+        </div>`).join("")}
+    </div>`;
+}
+function renderLcfTabs(){
+  const L = lcf();
+  const by = st => L.orders.filter(o=>st.includes(o.status));
+  const TABS = [
+    {key:"open", label:"🕒 ລໍສະລິບ", list:by(["open"])},
+    {key:"slip", label:"🧾 ກວດສະລິບ", list:by(["slip_attached"])},
+    {key:"handed", label:"✅ ສົ່ງ POS ແລ້ວ", list:by(["handed_off"])},
+    {key:"closed", label:"❌ ປິດ/ໝົດເວລາ", list:by(["cancelled","expired"])}
+  ];
+  const cur = TABS.find(t=>t.key===L.tab);
+  const totalCfKip = L.orders.filter(o=>o.status!=="cancelled"&&o.status!=="expired").reduce((a,o)=>a+(Number(o.total_kip)||0),0);
+  return `
+    <div class="small-muted" style="margin-bottom:8px;">ລູກຄ້າທີ່ CF: ${fmt(L.orders.length)} ຄົນ · ຍອດລວມ (ບໍ່ນັບທີ່ປິດ): ${fmt(totalCfKip)} ກີບ</div>
+    <div class="tabs" style="margin-bottom:14px;">
+      ${TABS.map(t=>`<div class="tab ${L.tab===t.key?'active':''}" data-lcf-tab="${t.key}">${t.label} (${fmt(t.list.length)})</div>`).join("")}
+      <div class="tab ${L.tab==="comments"?'active':''}" data-lcf-tab="comments">💬 ຄອມເມັ້ນບໍ່ຮູ້ສິນຄ້າ (${fmt(L.comments.length)})</div>
+    </div>
+    ${L.tab==="comments" ? renderLcfComments() : (cur && cur.list.length ? cur.list.slice().reverse().map(renderLcfOrder).join("") : `<div class="card"><p class="small-muted">🎉 ບໍ່ມີລາຍການ</p></div>`)}
+  `;
+}
+function renderLcfComments(){
+  const L = lcf();
+  if(!L.comments.length) return `<div class="card"><p class="small-muted">🎉 ບໍ່ມີຄອມເມັ້ນທີ່ລໍຖ້າ</p></div>`;
+  return `
+    ${L.productTarget==="assign" ? `<div class="card" style="margin-bottom:14px;">${renderLcfProductSearch("ເລືອກສິນຄ້າໃຫ້ຄອມເມັ້ນນີ້ (ຊື່ ຫຼື ບາໂຄດ)")}</div>` : ""}
+    ${L.comments.map(c=>`
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between;">
+          <div><b>${esc(c.fb_user_name||c.fb_user_id)}</b> <span class="small-muted">${esc(lcfTime(c.received_at))}</span>
+            <div>"${esc(c.message)}" <span class="small-muted">(ຈຳນວນ ${fmt(c.qty||1)}${c.product_code?` · ລະຫັດ ${esc(c.product_code)}`:""})</span></div>
+            <div class="small-muted">${c.product_code?"ບໍ່ພົບສິນຄ້າລະຫັດນີ້":"ບໍ່ມີລະຫັດ ແລະ ຍັງບໍ່ໄດ້ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ"}</div></div>
+          <button class="btn btn-sm" data-lcf-assign="${esc(c.id)}">🎯 ເລືອກສິນຄ້າ</button>
+        </div>
+      </div>`).join("")}`;
+}
+function lcfDraft(o, field){
+  const d = lcf().drafts[o.id];
+  return (d && d[field]!==undefined) ? d[field] : (o[field]==null ? "" : o[field]);
+}
+function renderLcfOrder(o){
+  const L = lcf();
+  const items = L.items.filter(i=>i.order_id===o.id && i.status!=="cancelled");
+  const editable = o.status==="open" || o.status==="slip_attached";
+  const busy = !!L.busy[o.id];
+  const slipRes = L.slip[o.id];
+  const total = Number(o.total_kip)||0;
+  const hasSlip = !!o.slip_url;
+  const slipAmt = o.slip_amount_kip==null ? null : Number(o.slip_amount_kip);
+  const match = hasSlip && slipAmt!=null && slipAmt===total;
+  const diff = (hasSlip && slipAmt!=null) ? slipAmt - total : null;
+  const couriers = STATE.data.couriers||[];
+  const field = (label, key, type)=>`<label style="display:block;"><span class="small-muted">${label}</span>
+      <input type="${type||"text"}" ${editable?"":"disabled"} data-lcf-field="${esc(o.id)}|${key}" value="${esc(lcfDraft(o,key))}" style="width:100%;"></label>`;
+  return `
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; margin-bottom:10px;">
+      <div>
+        <div style="font-weight:700; font-size:15px;">${esc(o.order_no)} · ${esc(o.customer_name||"(ຍັງບໍ່ມີຊື່)")}</div>
+        <div class="small-muted">FB: ${esc(o.fb_user_id)} · ${esc(lcfTime(o.created_at))}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight:700; color:var(--sage-dark,#3a7d44);">${fmt(total)} ກີບ</div>
+        <div class="small-muted">${LCF_STATUS[o.status]||esc(o.status)}</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto; margin-bottom:10px;"><table>
+      <thead><tr><th>ສິນຄ້າ</th><th>ຈຳນວນ</th><th>ລາຄາ</th><th>ລວມ</th><th>ສະຖານະ</th><th></th></tr></thead>
+      <tbody>${items.map(i=>`<tr>
+        <td>${esc(i.product_name)}</td><td>${fmt(i.qty)}</td><td>${fmt(i.unit_price_kip)}</td><td>${fmt(i.line_total_kip)}</td>
+        <td>${LCF_ITEM_STATUS[i.status]||esc(i.status)}</td>
+        <td style="white-space:nowrap;">${editable ? `
+          ${(i.status==="oos"||i.status==="released") ? `<button class="btn btn-sm btn-outline" data-lcf-item="reserve" data-lcf-item-id="${esc(i.id)}">ຈອງຄືນ</button>` : ""}
+          <button class="btn btn-sm btn-outline" data-lcf-item="cancel" data-lcf-item-id="${esc(i.id)}" style="color:var(--danger); border-color:var(--danger);">✖</button>` : ""}</td>
+      </tr>`).join("")||`<tr><td colspan="6" class="small-muted">ບໍ່ມີລາຍການ</td></tr>`}</tbody>
+    </table></div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; background:var(--tint-highlight); border-radius:8px; padding:10px 14px; margin-bottom:10px;">
+      ${field("ຊື່ຜູ້ຮັບ","customer_name")}
+      ${field("ເບີໂທ","phone")}
+      <label style="display:block;"><span class="small-muted">ຂົນສົ່ງ</span>
+        <select ${editable?"":"disabled"} data-lcf-field="${esc(o.id)}|courier_id" style="width:100%;">
+          <option value="">—</option>${couriers.map(c=>`<option value="${esc(c.id)}" ${String(lcfDraft(o,"courier_id"))===String(c.id)?"selected":""}>${esc(c.name)}</option>`).join("")}
+        </select></label>
+      ${field("ແຂວງ","province")}
+      ${field("ເມືອງ","district")}
+      ${field("ບ້ານ/ທີ່ຢູ່","address_detail")}
+      ${field("ຄ່າສົ່ງ (ກີບ)","shipping_fee_kip","number")}
+      ${field("ໝາຍເຫດ","notes")}
+    </div>
+    ${editable ? `<div style="margin-bottom:10px;"><button class="btn btn-sm btn-outline" data-lcf-save="${esc(o.id)}" ${busy?"disabled":""}>💾 ບັນທຶກຂໍ້ມູນລູກຄ້າ/ຄ່າສົ່ງ</button></div>` : ""}
+    <div style="border-top:1px solid var(--border,#eee); padding-top:10px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;">
+      ${hasSlip ? `<a href="${esc(o.slip_url)}" target="_blank" rel="noopener"><img src="${esc(o.slip_url)}" alt="ສະລິບ" style="height:110px; border-radius:6px; border:1px solid var(--border,#ddd);"></a>` : ""}
+      <div style="flex:1; min-width:220px;">
+        ${hasSlip ? `
+          <div>ຍອດໃນສະລິບ: <b>${slipAmt==null?"ອ່ານບໍ່ໄດ້":fmt(slipAmt)+" ກີບ"}</b> · ຍອດບິນ: <b>${fmt(total)} ກີບ</b></div>
+          <div style="margin:4px 0; font-weight:700; color:${match?"var(--sage-dark,#3a7d44)":"var(--danger,#c0392b)"};">
+            ${match ? "✅ ຍອດກົງກັນ" : (diff==null ? "⚠️ ອ່ານຍອດບໍ່ໄດ້ — ກວດດ້ວຍຕາ" : `⚠️ ຍອດບໍ່ກົງ (${diff>0?"+":""}${fmt(diff)} ກີບ)`)}
+          </div>
+          <div class="small-muted">${o.slip_bank?esc(o.slip_bank)+" · ":""}${o.slip_ref?"ອ້າງອີງ "+esc(o.slip_ref)+" · ":""}${o.slip_paid_at?esc(lcfTime(o.slip_paid_at)):""}</div>
+          <div class="small-muted">⚠️ OCR ຊ່ວຍອ່ານຍອດເທົ່ານັ້ນ — ກວດໃຫ້ແນ່ໃຈວ່າເງິນເຂົ້າບັນຊີແທ້ກ່ອນຢືນຢັນ</div>` : `<div class="small-muted">ຍັງບໍ່ໄດ້ແນບສະລິບ</div>`}
+        ${slipRes && slipRes.hint ? `<div style="margin-top:4px; color:var(--danger,#c0392b);">${slipRes.hint}</div>` : ""}
+        ${editable ? `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <label class="btn btn-sm btn-outline" style="cursor:pointer;">${busy?"⏳ ກຳລັງອ່ານສະລິບ...":(hasSlip?"📷 ປ່ຽນສະລິບ":"📷 ອັບໂຫຼດສະລິບ")}
+            <input type="file" accept="image/*" data-lcf-slip="${esc(o.id)}" style="display:none;" ${busy?"disabled":""}></label>
+          ${o.status==="slip_attached" ? `<button class="btn btn-sm" data-lcf-handoff="${esc(o.id)}" ${busy?"disabled":""} style="background:var(--sage-dark,#3a7d44);">✅ ຢືນຢັນສະລິບ → ສົ່ງ POS</button>` : ""}
+          <button class="btn btn-sm btn-outline" data-lcf-cancel="${esc(o.id)}" style="color:var(--danger); border-color:var(--danger);">❌ ຍົກເລີກອໍເດີ</button>
+        </div>` : ""}
+        ${o.status==="expired" ? `<button class="btn btn-sm btn-outline" data-lcf-revive="${esc(o.id)}" style="margin-top:8px;">♻️ ເປີດຄືນ + ຈອງໃໝ່</button>` : ""}
+        ${o.status==="handed_off" ? `<div class="small-muted" style="margin-top:6px;">ສົ່ງເຂົ້າ POS ໂດຍ ${esc(o.handed_off_by||"")} · ${esc(lcfTime(o.handed_off_at))} (ເບິ່ງໃນແຖບ 🛒 ອໍເດີອອນລາຍ)</div>` : ""}
+        ${o.cancel_reason ? `<div class="small-muted" style="margin-top:6px;">ເຫດຜົນ: ${esc(o.cancel_reason)}</div>` : ""}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- Actions ---------- */
+async function lcfCompressToJpeg(file){
+  const img = await new Promise((resolve,reject)=>{
+    const im = new Image();
+    im.onload = ()=>resolve(im); im.onerror = reject;
+    im.src = URL.createObjectURL(file);
+  });
+  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.width*scale); canvas.height = Math.round(img.height*scale);
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(img.src);
+  return await new Promise(resolve=>canvas.toBlob(resolve, "image/jpeg", 0.85));
+}
+async function lcfUploadSlip(orderId, file){
+  const L = lcf();
+  const o = L.orders.find(x=>x.id===orderId); if(!o) return;
+  L.busy[orderId] = true; L.slip[orderId] = {}; render();
+  try{
+    const blob = await lcfCompressToJpeg(file);
+    const path = `${POS_SHOP_ID}/${Date.now()}.jpg`;
+    const {error: upErr} = await sb.storage.from("online-payment-slips").upload(path, blob, {contentType:"image/jpeg", upsert:false});
+    if(upErr) throw upErr;
+    const url = sb.storage.from("online-payment-slips").getPublicUrl(path).data.publicUrl;
+    const {data, error} = await sb.functions.invoke("cf-slip-ocr", {body:{image_url:url}});
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(!data || data.ok===false) throw new Error((data&&data.error)||"ອ່ານສະລິບບໍ່ສຳເລັດ");
+    const ocr = data.ocr||{};
+    if(ocr.is_bank_slip===false){
+      L.slip[orderId] = {hint:"⚠️ ຮູບນີ້ບໍ່ຄືສະລິບໂອນເງິນ — ບໍ່ໄດ້ແນບ. ລອງຖ່າຍໃໝ່."};
+      showToast("⚠️ ຮູບນີ້ບໍ່ແມ່ນສະລິບໂອນເງິນ", "error");
+    } else if(data.duplicate_of){
+      L.slip[orderId] = {hint:`⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວກັບອໍເດີ ${esc(data.duplicate_of)} — ບໍ່ໄດ້ແນບ`};
+      showToast("⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວ", "error");
+    } else {
+      const cur = String(ocr.currency||"LAK").toUpperCase();
+      const amount = (cur==="LAK" && ocr.amount!=null) ? Number(ocr.amount) : null;
+      const res = await lcfRpc("cf_attach_slip", {
+        p_order_id: orderId, p_slip_url: url, p_amount: amount, p_paid_at: ocr.paid_at||null,
+        p_ref: ocr.reference||null, p_bank: ocr.bank||null, p_ocr: ocr
+      });
+      if(res.status==="duplicate_slip"){
+        L.slip[orderId] = {hint:`⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວກັບອໍເດີ ${esc(res.used_by||"")} — ບໍ່ໄດ້ແນບ`};
+        showToast("⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວ", "error");
+      } else if(res.status!=="ok"){
+        L.slip[orderId] = {hint:"⚠️ ແນບສະລິບບໍ່ໄດ້ (ສະຖານະອໍເດີປ່ຽນແລ້ວ) — ໂຫຼດຄືນ"};
+      } else {
+        let hint = "";
+        if(cur!=="LAK") hint += `⚠️ ສະລິບເປັນສະກຸນ ${esc(cur)} — ກວດຍອດດ້ວຍຕາ. `;
+        const others = (data.matches||[]).filter(m=>m.id!==orderId);
+        if(!res.amount_match && others.length) hint += `💡 ຍອດ ${fmt(amount)} ກົງກັບອໍເດີ: ${others.map(m=>esc(m.order_no)+" ("+esc(m.customer_name||"?")+")").join(", ")} — ອາດແນບຜິດຄົນ`;
+        L.slip[orderId] = {hint};
+        showToast(res.amount_match ? "✅ ອ່ານສະລິບແລ້ວ ຍອດກົງກັນ" : "⚠️ ອ່ານສະລິບແລ້ວ ແຕ່ຍອດບໍ່ກົງ — ກວດກ່ອນຢືນຢັນ", res.amount_match?"success":"error");
+      }
+    }
+  }catch(e){
+    console.error("lcfUploadSlip failed:", e);
+    showToast("⚠️ ອັບໂຫຼດ/ອ່ານສະລິບບໍ່ສຳເລັດ: "+lcfErr(e), "error");
+  }
+  L.busy[orderId] = false;
+  await loadLiveCfSessionData(true); render();
+}
+async function lcfSaveOrder(orderId){
+  const L = lcf();
+  const d = L.drafts[orderId];
+  if(!d || !Object.keys(d).length){ showToast("ບໍ່ມີຫຍັງປ່ຽນ"); return; }
+  const patch = {};
+  Object.keys(d).forEach(k=>{ patch[k] = (k==="shipping_fee_kip") ? String(Math.max(0, Number(d[k])||0)) : String(d[k]).trim(); });
+  try{
+    const res = await lcfRpc("cf_update_order", {p_order_id: orderId, p_patch: patch});
+    if(res.status!=="ok"){ showToast("⚠️ ບັນທຶກບໍ່ໄດ້: "+res.status, "error"); return; }
+    delete L.drafts[orderId];
+    await loadLiveCfSessionData(true);
+    showToast("💾 ບັນທຶກແລ້ວ");
+  }catch(e){ showToast("⚠️ ບັນທຶກບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+  render();
+}
+async function lcfHandoff(orderId){
+  const L = lcf();
+  const o = L.orders.find(x=>x.id===orderId); if(!o) return;
+  if(L.drafts[orderId] && Object.keys(L.drafts[orderId]).length){ showToast("⚠️ ມີຂໍ້ມູນທີ່ຍັງບໍ່ໄດ້ບັນທຶກ — ກົດ 💾 ກ່ອນ", "error"); return; }
+  const total = Number(o.total_kip)||0, slipAmt = o.slip_amount_kip==null?null:Number(o.slip_amount_kip);
+  const mismatch = slipAmt!==total;
+  const msg = mismatch
+    ? `⚠️ ຍອດສະລິບ (${slipAmt==null?"ອ່ານບໍ່ໄດ້":fmt(slipAmt)}) ບໍ່ກົງກັບຍອດບິນ (${fmt(total)}) ກີບ.\nຖ້າກວດດ້ວຍຕາແລ້ວວ່າເງິນເຂົ້າຄົບແທ້ ຈຶ່ງຢືນຢັນ.\n\nຢືນຢັນສົ່ງ ${o.order_no} ເຂົ້າ POS (ຂຶ້ນບິນ + ຕັດສະຕັອກ)?`
+    : `ຢືນຢັນວ່າເງິນເຂົ້າແທ້ ${fmt(total)} ກີບ ແລ້ວສົ່ງ ${o.order_no} ເຂົ້າ POS (ຂຶ້ນບິນ + ຕັດສະຕັອກ + ສ້າງໃບບິນຂົນສົ່ງ)?`;
+  if(!await customConfirm(msg, mismatch ? {danger:true} : undefined)) return;
+  L.busy[orderId] = true; render();
+  try{
+    const res = await lcfRpc("cf_handoff_to_online", {p_order_id: orderId, p_by: STATE.currentUser ? STATE.currentUser.name : ""});
+    if(res.status!=="ok"){
+      const why = {missing_contact:"ຕ້ອງໃສ່ຊື່ ແລະ ເບີໂທຜູ້ຮັບກ່ອນ", no_items:"ບໍ່ມີສິນຄ້າທີ່ຈອງໄວ້ (ອາດໝົດເວລາຈອງ/ສະຕັອກບໍ່ພໍ)", bad_state:"ສະຖານະອໍເດີປ່ຽນແລ້ວ — ໂຫຼດຄືນ"}[res.status]||res.status;
+      showToast("⚠️ ສົ່ງ POS ບໍ່ໄດ້: "+why, "error");
+    } else {
+      await loadOnlineOrdersData();
+      const online = (STATE.data.onlineOrders||[]).find(x=>x.id===res.online_order_id);
+      if(online) await confirmOnlineOrder(online, {skipConfirm:true});
+      else showToast("ສົ່ງເຂົ້າ 🛒 ອໍເດີອອນລາຍ ແລ້ວ ("+res.order_no+") — ກົດຢືນຢັນຢູ່ແຖບນັ້ນ");
+    }
+  }catch(e){ console.error("lcfHandoff failed:", e); showToast("⚠️ ສົ່ງ POS ບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+  L.busy[orderId] = false;
+  await loadLiveCfSessionData(true); render();
+}
+async function lcfProductSearch(){
+  const L = lcf();
+  const q = (L.productQuery||"").trim().replace(/[%,()]/g," ");
+  if(!q){ L.productResults = []; render(); return; }
+  try{
+    const {data, error} = await sb.from("pos_products").select("id,name,barcode,price_1,online_price_kip,stock_qty")
+      .eq("is_active", true).or(`name.ilike.%${q}%,barcode.ilike.%${q}%`).order("name").limit(8);
+    if(error) throw error;
+    L.productResults = data||[];
+    if(!L.productResults.length) showToast("ບໍ່ພົບສິນຄ້າ");
+  }catch(e){ showToast("⚠️ ຄົ້ນຫາບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+  render();
+}
+async function lcfPickProduct(productId){
+  const L = lcf();
+  const p = L.productResults.find(x=>x.id===productId); if(!p) return;
+  try{
+    if(L.productTarget==="current"){
+      const {error} = await sb.from("live_sessions").update({current_product_id: p.id}).eq("id", L.sessionId);
+      if(error) throw error;
+      const s = lcfSession(); if(s) s.current_product_id = p.id;
+      L.currentProduct = p;
+      showToast("🎯 ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ: "+p.name);
+    } else if(L.productTarget==="assign"){
+      const c = L.comments.find(x=>x.id===L.assigningComment);
+      if(!c) return;
+      const res = await lcfRpc("cf_assign_comment", {p_comment_id: c.id, p_product_id: p.id, p_qty: c.qty||1});
+      if(res.status==="cf_ok") showToast("✅ ຈອງໃຫ້ "+(c.fb_user_name||"ລູກຄ້າ")+" ແລ້ວ");
+      else if(res.status==="cf_oos") showToast("⚠️ ສະຕັອກບໍ່ພໍ — ບັນທຶກເປັນ 'ສະຕັອກບໍ່ພໍ'", "error");
+      else showToast("ຜົນ: "+res.status);
+      await loadLiveCfSessionData(true);
+    }
+    L.productTarget = ""; L.productResults = []; L.productQuery = ""; L.assigningComment = "";
+  }catch(e){ showToast("⚠️ ບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+  render();
+}
+async function lcfUpdateSession(patch, okMsg){
+  const L = lcf();
+  const {error} = await sb.from("live_sessions").update(patch).eq("id", L.sessionId);
+  if(error) throw error;
+  const s = lcfSession(); if(s) Object.assign(s, patch);
+  if(okMsg) showToast(okMsg);
+}
+async function lcfLinkVideo(videoId){
+  const s = lcfSession(); if(!s) return;
+  const vid = String(videoId||"").trim();
+  if(!vid){ showToast("ໃສ່ Video ID ກ່ອນ", "error"); return; }
+  try{
+    const patch = {fb_video_id: vid, status: "live"};
+    if(!s.started_at) patch.started_at = new Date().toISOString();
+    await lcfUpdateSession(patch, "✅ ເຊື່ອມ Live ແລ້ວ — ເລີ່ມຮັບຄອມເມັ້ນ");
+    lcf().videos = [];
+  }catch(e){
+    const m = lcfErr(e);
+    showToast(/duplicate|unique/i.test(m) ? "⚠️ Video ID ນີ້ຖືກໃຊ້ໃນ Live ອື່ນແລ້ວ" : "⚠️ ເຊື່ອມບໍ່ສຳເລັດ: "+m, "error");
+  }
+  render();
+}
+
+/* ---------- Events ---------- */
+function attachLiveCfEvents(){
+  const L = lcf();
+  const $ = id => document.getElementById(id);
+  const on = (id, fn) => { const el=$(id); if(el) el.addEventListener("click", fn); };
+  on("lcf-reload", ()=>loadLiveCfSessions(true));
+  on("lcf-new-toggle", ()=>{ L.showNew = !L.showNew; render(); });
+  on("lcf-new-cancel", ()=>{ L.showNew = false; render(); });
+  const nt = $("lcf-new-title"); if(nt) nt.addEventListener("input", e=>{ L.newForm.title = e.target.value; });
+  const np = $("lcf-new-page"); if(np) np.addEventListener("change", e=>{ L.newForm.pageId = e.target.value; });
+  const npt = $("lcf-new-page-text"); if(npt) npt.addEventListener("input", e=>{ L.newForm.pageId = e.target.value.trim(); });
+  const nh = $("lcf-new-hold"); if(nh) nh.addEventListener("input", e=>{ L.newForm.holdMinutes = e.target.value; });
+  on("lcf-new-save", async ()=>{
+    const f = L.newForm;
+    if(!f.title.trim()){ showToast("ໃສ່ຊື່ Live ກ່ອນ", "error"); return; }
+    if(!f.pageId){ showToast("ເລືອກ Facebook Page ກ່ອນ", "error"); return; }
+    try{
+      const {data, error} = await sb.from("live_sessions").insert({
+        title: f.title.trim(), fb_page_id: String(f.pageId), status:"draft",
+        reserve_minutes: Math.max(0, parseInt(f.holdMinutes,10)||0), created_by: STATE.currentUser ? STATE.currentUser.name : ""
+      }).select().single();
+      if(error) throw error;
+      L.showNew = false; L.newForm.title = ""; L.sessionId = data.id;
+      showToast("✅ ສ້າງ Live ແລ້ວ — ກົດ 🔍 ຫາ Live ຈາກເພຈ ເມື່ອເລີ່ມອອກອາກາດ");
+      await loadLiveCfSessions(true);
+    }catch(e){ showToast("⚠️ ສ້າງບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+  });
+  const sel = $("lcf-session-select");
+  if(sel) sel.addEventListener("change", async e=>{
+    L.sessionId = e.target.value; L.currentProduct = null; L.videos = []; L.drafts = {}; L.webhookInfo = null;
+    const wasRt = L.realtime; if(wasRt) lcfStopRealtime();
+    await loadLiveCfSessionData(true);
+    if(wasRt) lcfStartRealtime();
+    render();
+  });
+  on("lcf-hold-save", async ()=>{
+    const v = Math.max(0, parseInt($("lcf-hold-input").value,10)||0);
+    try{ await lcfUpdateSession({reserve_minutes: v}, "💾 ບັນທຶກເວລາຈອງແລ້ວ (ມີຜົນກັບການຈອງໃໝ່)"); }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+    render();
+  });
+  on("lcf-set-product", ()=>{ L.productTarget = L.productTarget==="current" ? "" : "current"; L.productResults = []; render(); });
+  on("lcf-clear-product", async ()=>{
+    try{ await lcfUpdateSession({current_product_id: null}, "ລ້າງສິນຄ້າທີ່ກຳລັງຂາຍແລ້ວ"); L.currentProduct = null; }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+    render();
+  });
+  const pq = $("lcf-product-q");
+  if(pq){
+    pq.addEventListener("input", e=>{ L.productQuery = e.target.value; });
+    pq.addEventListener("keydown", e=>{ if(e.key==="Enter") lcfProductSearch(); });
+  }
+  on("lcf-product-search", lcfProductSearch);
+  on("lcf-product-close", ()=>{ L.productTarget=""; L.productResults=[]; L.assigningComment=""; render(); });
+  document.querySelectorAll("[data-lcf-pick-product]").forEach(el=>el.addEventListener("click", ()=>lcfPickProduct(el.getAttribute("data-lcf-pick-product"))));
+  document.querySelectorAll("[data-lcf-assign]").forEach(el=>el.addEventListener("click", ()=>{
+    L.assigningComment = el.getAttribute("data-lcf-assign"); L.productTarget = "assign"; L.productResults = []; render();
+  }));
+  on("lcf-find-video", async ()=>{
+    const s = lcfSession(); if(!s) return;
+    try{
+      showToast("ກຳລັງຫາ Live...");
+      const r = await lcfAdmin("list_live_videos", {page_id: s.fb_page_id});
+      L.videos = r.videos||[];
+      if(!L.videos.length) showToast("ບໍ່ພົບ Live ໃນເພຈນີ້ (ຕ້ອງກົດເລີ່ມ Live ກ່ອນ)", "error");
+    }catch(e){ showToast("⚠️ ຫາ Live ບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+    render();
+  });
+  document.querySelectorAll("[data-lcf-pick-video]").forEach(el=>el.addEventListener("click", ()=>lcfLinkVideo(el.getAttribute("data-lcf-pick-video"))));
+  on("lcf-video-manual-save", ()=>lcfLinkVideo(($("lcf-video-manual")||{}).value));
+  on("lcf-backfill", async ()=>{
+    const s = lcfSession(); if(!s) return;
+    if(!await customConfirm("ດຶງຄອມເມັ້ນທັງໝົດຂອງ Live ນີ້ຍ້ອນຫຼັງ ແລ້ວຈອງ CF ທີ່ຍັງບໍ່ມີ? (ຄອມເມັ້ນທີ່ມີແລ້ວຈະບໍ່ຊ້ຳ)")) return;
+    try{
+      showToast("ກຳລັງດຶງຄອມເມັ້ນ...");
+      const r = await lcfAdmin("backfill_comments", {session_id: s.id});
+      const res = r.results||{};
+      showToast(`📥 ອ່ານ ${fmt(r.fetched)} ຄອມເມັ້ນ · CF ${fmt(r.cf_comments)} · ຈອງໃໝ່ ${fmt(res.cf_ok||0)} · ຊ້ຳ ${fmt(res.duplicate||0)}${r.truncated?" · (ຍັງມີຕື່ມ ກົດອີກຄັ້ງ)":""}`);
+      await loadLiveCfSessionData(true);
+    }catch(e){ showToast("⚠️ ດຶງຄອມເມັ້ນບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+    render();
+  });
+  on("lcf-webhook-check", async ()=>{
+    const s = lcfSession(); if(!s) return;
+    try{
+      const r = await lcfAdmin("check_subscription", {page_id: s.fb_page_id});
+      const apps = r.apps||[];
+      const hasFeed = apps.some(a=>(a.subscribed_fields||[]).includes("feed"));
+      if(hasFeed){ L.webhookInfo = "🔌 Webhook: ✅ ເພຈນີ້ສະໝັກຮັບ 'feed' ແລ້ວ"; }
+      else if(await customConfirm("ເພຈນີ້ຍັງບໍ່ໄດ້ສະໝັກຮັບ webhook 'feed'. ສະໝັກດຽວນີ້ບໍ?")){
+        const r2 = await lcfAdmin("subscribe_page", {page_id: s.fb_page_id});
+        L.webhookInfo = r2.success ? "🔌 Webhook: ✅ ສະໝັກຮັບ 'feed' ສຳເລັດ" : "🔌 Webhook: ⚠️ ສະໝັກບໍ່ສຳເລັດ";
+      } else L.webhookInfo = "🔌 Webhook: ⚠️ ຍັງບໍ່ໄດ້ສະໝັກຮັບ 'feed'";
+    }catch(e){ L.webhookInfo = "🔌 Webhook: ⚠️ "+esc(lcfErr(e)); }
+    render();
+  });
+  on("lcf-realtime", ()=>{ if(L.realtime) lcfStopRealtime(); else lcfStartRealtime(); render(); });
+  on("lcf-end", async ()=>{
+    if(!await customConfirm("ຈົບ Live ນີ້? (ຄອມເມັ້ນໃໝ່ຈະບໍ່ຖືກຮັບອີກ — ອໍເດີທີ່ຄ້າງຍັງຈັດການຕໍ່ໄດ້)", {danger:true})) return;
+    try{ await lcfUpdateSession({status:"ended", ended_at:new Date().toISOString()}, "⏹️ ຈົບ Live ແລ້ວ"); lcfStopRealtime(); }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+    render();
+  });
+  document.querySelectorAll("[data-lcf-tab]").forEach(el=>el.addEventListener("click", ()=>{ L.tab = el.getAttribute("data-lcf-tab"); render(); }));
+  document.querySelectorAll("[data-lcf-field]").forEach(el=>{
+    const [oid, key] = el.getAttribute("data-lcf-field").split("|");
+    const h = e=>{ (L.drafts[oid] = L.drafts[oid]||{})[key] = e.target.value; };
+    el.addEventListener(el.tagName==="SELECT"?"change":"input", h);
+  });
+  document.querySelectorAll("[data-lcf-save]").forEach(el=>el.addEventListener("click", ()=>lcfSaveOrder(el.getAttribute("data-lcf-save"))));
+  document.querySelectorAll("[data-lcf-slip]").forEach(el=>el.addEventListener("change", e=>{
+    const f = e.target.files && e.target.files[0]; if(f) lcfUploadSlip(el.getAttribute("data-lcf-slip"), f);
+  }));
+  document.querySelectorAll("[data-lcf-handoff]").forEach(el=>el.addEventListener("click", ()=>lcfHandoff(el.getAttribute("data-lcf-handoff"))));
+  document.querySelectorAll("[data-lcf-item]").forEach(el=>el.addEventListener("click", async ()=>{
+    const act = el.getAttribute("data-lcf-item"), id = el.getAttribute("data-lcf-item-id");
+    try{
+      if(act==="cancel"){
+        if(!await customConfirm("ຍົກເລີກລາຍການນີ້? (ປ່ອຍສະຕັອກທີ່ຈອງໄວ້)")) return;
+        await lcfRpc("cf_cancel_item", {p_item_id: id});
+      } else {
+        const r = await lcfRpc("cf_reserve_item", {p_item_id: id});
+        showToast(r.status==="ok" ? "✅ ຈອງແລ້ວ" : (r.status==="cf_oos" ? "⚠️ ສະຕັອກຍັງບໍ່ພໍ (ເຫຼືອ "+fmt(r.available)+")" : "ຜົນ: "+r.status), r.status==="ok"?"success":"error");
+      }
+      await loadLiveCfSessionData(true);
+    }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+    render();
+  }));
+  document.querySelectorAll("[data-lcf-cancel]").forEach(el=>el.addEventListener("click", async ()=>{
+    const id = el.getAttribute("data-lcf-cancel");
+    const reason = await customPrompt("ເຫດຜົນທີ່ຍົກເລີກອໍເດີ (ປ່ອຍສະຕັອກທີ່ຈອງ):", "ລູກຄ້າບໍ່ໂອນເງິນ");
+    if(reason===null || reason===undefined) return;
+    try{
+      const r = await lcfRpc("cf_cancel_order", {p_order_id: id, p_reason: reason});
+      showToast(r.status==="ok" ? "❌ ຍົກເລີກອໍເດີແລ້ວ" : "ຜົນ: "+r.status, r.status==="ok"?"success":"error");
+      await loadLiveCfSessionData(true);
+    }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+    render();
+  }));
+  document.querySelectorAll("[data-lcf-revive]").forEach(el=>el.addEventListener("click", async ()=>{
+    try{
+      const r = await lcfRpc("cf_revive_order", {p_order_id: el.getAttribute("data-lcf-revive")});
+      const msg = {ok:"♻️ ເປີດຄືນແລ້ວ", customer_has_open_order:"ລູກຄ້ານີ້ມີອໍເດີເປີດຢູ່ແລ້ວ", bad_state:"ສະຖານະປ່ຽນແລ້ວ"}[r.status]||r.status;
+      showToast(msg, r.status==="ok"?"success":"error");
+      await loadLiveCfSessionData(true);
+    }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+    render();
+  }));
+}
+
 /* ====================== COURIER BILL IMPORT (📤 ສົ່ງບິນອານຸສິດ) — v7.20 ======================
    Uploads a batch-printed Anousith waybill PDF (the one Anousith itself generates after drop-off),
    extracts per-page text client-side via pdf.js — these are real text PDFs, not scans, so no OCR
@@ -14535,8 +15190,8 @@ async function rejectOnlineOrder(order){
 // pos_transaction_payments → pos_transaction_items → pos_stock_movements + adjust_product_stock),
 // so it shows up in every existing POS report with zero POS-side changes needed. Stock is
 // decremented HERE, not at checkout time — see APP_VERSION comment for why.
-async function confirmOnlineOrder(order){
-  if(!await customConfirm(`ຢືນຢັນວ່າກວດສະລິບແລ້ວ ແລະ ເງິນເຂົ້າແທ້ ${fmt(order.totalKip)} ກີບ ສຳລັບອອເດີ ${order.orderNo}?\n\nຈະບັນທຶກເປັນຍອດຂາຍ POS ຈິງ ແລະ ຫັກສະຕັອກທັນທີ.`)) return;
+async function confirmOnlineOrder(order, opts){
+  if(!(opts && opts.skipConfirm) && !await customConfirm(`ຢືນຢັນວ່າກວດສະລິບແລ້ວ ແລະ ເງິນເຂົ້າແທ້ ${fmt(order.totalKip)} ກີບ ສຳລັບອອເດີ ${order.orderNo}?\n\nຈະບັນທຶກເປັນຍອດຂາຍ POS ຈິງ ແລະ ຫັກສະຕັອກທັນທີ.`)) return;
   const items = onlineOrderItemsFor(order.id);
   if(items.length===0){ showToast("⚠️ ອອເດີນີ້ບໍ່ມີລາຍການສິນຄ້າ, ກວດຄືນກ່ອນ", "error"); return; }
   try{
@@ -25448,6 +26103,7 @@ const BASE_NAV = [
   {id:"noPickup", label:"ລູກຄ້າບໍ່ໄປເອົາເຄື່ອງ", icon:"&#128230;"},
   {id:"pancakeCrm", label:"CRM ລູກຄ້າ (Pancake)", icon:"&#128100;"},
   {id:"waCrmOrders", label:"ອໍເດີWhatsapp", icon:"&#128241;"},
+  {id:"liveCf", label:"🔴 Live CF", icon:"&#128308;"}, // v8.17: Facebook Live "CF" comments -> stock reservation -> slip check -> POS (see APP_VERSION comment)
   {id:"onlineOrders", label:"🛒 ອໍເດີອອນລາຍ", icon:"&#128722;"}, // v7.18: review queue for checkout.html storefront orders — confirm turns one into a real POS sale (see APP_VERSION comment)
   {id:"courierBillImport", label:"📤 ສົ່ງບິນອານຸສິດ", icon:"&#128228;"}, // v7.20: upload Anousith waybill PDF → auto-match → auto-send bill image to customer (see APP_VERSION comment)
   {id:"waDirectChat", label:"💬 ແຊັດ WhatsApp ໂດຍກົງ", icon:"&#128172;"}, // v7.47: standalone chat page for the Baileys/WhatsApp-Web direct number (020-51606505) — deliberately its OWN page, separate from the 842/Meta-Cloud-API chat (whatsapp_conversations/whatsapp_messages), since the two channels send through completely different mechanisms (see APP_VERSION comment)
@@ -25809,6 +26465,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="editLog") loadEditLog();
   if(STATE.page==="pancakeCrm"){ loadCrmCount(); loadCrmResults(true); loadCodReceivedMap(); loadSyncStatus(); }
   if(STATE.page==="waCrmOrders"){ /* shipping_labels ຖືກໂຫຼດເປັນ global data ຢູ່ແລ້ວ ຄືກັນກັບໜ້າ ພິມໃບບິນ */ }
+  if(STATE.page==="liveCf") loadLiveCfSessions(true); // v8.17: one load on page open, no polling
   if(STATE.page==="onlineOrders") loadOnlineOrdersData(); // v7.18: fresh reload so newly-placed orders show up without waiting for a full refreshAll()
   if(STATE.page==="profitDashboard"){ loadProfitData(); loadReturnImportLastAt(); loadSyncStatus(); }
   if(STATE.page==="courierBillImport") loadCourierBillPages();
@@ -26060,6 +26717,7 @@ function renderPage(){
     case "launchAd": return renderLaunchAd();
     case "pancakeCrm": return renderPancakeCrm();
     case "waCrmOrders": return renderWaCrmOrders();
+    case "liveCf": return renderLiveCf();
     case "onlineOrders": return renderOnlineOrders();
     case "courierBillImport": return renderCourierBillImport();
     case "waDirectChat": return renderWaDirectChat();
@@ -36093,6 +36751,7 @@ function attachPageEvents(){
   if(STATE.page==="launchAd") attachLaunchAdEvents();
   if(STATE.page==="pancakeCrm") attachPancakeCrmEvents();
   if(STATE.page==="waCrmOrders") attachWaCrmEvents();
+  if(STATE.page==="liveCf") attachLiveCfEvents();
   if(STATE.page==="onlineOrders") attachOnlineOrdersEvents();
   if(STATE.page==="courierBillImport") attachCourierBillImportEvents();
   if(STATE.page==="waDirectChat") attachWaDirectChatEvents();
