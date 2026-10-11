@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.17"; // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂປຣແກຣມດູດ CF ໄລ່ສົດ ... ດູດຮະຫັດມາເຂົ້າ Marketing Studio ໃຫ້ພະນັກງານກວດສະລິບ ແລ້ວສົ່ງໄປ POS ຂຶ້ນບິນ+ລົບສະຕັອກ ແບບຄົບວົງຈອນ") -- new page "🔴 Live CF". Comments "CF [ລະຫັດ] [ຈຳນວນ]" on a Facebook Live arrive via the fb-live-webhook Edge Function (Meta page "feed" webhook) and/or the manual backfill button (fb-live-admin) and become live_cf_items that SOFT-RESERVE stock (cf_reserved_qty; physical stock untouched), one live_cf_orders row per customer per Live. Staff fill in delivery details, upload the transfer slip (cf-slip-ocr reads the amount, shows match/mismatch + duplicate-slip warning), then "✅ ຢືນຢັນສະລິບ → ສົ່ງ POS" hands the order to online_orders (pending_review) and runs the EXISTING confirmOnlineOrder() (now takes opts.skipConfirm) which creates the POS bill, deducts stock and creates the shipping label. Unpaid holds auto-release via pg_cron job cf-release-expired (DB-side). Data loads only on page open/manual reload; live updates are an opt-in Realtime toggle (no polling/timers). Schema: live_cf_migration.sql. 
+const APP_VERSION = "8.18"; // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ 2: ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າໃນແຊັດ + ກວດສະລິບແທ້") -- Live CF page: (1) "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ" button -> cf-send-payment Edge Function builds the payment message (items, total, shipping fee) and a QR per active payment_banks row with the exact amount embedded (same EMVCo/CRC16 logic as checkout.html), then sends it on Messenger as a private reply to the customer's CF comment (needs pages_messaging; if Facebook refuses, the card shows the message text + QR links to paste manually). (2) Real slip verification: new cf-slip-qr Edge Function decodes the OneProof QR printed on BCEL OnePay slips and asks BCEL's own OneProof service (the lookup the BCEL OneProof app uses; not a documented public API) for the real transaction record -- amount/time/sender/receiver come from BCEL, a forged slip is flagged, receiver account and pay-time-vs-CF-time are cross-checked, the ticket is the duplicate-slip key. Anything that cannot be verified (other banks, BCEL unreachable) falls back to cf-slip-ocr and is shown as not-verified-with-the-bank, with a stronger confirm dialog before sending to POS. live_cf_orders gained fb_psid / payment_msg_* columns. 
+// (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂປຣແກຣມດູດ CF ໄລ່ສົດ ... ດູດຮະຫັດມາເຂົ້າ Marketing Studio ໃຫ້ພະນັກງານກວດສະລິບ ແລ້ວສົ່ງໄປ POS ຂຶ້ນບິນ+ລົບສະຕັອກ ແບບຄົບວົງຈອນ") -- new page "🔴 Live CF". Comments "CF [ລະຫັດ] [ຈຳນວນ]" on a Facebook Live arrive via the fb-live-webhook Edge Function (Meta page "feed" webhook) and/or the manual backfill button (fb-live-admin) and become live_cf_items that SOFT-RESERVE stock (cf_reserved_qty; physical stock untouched), one live_cf_orders row per customer per Live. Staff fill in delivery details, upload the transfer slip (cf-slip-ocr reads the amount, shows match/mismatch + duplicate-slip warning), then "✅ ຢືນຢັນສະລິບ → ສົ່ງ POS" hands the order to online_orders (pending_review) and runs the EXISTING confirmOnlineOrder() (now takes opts.skipConfirm) which creates the POS bill, deducts stock and creates the shipping label. Unpaid holds auto-release via pg_cron job cf-release-expired (DB-side). Data loads only on page open/manual reload; live updates are an opt-in Realtime toggle (no polling/timers). Schema: live_cf_migration.sql. 
 // (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)": "ໃນໜ້າສົ່ງບິນ ໃຫ້ເພີ່ມເລກອໍເດີ ໃສ່ນຳ ມີຊ່ອງແລ້ວ ແຕ່ບໍ່ມີຂໍ້ມູນຂຶ້ນມາສະແດງ") -- the ອໍເດີ column always showed "-". Cause: the page read courier_arrival_tag_log.pancake_order_id, a column the n8n arrival-tag script never fills (0 of 1,000+ rows); the order number it found is saved inside detail.orderId. New arrivalTagRowOrderId(r) = pancake_order_id || detail.orderId || detail.lookup.orderId, used for the cell and for the search box (so typing an order number now finds the row). Older rows (before 2026-10-02, found by phone only) have no order number stored and still show "-". Display only, no schema change; the ລູກຄ້າ column is unchanged (its source field is not stored either).
 // v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່ມມາເບິ່ງ" -- daily report "ອັບໂຫລດ COD ແລະ ເຄື່ອງຕີກັບ"): the green dot only meant "at least one file uploaded today", so it could not show that the hourly rounds keep adding newly returned bills during the day. Each courier on the two ເຄື່ອງຕີກັບ lines now shows the number of distinct bills uploaded today and the time of the latest upload, e.g. "ອານຸສິດ ✓ 2 ບິນ · ອັບລ່າສຸດ 10:01". loadDailyChecklistStatus now also selects bill_number + imported_at from courier_return_costs and computes retStats(); dailyChecklistPartsLine appends it. Display only -- no change to what counts as done, no schema change. COD lines unchanged.
 // v8.14 FIX (Tar 2026-10-04, "ໄປກວດເບິ່ງແນ່ວ່າບິນອານຸສິດທີ່ອັບເຂົ້າລະບົບເປັນບໍ່ພົບຂໍ້ມູນ ໃຫ້ເລືອກເອງ ແຕ່ວ່າ ເປັນ high ມັນຍ້ອນຫຍັງ" -- courier bill import rows showed "ບໍ່ພົບ / ເລືອກເອງ" in the customer column while the match itself was correct (confidence high, matched_shipping_label_id set in the DB).
@@ -1559,7 +1560,9 @@ const APP_VERSION = "8.17"; // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.16"; // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.17"; // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.16→8.17 now that 8.18 is current).
+// (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.15→8.16 now that 8.17 is current).
 // (previous text of this slot, kept) // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.14→8.15 now that 8.16 is current).
@@ -1573,7 +1576,9 @@ const APP_VERSION_PREV = "8.16"; // v8.16 FIX (Tar 2026-10-05) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.15"; // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.16"; // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.15→8.16 now that 8.17 is previous).
+// (previous text of this slot, kept) // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.14→8.15 now that 8.16 is previous).
 // (previous text of this slot, kept) // v8.14 FIX (Tar 2026-10-04) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.13→8.14 now that 8.15 is previous).
@@ -12913,20 +12918,62 @@ function renderLcfOrder(o){
             ${match ? "✅ ຍອດກົງກັນ" : (diff==null ? "⚠️ ອ່ານຍອດບໍ່ໄດ້ — ກວດດ້ວຍຕາ" : `⚠️ ຍອດບໍ່ກົງ (${diff>0?"+":""}${fmt(diff)} ກີບ)`)}
           </div>
           <div class="small-muted">${o.slip_bank?esc(o.slip_bank)+" · ":""}${o.slip_ref?"ອ້າງອີງ "+esc(o.slip_ref)+" · ":""}${o.slip_paid_at?esc(lcfTime(o.slip_paid_at)):""}</div>
-          <div class="small-muted">⚠️ OCR ຊ່ວຍອ່ານຍອດເທົ່ານັ້ນ — ກວດໃຫ້ແນ່ໃຈວ່າເງິນເຂົ້າບັນຊີແທ້ກ່ອນຢືນຢັນ</div>` : `<div class="small-muted">ຍັງບໍ່ໄດ້ແນບສະລິບ</div>`}
+          ${o.slip_ocr && o.slip_ocr.verified && o.slip_ocr.bcel
+            ? `<div style="font-weight:700; color:var(--sage-dark,#3a7d44);">✅ ຢືນຢັນກັບ BCEL ແລ້ວ <span class="small-muted" style="font-weight:400;">— ຜູ້ໂອນ ${esc(o.slip_ocr.bcel.source_name||"")} → ${esc(o.slip_ocr.bcel.destination_name||"")}</span></div>`
+            : `<div class="small-muted" style="color:var(--danger,#c0392b);">⚠️ ຍັງບໍ່ໄດ້ຢືນຢັນກັບທະນາຄານ (ອ່ານດ້ວຍ OCR ເທົ່ານັ້ນ) — ກວດໃຫ້ແນ່ໃຈວ່າເງິນເຂົ້າບັນຊີແທ້ກ່ອນຢືນຢັນ</div>`}` : `<div class="small-muted">ຍັງບໍ່ໄດ້ແນບສະລິບ</div>`}
         ${slipRes && slipRes.hint ? `<div style="margin-top:4px; color:var(--danger,#c0392b);">${slipRes.hint}</div>` : ""}
         ${editable ? `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <label class="btn btn-sm btn-outline" style="cursor:pointer;">${busy?"⏳ ກຳລັງອ່ານສະລິບ...":(hasSlip?"📷 ປ່ຽນສະລິບ":"📷 ອັບໂຫຼດສະລິບ")}
             <input type="file" accept="image/*" data-lcf-slip="${esc(o.id)}" style="display:none;" ${busy?"disabled":""}></label>
           ${o.status==="slip_attached" ? `<button class="btn btn-sm" data-lcf-handoff="${esc(o.id)}" ${busy?"disabled":""} style="background:var(--sage-dark,#3a7d44);">✅ ຢືນຢັນສະລິບ → ສົ່ງ POS</button>` : ""}
+          <button class="btn btn-sm btn-outline" data-lcf-pay="${esc(o.id)}" ${busy?"disabled":""}>${o.payment_msg_status==="sent" ? "📨 ສົ່ງຍອດ+QR ອີກຄັ້ງ" : "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ"}</button>
           <button class="btn btn-sm btn-outline" data-lcf-cancel="${esc(o.id)}" style="color:var(--danger); border-color:var(--danger);">❌ ຍົກເລີກອໍເດີ</button>
-        </div>` : ""}
+        </div>
+        ${renderLcfPayStatus(o)}` : ""}
         ${o.status==="expired" ? `<button class="btn btn-sm btn-outline" data-lcf-revive="${esc(o.id)}" style="margin-top:8px;">♻️ ເປີດຄືນ + ຈອງໃໝ່</button>` : ""}
         ${o.status==="handed_off" ? `<div class="small-muted" style="margin-top:6px;">ສົ່ງເຂົ້າ POS ໂດຍ ${esc(o.handed_off_by||"")} · ${esc(lcfTime(o.handed_off_at))} (ເບິ່ງໃນແຖບ 🛒 ອໍເດີອອນລາຍ)</div>` : ""}
         ${o.cancel_reason ? `<div class="small-muted" style="margin-top:6px;">ເຫດຜົນ: ${esc(o.cancel_reason)}</div>` : ""}
       </div>
     </div>
   </div>`;
+}
+
+function renderLcfPayStatus(o){
+  const L = lcf();
+  const r = L.pay && L.pay[o.id];
+  let h = "";
+  if(o.payment_msg_status==="sent"){
+    const stale = o.payment_msg_amount_kip!=null && Number(o.payment_msg_amount_kip)!==(Number(o.total_kip)||0);
+    h += `<div class="small-muted" style="margin-top:6px;">📨 ສົ່ງຍອດ+QR ຫາລູກຄ້າແລ້ວ ${esc(lcfTime(o.payment_msg_sent_at))} (ຍອດ ${fmt(o.payment_msg_amount_kip)} ກີບ)${stale?` <b style="color:var(--danger,#c0392b);">— ຍອດປ່ຽນແລ້ວ ກົດສົ່ງໃໝ່</b>`:""}</div>`;
+  } else if(o.payment_msg_status==="failed"){
+    h += `<div class="small-muted" style="margin-top:6px; color:var(--danger,#c0392b);">⚠️ ສົ່ງ Messenger ບໍ່ສຳເລັດ: ${esc(o.payment_msg_error||"")}</div>`;
+  }
+  if(r && r.text && !r.sent){
+    h += `<div style="margin-top:8px; padding:10px; border:1px dashed var(--border,#ccc); border-radius:8px;">
+      <div class="small-muted" style="margin-bottom:6px;">ສົ່ງອັດຕະໂນມັດບໍ່ໄດ້${r.error?` (${esc(r.error)})`:""} — ກ໊ອບຂໍ້ຄວາມ ແລ້ວວາງໃນ Messenger ເອງ, ແລະ ເປີດຮູບ QR ເພື່ອບັນທຶກ/ສົ່ງ:</div>
+      <textarea readonly rows="7" style="width:100%;" id="lcf-pay-text-${esc(o.id)}">${esc(r.text)}</textarea>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+        <button class="btn btn-sm" data-lcf-copy="${esc(o.id)}">📋 ກ໊ອບຂໍ້ຄວາມ</button>
+        ${(r.qr||[]).map(q=>`<a class="btn btn-sm btn-outline" href="${esc(q.url)}" target="_blank" rel="noopener" style="text-decoration:none;">🖼️ QR ${esc(q.bank)}</a>`).join("")}
+      </div></div>`;
+  }
+  return h;
+}
+async function lcfSendPayment(orderId){
+  const L = lcf();
+  const o = L.orders.find(x=>x.id===orderId); if(!o) return;
+  if(L.drafts[orderId] && Object.keys(L.drafts[orderId]).length){ showToast("⚠️ ມີຂໍ້ມູນ (ເຊັ່ນຄ່າສົ່ງ) ທີ່ຍັງບໍ່ໄດ້ບັນທຶກ — ກົດ 💾 ກ່ອນ ເພື່ອໃຫ້ຍອດຖືກຕ້ອງ", "error"); return; }
+  L.pay = L.pay || {};
+  L.busy[orderId] = true; render();
+  try{
+    const {data, error} = await sb.functions.invoke("cf-send-payment", {body:{order_id: orderId, send: true}});
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(!data || data.ok===false) throw new Error((data&&data.error)||"ສ້າງຂໍ້ຄວາມບໍ່ສຳເລັດ");
+    L.pay[orderId] = {sent: !!data.sent, text: data.message_text, qr: data.qr||[], error: data.send_error||""};
+    showToast(data.sent ? "📨 ສົ່ງຍອດ+QR ຫາລູກຄ້າທາງ Messenger ແລ້ວ" : "⚠️ ສົ່ງ Messenger ບໍ່ໄດ້ — ກ໊ອບຂໍ້ຄວາມໄປສົ່ງເອງ", data.sent?"success":"error");
+  }catch(e){ console.error("lcfSendPayment failed:", e); showToast("⚠️ "+lcfErr(e), "error"); }
+  L.busy[orderId] = false;
+  await loadLiveCfSessionData(true); render();
 }
 
 /* ---------- Actions ---------- */
@@ -12953,6 +13000,47 @@ async function lcfUploadSlip(orderId, file){
     const {error: upErr} = await sb.storage.from("online-payment-slips").upload(path, blob, {contentType:"image/jpeg", upsert:false});
     if(upErr) throw upErr;
     const url = sb.storage.from("online-payment-slips").getPublicUrl(path).data.publicUrl;
+    // 1) BCEL OnePay slips carry an "OneProof" QR: ask BCEL itself whether this transfer really exists (cf-slip-qr).
+    //    If that works the amount/time/receiver come from BCEL's own record — no OCR needed, and a forged slip fails.
+    let proof = null;
+    try{
+      const pr = await sb.functions.invoke("cf-slip-qr", {body:{image_url:url, order_id:orderId}});
+      if(!pr.error && pr.data && pr.data.ok) proof = pr.data;
+    }catch(e){ console.warn("cf-slip-qr failed, falling back to OCR:", e); }
+    if(proof && proof.verified && proof.bcel){
+      const b = proof.bcel, ck = proof.checks||{};
+      if(ck.duplicate_of){
+        L.slip[orderId] = {hint:`⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວກັບອໍເດີ ${esc(ck.duplicate_of)} — ບໍ່ໄດ້ແນບ`};
+        showToast("⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວ", "error");
+      } else {
+        const lakOk = String(b.ccy||"LAK").toUpperCase()==="LAK";
+        const res = await lcfRpc("cf_attach_slip", {
+          p_order_id: orderId, p_slip_url: url, p_amount: lakOk ? Number(b.amount) : null, p_paid_at: b.txtime_iso||null,
+          p_ref: b.ticket||null, p_bank: "BCEL OnePay", p_ocr: {source:"bcel_oneproof", verified:true, bcel:b, checks:ck}
+        });
+        if(res.status==="duplicate_slip"){
+          L.slip[orderId] = {hint:`⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວກັບອໍເດີ ${esc(res.used_by||"")} — ບໍ່ໄດ້ແນບ`};
+          showToast("⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວ", "error");
+        } else if(res.status!=="ok"){
+          L.slip[orderId] = {hint:"⚠️ ແນບສະລິບບໍ່ໄດ້ (ສະຖານະອໍເດີປ່ຽນແລ້ວ) — ໂຫຼດຄືນ"};
+        } else {
+          let hint = "";
+          if(ck.receiver_ok===false) hint += "⚠️ ບັນຊີຜູ້ຮັບໃນສະລິບບໍ່ຕົງກັບບັນຊີຂອງຮ້ານ! ";
+          if(ck.time_ok===false) hint += "⚠️ ເວລາໂອນກ່ອນເວລາ CF — ອາດເປັນສະລິບເກົ່າ. ";
+          if(!lakOk) hint += `⚠️ ສະກຸນເງິນ ${esc(b.ccy)} — ກວດຍອດດ້ວຍຕາ. `;
+          L.slip[orderId] = {hint};
+          const good = res.amount_match && !hint;
+          showToast(good ? "✅ BCEL ຢືນຢັນແລ້ວ ຍອດກົງກັນ" : "⚠️ BCEL ຢືນຢັນແລ້ວ ແຕ່ມີຂໍ້ສັງເກດ — ກວດກ່ອນສົ່ງ POS", good?"success":"error");
+        }
+      }
+      L.busy[orderId] = false;
+      await loadLiveCfSessionData(true); render();
+      return;
+    }
+    let proofHint = "";
+    if(proof && proof.is_oneproof_qr && !proof.error) proofHint = "🚨 ມີ QR OneProof ແຕ່ BCEL ບໍ່ພົບທຸລະກຳນີ້ — ສະລິບອາດເປັນສະລິບປອມ! ";
+    else if(proof && proof.is_oneproof_qr && proof.error) proofHint = "⚠️ ຕິດຕໍ່ BCEL ຢືນຢັນບໍ່ໄດ້ຊົ່ວຄາວ (ໃຊ້ OCR ແທນ) — ກວດເງິນເຂົ້າບັນຊີເອງ. ";
+    else proofHint = "⚠️ ບໍ່ພົບ QR OneProof ຂອງ BCEL ໃນສະລິບ (ອາດເປັນທະນາຄານອື່ນ) — ອ່ານດ້ວຍ OCR ເທົ່ານັ້ນ ຕ້ອງກວດເງິນເຂົ້າບັນຊີເອງ. ";
     const {data, error} = await sb.functions.invoke("cf-slip-ocr", {body:{image_url:url}});
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(!data || data.ok===false) throw new Error((data&&data.error)||"ອ່ານສະລິບບໍ່ສຳເລັດ");
@@ -12968,7 +13056,7 @@ async function lcfUploadSlip(orderId, file){
       const amount = (cur==="LAK" && ocr.amount!=null) ? Number(ocr.amount) : null;
       const res = await lcfRpc("cf_attach_slip", {
         p_order_id: orderId, p_slip_url: url, p_amount: amount, p_paid_at: ocr.paid_at||null,
-        p_ref: ocr.reference||null, p_bank: ocr.bank||null, p_ocr: ocr
+        p_ref: ocr.reference||null, p_bank: ocr.bank||null, p_ocr: Object.assign({}, ocr, {verified:false})
       });
       if(res.status==="duplicate_slip"){
         L.slip[orderId] = {hint:`⚠️ ສະລິບນີ້ຖືກໃຊ້ແລ້ວກັບອໍເດີ ${esc(res.used_by||"")} — ບໍ່ໄດ້ແນບ`};
@@ -12976,12 +13064,13 @@ async function lcfUploadSlip(orderId, file){
       } else if(res.status!=="ok"){
         L.slip[orderId] = {hint:"⚠️ ແນບສະລິບບໍ່ໄດ້ (ສະຖານະອໍເດີປ່ຽນແລ້ວ) — ໂຫຼດຄືນ"};
       } else {
-        let hint = "";
+        let hint = proofHint;
         if(cur!=="LAK") hint += `⚠️ ສະລິບເປັນສະກຸນ ${esc(cur)} — ກວດຍອດດ້ວຍຕາ. `;
         const others = (data.matches||[]).filter(m=>m.id!==orderId);
         if(!res.amount_match && others.length) hint += `💡 ຍອດ ${fmt(amount)} ກົງກັບອໍເດີ: ${others.map(m=>esc(m.order_no)+" ("+esc(m.customer_name||"?")+")").join(", ")} — ອາດແນບຜິດຄົນ`;
         L.slip[orderId] = {hint};
-        showToast(res.amount_match ? "✅ ອ່ານສະລິບແລ້ວ ຍອດກົງກັນ" : "⚠️ ອ່ານສະລິບແລ້ວ ແຕ່ຍອດບໍ່ກົງ — ກວດກ່ອນຢືນຢັນ", res.amount_match?"success":"error");
+        const okAll = res.amount_match && !hint;
+        showToast(okAll ? "✅ ອ່ານສະລິບແລ້ວ ຍອດກົງກັນ (ແຕ່ຍັງບໍ່ໄດ້ຢືນຢັນກັບທະນາຄານ)" : "⚠️ ອ່ານສະລິບແລ້ວ ແຕ່ມີຂໍ້ສັງເກດ — ອ່ານຂໍ້ຄວາມສີແດງກ່ອນຢືນຢັນ", okAll?"success":"error");
       }
     }
   }catch(e){
@@ -13011,9 +13100,10 @@ async function lcfHandoff(orderId){
   const o = L.orders.find(x=>x.id===orderId); if(!o) return;
   if(L.drafts[orderId] && Object.keys(L.drafts[orderId]).length){ showToast("⚠️ ມີຂໍ້ມູນທີ່ຍັງບໍ່ໄດ້ບັນທຶກ — ກົດ 💾 ກ່ອນ", "error"); return; }
   const total = Number(o.total_kip)||0, slipAmt = o.slip_amount_kip==null?null:Number(o.slip_amount_kip);
-  const mismatch = slipAmt!==total;
+  const bankVerified = !!(o.slip_ocr && o.slip_ocr.verified);
+  const mismatch = slipAmt!==total || !bankVerified;
   const msg = mismatch
-    ? `⚠️ ຍອດສະລິບ (${slipAmt==null?"ອ່ານບໍ່ໄດ້":fmt(slipAmt)}) ບໍ່ກົງກັບຍອດບິນ (${fmt(total)}) ກີບ.\nຖ້າກວດດ້ວຍຕາແລ້ວວ່າເງິນເຂົ້າຄົບແທ້ ຈຶ່ງຢືນຢັນ.\n\nຢືນຢັນສົ່ງ ${o.order_no} ເຂົ້າ POS (ຂຶ້ນບິນ + ຕັດສະຕັອກ)?`
+    ? `⚠️ ${slipAmt!==total ? `ຍອດສະລິບ (${slipAmt==null?"ອ່ານບໍ່ໄດ້":fmt(slipAmt)}) ບໍ່ກົງກັບຍອດບິນ (${fmt(total)}) ກີບ.` : ""}${!bankVerified ? " ສະລິບນີ້ຍັງບໍ່ໄດ້ຢືນຢັນກັບ BCEL." : ""}\nຖ້າກວດດ້ວຍຕາ/ໃນແອັບທະນາຄານແລ້ວວ່າເງິນເຂົ້າຄົບແທ້ ຈຶ່ງຢືນຢັນ.\n\nຢືນຢັນສົ່ງ ${o.order_no} ເຂົ້າ POS (ຂຶ້ນບິນ + ຕັດສະຕັອກ)?`
     : `ຢືນຢັນວ່າເງິນເຂົ້າແທ້ ${fmt(total)} ກີບ ແລ້ວສົ່ງ ${o.order_no} ເຂົ້າ POS (ຂຶ້ນບິນ + ຕັດສະຕັອກ + ສ້າງໃບບິນຂົນສົ່ງ)?`;
   if(!await customConfirm(msg, mismatch ? {danger:true} : undefined)) return;
   L.busy[orderId] = true; render();
@@ -13212,6 +13302,13 @@ function attachLiveCfEvents(){
     const f = e.target.files && e.target.files[0]; if(f) lcfUploadSlip(el.getAttribute("data-lcf-slip"), f);
   }));
   document.querySelectorAll("[data-lcf-handoff]").forEach(el=>el.addEventListener("click", ()=>lcfHandoff(el.getAttribute("data-lcf-handoff"))));
+  document.querySelectorAll("[data-lcf-pay]").forEach(el=>el.addEventListener("click", ()=>lcfSendPayment(el.getAttribute("data-lcf-pay"))));
+  document.querySelectorAll("[data-lcf-copy]").forEach(el=>el.addEventListener("click", async ()=>{
+    const ta = document.getElementById("lcf-pay-text-"+el.getAttribute("data-lcf-copy"));
+    if(!ta) return;
+    try{ await navigator.clipboard.writeText(ta.value); showToast("📋 ກ໊ອບແລ້ວ"); }
+    catch(e){ ta.select(); showToast("ເລືອກຂໍ້ຄວາມແລ້ວ — ກົດກ໊ອບດ້ວຍມື"); }
+  }));
   document.querySelectorAll("[data-lcf-item]").forEach(el=>el.addEventListener("click", async ()=>{
     const act = el.getAttribute("data-lcf-item"), id = el.getAttribute("data-lcf-item-id");
     try{
