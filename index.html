@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.20"; // v8.20 NEW (Tar 2026-10-11) -- the "📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ" button now reads the last 24 hours of comments through Pancake (cf-pancake-poll with since_minutes=1440 for this session's page) instead of the Meta Graph backfill that needs Advanced access; same idempotent registration, so pressing it twice never double-books.
+const APP_VERSION = "8.21"; // v8.21 NEW (Tar 2026-10-11, "ຕ້ອງເປັນແບບ 4 ຂໍ້ນີ້ ໄປແກ້ມາເລີຍ") -- Live CF now has a PER-LIVE PRODUCT LIST: staff add POS products to the Live ("➕ ເພີ່ມສິນຄ້າເຂົ້າ Live"), each gets a short code (A1, A2... editable; 1-2 digit codes are refused because "CF 2" already means quantity 2), and a live table shows code / name / price / stock / reserved / remaining-to-sell / handed-to-POS / out-of-stock count / buyers, with a 🎯 button for the product a bare "CF" means. Once a Live has a list, only listed products are accepted (a code or POS barcode that is not in the list goes to the "ຄອມເມັ້ນບໍ່ຮູ້ສິນຄ້າ" tab for staff). Sessions with no list keep the old behaviour. New table live_session_products + RPCs cf_session_add_product / cf_session_products; cf_register_comment_for_session updated (migration live_cf_session_product_list).
+// (previous text of this slot, kept) // v8.20 NEW (Tar 2026-10-11) -- the "📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ" button now reads the last 24 hours of comments through Pancake (cf-pancake-poll with since_minutes=1440 for this session's page) instead of the Meta Graph backfill that needs Advanced access; same idempotent registration, so pressing it twice never double-books.
 // (previous text of this slot, kept) // v8.19 NEW (Tar 2026-10-11, "ລອງ 1 ກ່ອນ" = Pancake route for the Facebook connection) -- Live CF no longer depends on Meta Advanced access: new Edge Function cf-pancake-poll (pg_cron every 15s while a live/draft session exists) reads the page COMMENT conversations through Pancake (pages.fm, an approved Meta Tech Provider) and files CF comments as reserved orders through the same cf_register_comment_for_session path as the webhook (idempotent by comment id; raw.source="pancake" keeps page/post/conversation/comment ids + psid). cf-send-payment v2 answers Pancake-sourced comments through Pancake (reply_inbox; if the chat window is closed -> private_replies on the CF comment; QR images as photos, falling back to a link) and the Live CF card now shows a send warning when only part of the message could be delivered. The Meta webhook path is kept for later.
 // (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ 2: ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າໃນແຊັດ + ກວດສະລິບແທ້") -- Live CF page: (1) "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ" button -> cf-send-payment Edge Function builds the payment message (items, total, shipping fee) and a QR per active payment_banks row with the exact amount embedded (same EMVCo/CRC16 logic as checkout.html), then sends it on Messenger as a private reply to the customer's CF comment (needs pages_messaging; if Facebook refuses, the card shows the message text + QR links to paste manually). (2) Real slip verification: new cf-slip-qr Edge Function decodes the OneProof QR printed on BCEL OnePay slips and asks BCEL's own OneProof service (the lookup the BCEL OneProof app uses; not a documented public API) for the real transaction record -- amount/time/sender/receiver come from BCEL, a forged slip is flagged, receiver account and pay-time-vs-CF-time are cross-checked, the ticket is the duplicate-slip key. Anything that cannot be verified (other banks, BCEL unreachable) falls back to cf-slip-ocr and is shown as not-verified-with-the-bank, with a stronger confirm dialog before sending to POS. live_cf_orders gained fb_psid / payment_msg_* columns. 
 // (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂປຣແກຣມດູດ CF ໄລ່ສົດ ... ດູດຮະຫັດມາເຂົ້າ Marketing Studio ໃຫ້ພະນັກງານກວດສະລິບ ແລ້ວສົ່ງໄປ POS ຂຶ້ນບິນ+ລົບສະຕັອກ ແບບຄົບວົງຈອນ") -- new page "🔴 Live CF". Comments "CF [ລະຫັດ] [ຈຳນວນ]" on a Facebook Live arrive via the fb-live-webhook Edge Function (Meta page "feed" webhook) and/or the manual backfill button (fb-live-admin) and become live_cf_items that SOFT-RESERVE stock (cf_reserved_qty; physical stock untouched), one live_cf_orders row per customer per Live. Staff fill in delivery details, upload the transfer slip (cf-slip-ocr reads the amount, shows match/mismatch + duplicate-slip warning), then "✅ ຢືນຢັນສະລິບ → ສົ່ງ POS" hands the order to online_orders (pending_review) and runs the EXISTING confirmOnlineOrder() (now takes opts.skipConfirm) which creates the POS bill, deducts stock and creates the shipping label. Unpaid holds auto-release via pg_cron job cf-release-expired (DB-side). Data loads only on page open/manual reload; live updates are an opt-in Realtime toggle (no polling/timers). Schema: live_cf_migration.sql. 
@@ -1562,7 +1563,9 @@ const APP_VERSION = "8.20"; // v8.20 NEW (Tar 2026-10-11) -- the "📥 ດຶງ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.19"; // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.20"; // v8.20 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.19→8.20 now that 8.21 is current).
+// (previous text of this slot, kept) // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.18→8.19 now that 8.20 is current).
 // (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.17→8.18 now that 8.19 is current).
@@ -1582,7 +1585,9 @@ const APP_VERSION_PREV = "8.19"; // v8.19 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.18"; // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.19"; // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.18→8.19 now that 8.20 is previous).
+// (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.17→8.18 now that 8.19 is previous).
 // (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.16→8.17 now that 8.18 is previous).
@@ -12617,7 +12622,7 @@ function attachOnlineOrdersEvents(){
    Schema + functions: live_cf_migration.sql (tables live_sessions, live_cf_orders, live_cf_items, live_comments). */
 function lcf(){
   if(!STATE.liveCf) STATE.liveCf = {
-    sessions:[], sessionId:"", orders:[], items:[], comments:[], currentProduct:null,
+    sessions:[], sessionId:"", orders:[], items:[], comments:[], currentProduct:null, lsp:[],
     loading:false, tab:"open", drafts:{}, busy:{}, slip:{}, pages:[], videos:[], webhookInfo:null,
     productQuery:"", productResults:[], productTarget:"", assigningComment:"", showNew:false,
     realtime:false, newForm:{title:"", pageId:"", holdMinutes:120}
@@ -12655,17 +12660,19 @@ async function loadLiveCfSessions(keepSelection){
 async function loadLiveCfSessionData(silent){
   const L = lcf();
   const s = lcfSession();
-  if(!s){ L.orders=[]; L.items=[]; L.comments=[]; L.currentProduct=null; if(!silent) render(); return; }
+  if(!s){ L.orders=[]; L.items=[]; L.comments=[]; L.lsp=[]; L.currentProduct=null; if(!silent) render(); return; }
   try{
-    const [oRes, iRes, cRes] = await Promise.all([
+    const [oRes, iRes, cRes, lRes] = await Promise.all([
       sb.from("live_cf_orders").select("*").eq("session_id", s.id).order("created_at",{ascending:true}),
       sb.from("live_cf_items").select("*").eq("session_id", s.id).order("created_at",{ascending:true}),
-      sb.from("live_comments").select("*").eq("session_id", s.id).eq("parse_status","cf_no_product").is("cf_item_id", null).order("received_at",{ascending:false}).limit(100)
+      sb.from("live_comments").select("*").eq("session_id", s.id).eq("parse_status","cf_no_product").is("cf_item_id", null).order("received_at",{ascending:false}).limit(100),
+      sb.rpc("cf_session_products", {p_session_id: s.id})
     ]);
     if(oRes.error) throw oRes.error;
     if(iRes.error) throw iRes.error;
     if(cRes.error) throw cRes.error;
-    L.orders = oRes.data||[]; L.items = iRes.data||[]; L.comments = cRes.data||[];
+    if(lRes.error) throw lRes.error;
+    L.orders = oRes.data||[]; L.items = iRes.data||[]; L.comments = cRes.data||[]; L.lsp = lRes.data||[];
     if(s.current_product_id){
       if(!L.currentProduct || L.currentProduct.id!==s.current_product_id){
         const {data} = await sb.from("pos_products").select("id,name,barcode,price_1,online_price_kip,stock_qty").eq("id", s.current_product_id).maybeSingle();
@@ -12792,7 +12799,7 @@ function renderLcfSession(s){
           <div><b>${L.currentProduct ? esc(L.currentProduct.name)+` <span class="small-muted">(${fmt(L.currentProduct.online_price_kip||L.currentProduct.price_1)} ກີບ · ສະຕັອກ ${fmt(L.currentProduct.stock_qty)})</span>` : "— ຍັງບໍ່ໄດ້ຕັ້ງ —"}</b></div></div>
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-        <button class="btn btn-sm btn-outline" id="lcf-set-product">🎯 ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ</button>
+        <button class="btn btn-sm btn-outline" id="lcf-set-product">➕ ເພີ່ມສິນຄ້າເຂົ້າ Live</button>
         ${L.currentProduct ? `<button class="btn btn-sm btn-outline" id="lcf-clear-product">ລ້າງສິນຄ້າ</button>` : ""}
         ${s.status!=="ended" ? `<button class="btn btn-sm btn-outline" id="lcf-find-video">🔍 ຫາ Live ຈາກເພຈ</button>` : ""}
         ${s.fb_video_id ? `<button class="btn btn-sm btn-outline" id="lcf-backfill">📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ</button>` : ""}
@@ -12800,7 +12807,8 @@ function renderLcfSession(s){
         <button class="btn btn-sm btn-outline" id="lcf-realtime">${L.realtime?"🟢 ອັບເດດສົດ: ເປີດ (ກົດປິດ)":"⚪ ເປີດອັບເດດສົດ"}</button>
         ${s.status!=="ended" ? `<button class="btn btn-sm btn-outline" id="lcf-end" style="color:var(--danger); border-color:var(--danger);">⏹️ ຈົບ Live</button>` : ""}
       </div>
-      ${L.productTarget==="current" ? renderLcfProductSearch("ຄົ້ນຫາສິນຄ້າທີ່ຈະຂາຍ (ຊື່ ຫຼື ບາໂຄດ)") : ""}
+      ${L.productTarget==="list" ? renderLcfProductSearch("ຄົ້ນຫາສິນຄ້າທີ່ຈະເພີ່ມ (ຊື່ ຫຼື ບາໂຄດ)") : ""}
+      ${renderLcfProductList(s)}
       ${L.videos.length ? `<div style="margin-top:8px;"><b>ເລືອກ Live ທີ່ກຳລັງອອກອາກາດ:</b>${L.videos.map(v=>`
         <div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border,#eee);">
           <div style="flex:1;"><div>${esc(v.title||"(ບໍ່ມີຊື່)")}</div><div class="small-muted">${esc(v.status)} · ${esc(v.video_id)}</div></div>
@@ -12813,6 +12821,63 @@ function renderLcfSession(s){
     </div>
     ${renderLcfTabs()}
   `;
+}
+function renderLcfProductList(s){
+  const L = lcf(); const rows = L.lsp||[]; const ended = s.status==="ended";
+  const head = `<div style="margin-top:12px;"><b>📋 ລາຍການສິນຄ້າຂອງ Live ນີ້</b> <span class="small-muted">(${fmt(rows.length)} ລາຍການ)</span></div>`;
+  if(!rows.length) return head+`<div class="small-muted" style="margin-top:6px;">ຍັງບໍ່ມີ — ກົດ "➕ ເພີ່ມສິນຄ້າເຂົ້າ Live" ເພື່ອເລືອກສິນຄ້າທີ່ຈະໄລ້. ເມື່ອເພີ່ມແລ້ວ ລູກຄ້າ CF ໄດ້ສະເພາະສິນຄ້າໃນລາຍການ.</div>`;
+  return head+`
+    <div class="small-muted" style="margin:4px 0 6px;">ລູກຄ້າພິມ <b>CF ລະຫັດ</b> ເຊັ່ນ <b>CF ${esc(rows[0].code)}</b> ຫຼື <b>CF ${esc(rows[0].code)} 2</b> (2 = ຈຳນວນ). ພິມ <b>CF</b> ເປົ່າໆ ໄດ້ສິນຄ້າທີ່ມີ 🎯</div>
+    ${rows.map(r=>{
+      const left = Math.max((Number(r.stock_qty)||0)-(Number(r.reserved_all)||0), 0);
+      return `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border,#eee);">
+        <input type="text" data-lsp-code="${esc(r.id)}" value="${esc(r.code)}" ${ended?"disabled":""} style="width:72px; text-transform:uppercase; font-weight:700;">
+        <div style="flex:1; min-width:180px;"><div><b>${esc(r.name)}</b></div>
+          <div class="small-muted">${fmt(r.price)} ກີບ · ສະຕັອກ ${fmt(r.stock_qty)} · ຈອງ ${fmt(r.reserved_all)} · <b>ເຫຼືອຂາຍ ${fmt(left)}</b>${Number(r.live_handed)>0?` · ສົ່ງ POS ແລ້ວ ${fmt(r.live_handed)}`:""}${Number(r.live_oos)>0?` · <span style="color:var(--danger,#c0392b);">ສະຕັອກບໍ່ພໍ ${fmt(r.live_oos)}</span>`:""} · ຄົນ CF ${fmt(r.buyers)}</div></div>
+        ${ended ? "" : `<button class="btn btn-sm ${r.is_current?"":"btn-outline"}" data-lsp-current="${esc(r.product_id)}">${r.is_current?"🎯 ກຳລັງຂາຍ":"ຕັ້ງເປັນກຳລັງຂາຍ"}</button>
+        <button class="btn btn-sm btn-outline" data-lsp-del="${esc(r.id)}" title="ເອົາອອກ">✖</button>`}
+      </div>`;
+    }).join("")}`;
+}
+async function lcfLspSetCode(id, raw){
+  const code = String(raw||"").trim().toUpperCase();
+  if(!/^[A-Z0-9][A-Z0-9\-_.]{0,19}$/.test(code) || !(/[A-Z]/.test(code) || /^\d{3,}$/.test(code))){
+    showToast("⚠️ ລະຫັດຕ້ອງມີຕົວອັກສອນ ເຊັ່ນ A1 (ເລກ 1-2 ໂຕ ໃຊ້ບໍ່ໄດ້ ເພາະ CF 2 ໝາຍເຖິງຈຳນວນ 2)", "error");
+    render(); return;
+  }
+  try{
+    const {error} = await sb.from("live_session_products").update({code}).eq("id", id);
+    if(error) throw error;
+    showToast("✅ ປ່ຽນລະຫັດເປັນ "+code+" ແລ້ວ");
+  }catch(e){ showToast(/duplicate|unique/i.test(lcfErr(e)) ? "⚠️ ລະຫັດນີ້ຖືກໃຊ້ແລ້ວ" : "⚠️ "+lcfErr(e), "error"); }
+  await loadLiveCfSessionData(true); render();
+}
+async function lcfLspSetCurrent(productId){
+  const L = lcf();
+  try{
+    const {error} = await sb.from("live_sessions").update({current_product_id: productId}).eq("id", L.sessionId);
+    if(error) throw error;
+    const s = lcfSession(); if(s) s.current_product_id = productId;
+    L.currentProduct = null;
+    showToast("🎯 ຕັ້ງສິນຄ້າກຳລັງຂາຍແລ້ວ");
+  }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+  await loadLiveCfSessionData(true); render();
+}
+async function lcfLspRemove(id){
+  const L = lcf();
+  const row = (L.lsp||[]).find(x=>x.id===id); if(!row) return;
+  if(!await customConfirm("ເອົາ \""+row.name+"\" ອອກຈາກລາຍການ Live? (ອໍເດີທີ່ຈອງໄປແລ້ວບໍ່ຖືກກະທົບ)")) return;
+  try{
+    const {error} = await sb.from("live_session_products").delete().eq("id", id);
+    if(error) throw error;
+    if(row.is_current){
+      await sb.from("live_sessions").update({current_product_id: null}).eq("id", L.sessionId);
+      const s = lcfSession(); if(s) s.current_product_id = null;
+      L.currentProduct = null;
+    }
+    showToast("ເອົາອອກແລ້ວ");
+  }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
+  await loadLiveCfSessionData(true); render();
 }
 function renderLcfProductSearch(label){
   const L = lcf();
@@ -12860,7 +12925,7 @@ function renderLcfComments(){
         <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between;">
           <div><b>${esc(c.fb_user_name||c.fb_user_id)}</b> <span class="small-muted">${esc(lcfTime(c.received_at))}</span>
             <div>"${esc(c.message)}" <span class="small-muted">(ຈຳນວນ ${fmt(c.qty||1)}${c.product_code?` · ລະຫັດ ${esc(c.product_code)}`:""})</span></div>
-            <div class="small-muted">${c.product_code?"ບໍ່ພົບສິນຄ້າລະຫັດນີ້":"ບໍ່ມີລະຫັດ ແລະ ຍັງບໍ່ໄດ້ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ"}</div></div>
+            <div class="small-muted">${c.product_code?"ບໍ່ພົບລະຫັດນີ້ໃນລາຍການສິນຄ້າຂອງ Live":"ບໍ່ມີລະຫັດ ແລະ ຍັງບໍ່ໄດ້ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ"}</div></div>
           <button class="btn btn-sm" data-lcf-assign="${esc(c.id)}">🎯 ເລືອກສິນຄ້າ</button>
         </div>
       </div>`).join("")}`;
@@ -13157,6 +13222,13 @@ async function lcfPickProduct(productId){
       const s = lcfSession(); if(s) s.current_product_id = p.id;
       L.currentProduct = p;
       showToast("🎯 ຕັ້ງສິນຄ້າທີ່ກຳລັງຂາຍ: "+p.name);
+    } else if(L.productTarget==="list"){
+      const res = await lcfRpc("cf_session_add_product", {p_session_id: L.sessionId, p_product_id: p.id, p_code: null});
+      if(res.status==="ok") showToast("➕ ເພີ່ມ "+p.name+" ແລ້ວ — ລະຫັດ "+res.code);
+      else if(res.status==="exists") showToast("ສິນຄ້ານີ້ຢູ່ໃນລາຍການແລ້ວ (ລະຫັດ "+res.code+")");
+      else showToast("ຜົນ: "+res.status, "error");
+      await loadLiveCfSessionData(true);
+      L.productResults = []; L.productQuery = ""; render(); return; // keep the search open to add more
     } else if(L.productTarget==="assign"){
       const c = L.comments.find(x=>x.id===L.assigningComment);
       if(!c) return;
@@ -13240,7 +13312,10 @@ function attachLiveCfEvents(){
     try{ await lcfUpdateSession({reserve_minutes: v}, "💾 ບັນທຶກເວລາຈອງແລ້ວ (ມີຜົນກັບການຈອງໃໝ່)"); }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
     render();
   });
-  on("lcf-set-product", ()=>{ L.productTarget = L.productTarget==="current" ? "" : "current"; L.productResults = []; render(); });
+  on("lcf-set-product", ()=>{ L.productTarget = L.productTarget==="list" ? "" : "list"; L.productResults = []; render(); });
+  document.querySelectorAll("[data-lsp-code]").forEach(el=>el.addEventListener("change", ()=>lcfLspSetCode(el.getAttribute("data-lsp-code"), el.value)));
+  document.querySelectorAll("[data-lsp-current]").forEach(el=>el.addEventListener("click", ()=>lcfLspSetCurrent(el.getAttribute("data-lsp-current"))));
+  document.querySelectorAll("[data-lsp-del]").forEach(el=>el.addEventListener("click", ()=>lcfLspRemove(el.getAttribute("data-lsp-del"))));
   on("lcf-clear-product", async ()=>{
     try{ await lcfUpdateSession({current_product_id: null}, "ລ້າງສິນຄ້າທີ່ກຳລັງຂາຍແລ້ວ"); L.currentProduct = null; }catch(e){ showToast("⚠️ "+lcfErr(e), "error"); }
     render();
