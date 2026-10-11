@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.19"; // v8.19 NEW (Tar 2026-10-11, "ລອງ 1 ກ່ອນ" = Pancake route for the Facebook connection) -- Live CF no longer depends on Meta Advanced access: new Edge Function cf-pancake-poll (pg_cron every 15s while a live/draft session exists) reads the page COMMENT conversations through Pancake (pages.fm, an approved Meta Tech Provider) and files CF comments as reserved orders through the same cf_register_comment_for_session path as the webhook (idempotent by comment id; raw.source="pancake" keeps page/post/conversation/comment ids + psid). cf-send-payment v2 answers Pancake-sourced comments through Pancake (reply_inbox; if the chat window is closed -> private_replies on the CF comment; QR images as photos, falling back to a link) and the Live CF card now shows a send warning when only part of the message could be delivered. The Meta webhook path is kept for later.
+const APP_VERSION = "8.20"; // v8.20 NEW (Tar 2026-10-11) -- the "📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ" button now reads the last 24 hours of comments through Pancake (cf-pancake-poll with since_minutes=1440 for this session's page) instead of the Meta Graph backfill that needs Advanced access; same idempotent registration, so pressing it twice never double-books.
+// (previous text of this slot, kept) // v8.19 NEW (Tar 2026-10-11, "ລອງ 1 ກ່ອນ" = Pancake route for the Facebook connection) -- Live CF no longer depends on Meta Advanced access: new Edge Function cf-pancake-poll (pg_cron every 15s while a live/draft session exists) reads the page COMMENT conversations through Pancake (pages.fm, an approved Meta Tech Provider) and files CF comments as reserved orders through the same cf_register_comment_for_session path as the webhook (idempotent by comment id; raw.source="pancake" keeps page/post/conversation/comment ids + psid). cf-send-payment v2 answers Pancake-sourced comments through Pancake (reply_inbox; if the chat window is closed -> private_replies on the CF comment; QR images as photos, falling back to a link) and the Live CF card now shows a send warning when only part of the message could be delivered. The Meta webhook path is kept for later.
 // (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ 2: ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າໃນແຊັດ + ກວດສະລິບແທ້") -- Live CF page: (1) "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ" button -> cf-send-payment Edge Function builds the payment message (items, total, shipping fee) and a QR per active payment_banks row with the exact amount embedded (same EMVCo/CRC16 logic as checkout.html), then sends it on Messenger as a private reply to the customer's CF comment (needs pages_messaging; if Facebook refuses, the card shows the message text + QR links to paste manually). (2) Real slip verification: new cf-slip-qr Edge Function decodes the OneProof QR printed on BCEL OnePay slips and asks BCEL's own OneProof service (the lookup the BCEL OneProof app uses; not a documented public API) for the real transaction record -- amount/time/sender/receiver come from BCEL, a forged slip is flagged, receiver account and pay-time-vs-CF-time are cross-checked, the ticket is the duplicate-slip key. Anything that cannot be verified (other banks, BCEL unreachable) falls back to cf-slip-ocr and is shown as not-verified-with-the-bank, with a stronger confirm dialog before sending to POS. live_cf_orders gained fb_psid / payment_msg_* columns. 
 // (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂປຣແກຣມດູດ CF ໄລ່ສົດ ... ດູດຮະຫັດມາເຂົ້າ Marketing Studio ໃຫ້ພະນັກງານກວດສະລິບ ແລ້ວສົ່ງໄປ POS ຂຶ້ນບິນ+ລົບສະຕັອກ ແບບຄົບວົງຈອນ") -- new page "🔴 Live CF". Comments "CF [ລະຫັດ] [ຈຳນວນ]" on a Facebook Live arrive via the fb-live-webhook Edge Function (Meta page "feed" webhook) and/or the manual backfill button (fb-live-admin) and become live_cf_items that SOFT-RESERVE stock (cf_reserved_qty; physical stock untouched), one live_cf_orders row per customer per Live. Staff fill in delivery details, upload the transfer slip (cf-slip-ocr reads the amount, shows match/mismatch + duplicate-slip warning), then "✅ ຢືນຢັນສະລິບ → ສົ່ງ POS" hands the order to online_orders (pending_review) and runs the EXISTING confirmOnlineOrder() (now takes opts.skipConfirm) which creates the POS bill, deducts stock and creates the shipping label. Unpaid holds auto-release via pg_cron job cf-release-expired (DB-side). Data loads only on page open/manual reload; live updates are an opt-in Realtime toggle (no polling/timers). Schema: live_cf_migration.sql. 
 // (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)": "ໃນໜ້າສົ່ງບິນ ໃຫ້ເພີ່ມເລກອໍເດີ ໃສ່ນຳ ມີຊ່ອງແລ້ວ ແຕ່ບໍ່ມີຂໍ້ມູນຂຶ້ນມາສະແດງ") -- the ອໍເດີ column always showed "-". Cause: the page read courier_arrival_tag_log.pancake_order_id, a column the n8n arrival-tag script never fills (0 of 1,000+ rows); the order number it found is saved inside detail.orderId. New arrivalTagRowOrderId(r) = pancake_order_id || detail.orderId || detail.lookup.orderId, used for the cell and for the search box (so typing an order number now finds the row). Older rows (before 2026-10-02, found by phone only) have no order number stored and still show "-". Display only, no schema change; the ລູກຄ້າ column is unchanged (its source field is not stored either).
@@ -1561,7 +1562,9 @@ const APP_VERSION = "8.19"; // v8.19 NEW (Tar 2026-10-11, "ລອງ 1 ກ່ອ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.18"; // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.19"; // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.18→8.19 now that 8.20 is current).
+// (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.17→8.18 now that 8.19 is current).
 // (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.16→8.17 now that 8.18 is current).
@@ -1579,7 +1582,9 @@ const APP_VERSION_PREV = "8.18"; // v8.18 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.17"; // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.18"; // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.17→8.18 now that 8.19 is previous).
+// (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.16→8.17 now that 8.18 is previous).
 // (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.15→8.16 now that 8.17 is previous).
@@ -13271,9 +13276,12 @@ function attachLiveCfEvents(){
     if(!await customConfirm("ດຶງຄອມເມັ້ນທັງໝົດຂອງ Live ນີ້ຍ້ອນຫຼັງ ແລ້ວຈອງ CF ທີ່ຍັງບໍ່ມີ? (ຄອມເມັ້ນທີ່ມີແລ້ວຈະບໍ່ຊ້ຳ)")) return;
     try{
       showToast("ກຳລັງດຶງຄອມເມັ້ນ...");
-      const r = await lcfAdmin("backfill_comments", {session_id: s.id});
-      const res = r.results||{};
-      showToast(`📥 ອ່ານ ${fmt(r.fetched)} ຄອມເມັ້ນ · CF ${fmt(r.cf_comments)} · ຈອງໃໝ່ ${fmt(res.cf_ok||0)} · ຊ້ຳ ${fmt(res.duplicate||0)}${r.truncated?" · (ຍັງມີຕື່ມ ກົດອີກຄັ້ງ)":""}`);
+      const {data: pk, error: pkErr} = await sb.functions.invoke("cf-pancake-poll", {body:{since_minutes: 1440, page_id: s.fb_page_id}});
+      if(pkErr) throw new Error(await extractFunctionErrorMessage(pkErr));
+      if(!pk || pk.ok===false) throw new Error((pk&&pk.error)||"ຜິດພາດ");
+      const pg = (pk.pages||[])[0] || {};
+      if(pg.error) throw new Error(pg.error);
+      showToast(`📥 ພົບ CF ${fmt(pg.candidates||0)} ຄອມເມັ້ນ · ຈອງໃໝ່ ${fmt(pg.registered||0)} · ຊ້ຳ ${fmt(pg.duplicates||0)}`, "success");
       await loadLiveCfSessionData(true);
     }catch(e){ showToast("⚠️ ດຶງຄອມເມັ້ນບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
     render();
