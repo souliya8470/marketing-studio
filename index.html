@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.25"; // v8.25 NEW (Tar 2026-10-11, "ລູກຄ້າ CF ແລ້ວ ບໍ່ມີຂໍ້ຄວາມຢືນຢັນຍອດສົ່ງໃຫ້") -- payment message + QR is now sent to the customer AUTOMATICALLY about 10-25s after their CF (pg_cron job cf-auto-send-payment every 15s -> function cf_auto_send_payments() -> cf-send-payment). Waits 10s after the customer's latest item so several quick comments go out as ONE message; if the total later changes (more items / cancelled) the new total is sent again; failed sends are not retried automatically (the ⚠️ stays on the order, press 📨 manually). New per-Live switch live_sessions.auto_send_payment (default on) with a button "🤖 ສົ່ງຍອດອັດຕະໂນມັດ" next to the realtime button.
+const APP_VERSION = "8.26"; // v8.26 NEW (Tar 2026-10-12, "ຂໍ້ມູນທີ່ລູກຄ້າສົ່ງທາງແຊັດ ບໍ່ຖືກດຶງເຂົ້າລະບົບ / ຮູບສະລິບບໍ່ຖືກດຶງ") -- Live CF order cards now show what the server pulled from the customer's Messenger chat: the "💬 ຂໍ້ຄວາມຈາກລູກຄ້າ" text and the slip check notes (slip_hint: BCEL OneProof verified / receiver / time / amount mismatch / duplicate / AI-read-only warnings). The pulling itself is server-side (edge function cf-chat-poll every 45s via pg_cron: slip photo -> storage + cf-slip-qr/cf-slip-ocr -> cf_attach_slip; typed name/phone/province/district/village/carrier -> Claude parse -> cf_update_order, EMPTY fields only). Auto-refresh signature (lcfSig) now includes the chat fields so the card updates by itself.
+// (previous text of this slot, kept) // v8.25 NEW (Tar 2026-10-11, "ລູກຄ້າ CF ແລ້ວ ບໍ່ມີຂໍ້ຄວາມຢືນຢັນຍອດສົ່ງໃຫ້") -- payment message + QR is now sent to the customer AUTOMATICALLY about 10-25s after their CF (pg_cron job cf-auto-send-payment every 15s -> function cf_auto_send_payments() -> cf-send-payment). Waits 10s after the customer's latest item so several quick comments go out as ONE message; if the total later changes (more items / cancelled) the new total is sent again; failed sends are not retried automatically (the ⚠️ stays on the order, press 📨 manually). New per-Live switch live_sessions.auto_send_payment (default on) with a button "🤖 ສົ່ງຍອດອັດຕະໂນມັດ" next to the realtime button.
 // (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11, "ເວລາມີລູກຄ້າ CF ມາ ໜ້ານີ້ເຮົາບໍ່ອັບເດດໃຫ້ realtime ຫວາ") -- the Live CF page now refreshes itself every 8 seconds while it is open (orders, items, product-list stock/reserved, unknown-code comments). It only re-renders when something actually changed, and it skips a tick while the tab is hidden, a request is busy or the user is typing in a field, so unsaved input is never wiped. The old opt-in "ເປີດອັບເດດສົດ" realtime button still works on top of it.
 // (previous text of this slot, kept) // v8.23 NEW (Tar 2026-10-11, "ບໍ່ຕ້ອງພິມ CF ເລີຍ ພິມພຽງລະຫັດສິນຄ້າ ເຊັ່ນ A1") -- a comment that is only a product code of the Live's product list ("A1", "a2 2") now counts as an order, no "CF" needed (cf-pancake-poll v2; only exact codes from live_session_products match so normal chatter is ignored; "CF A1" still works). The hint line on the product list now says so.
 // (previous text of this slot, kept) // v8.22 NEW (Tar 2026-10-11) -- Live CF page: new "🏪 ເລືອກສິນຄ້າຈາກ POS" button that opens the POS tab "🔴 ສິນຄ້າໄລ້ສົດ" (pos.touktashop.online/#stock/live, POS v2.47) where staff tick the products for the Live instead of typing codes here; both screens share live_session_products, so the list below updates after a reload. The "➕ ເພີ່ມສິນຄ້າເຂົ້າ Live" search stays as the quick alternative.
@@ -1567,7 +1568,9 @@ const APP_VERSION = "8.25"; // v8.25 NEW (Tar 2026-10-11, "ລູກຄ້າ CF
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.24"; // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.25"; // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.24→8.25 now that 8.26 is current).
+// (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.23→8.24 now that 8.25 is current).
 // (previous text of this slot, kept) // v8.23 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.22→8.23 now that 8.24 is current).
@@ -1597,7 +1600,9 @@ const APP_VERSION_PREV = "8.24"; // v8.24 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.23"; // v8.23 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.24"; // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.23→8.24 now that 8.25 is previous).
+// (previous text of this slot, kept) // v8.23 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.22→8.23 now that 8.24 is previous).
 // (previous text of this slot, kept) // v8.22 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.21→8.22 now that 8.23 is previous).
@@ -12763,7 +12768,7 @@ function lcfSig(){
   const L = lcf();
   try{
     return JSON.stringify([
-      (L.orders||[]).map(o=>[o.id,o.status,o.updated_at,o.total_kip,o.payment_msg_status,o.payment_msg_sent_at,o.slip_url]),
+      (L.orders||[]).map(o=>[o.id,o.status,o.updated_at,o.total_kip,o.payment_msg_status,o.payment_msg_sent_at,o.slip_url,o.slip_hint,o.chat_text,o.phone,o.province,o.district,o.address_detail,o.courier_id,o.customer_name]),
       (L.items||[]).map(i=>[i.id,i.status,i.qty]),
       (L.comments||[]).map(c=>c.id),
       (L.lsp||[]).map(r=>[r.id,r.code,r.stock_qty,r.reserved_all,r.live_reserved,r.live_handed,r.live_oos,r.buyers,r.is_current])
@@ -13051,6 +13056,10 @@ function renderLcfOrder(o){
             ? `<div style="font-weight:700; color:var(--sage-dark,#3a7d44);">✅ ຢືນຢັນກັບ BCEL ແລ້ວ <span class="small-muted" style="font-weight:400;">— ຜູ້ໂອນ ${esc(o.slip_ocr.bcel.source_name||"")} → ${esc(o.slip_ocr.bcel.destination_name||"")}</span></div>`
             : `<div class="small-muted" style="color:var(--danger,#c0392b);">⚠️ ຍັງບໍ່ໄດ້ຢືນຢັນກັບທະນາຄານ (ອ່ານດ້ວຍ OCR ເທົ່ານັ້ນ) — ກວດໃຫ້ແນ່ໃຈວ່າເງິນເຂົ້າບັນຊີແທ້ກ່ອນຢືນຢັນ</div>`}` : `<div class="small-muted">ຍັງບໍ່ໄດ້ແນບສະລິບ</div>`}
         ${slipRes && slipRes.hint ? `<div style="margin-top:4px; color:var(--danger,#c0392b);">${slipRes.hint}</div>` : ""}
+        ${o.slip_hint ? `<div class="small-muted" style="margin-top:6px; padding:6px 8px; border-left:3px solid var(--sage-dark,#3a7d44); background:var(--tint-highlight); border-radius:4px; line-height:1.5;">${esc(o.slip_hint).replace(/\n/g,"<br>")}</div>` : ""}
+        ${o.chat_text ? `<div style="margin-top:8px; padding:6px 8px; border:1px dashed var(--border,#ccc); border-radius:6px;">
+          <div class="small-muted" style="margin-bottom:2px;">💬 ຂໍ້ຄວາມຈາກລູກຄ້າໃນແຊັດ${o.chat_synced_at?" · ອັບເດດ "+esc(lcfTime(o.chat_synced_at)):""}</div>
+          <div style="white-space:pre-wrap; font-size:13px;">${esc(o.chat_text)}</div></div>` : ""}
         ${editable ? `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <label class="btn btn-sm btn-outline" style="cursor:pointer;">${busy?"⏳ ກຳລັງອ່ານສະລິບ...":(hasSlip?"📷 ປ່ຽນສະລິບ":"📷 ອັບໂຫຼດສະລິບ")}
             <input type="file" accept="image/*" data-lcf-slip="${esc(o.id)}" style="display:none;" ${busy?"disabled":""}></label>
