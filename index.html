@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.21"; // v8.21 NEW (Tar 2026-10-11, "ຕ້ອງເປັນແບບ 4 ຂໍ້ນີ້ ໄປແກ້ມາເລີຍ") -- Live CF now has a PER-LIVE PRODUCT LIST: staff add POS products to the Live ("➕ ເພີ່ມສິນຄ້າເຂົ້າ Live"), each gets a short code (A1, A2... editable; 1-2 digit codes are refused because "CF 2" already means quantity 2), and a live table shows code / name / price / stock / reserved / remaining-to-sell / handed-to-POS / out-of-stock count / buyers, with a 🎯 button for the product a bare "CF" means. Once a Live has a list, only listed products are accepted (a code or POS barcode that is not in the list goes to the "ຄອມເມັ້ນບໍ່ຮູ້ສິນຄ້າ" tab for staff). Sessions with no list keep the old behaviour. New table live_session_products + RPCs cf_session_add_product / cf_session_products; cf_register_comment_for_session updated (migration live_cf_session_product_list).
+const APP_VERSION = "8.22"; // v8.22 NEW (Tar 2026-10-11) -- Live CF page: new "🏪 ເລືອກສິນຄ້າຈາກ POS" button that opens the POS tab "🔴 ສິນຄ້າໄລ້ສົດ" (pos.touktashop.online/#stock/live, POS v2.47) where staff tick the products for the Live instead of typing codes here; both screens share live_session_products, so the list below updates after a reload. The "➕ ເພີ່ມສິນຄ້າເຂົ້າ Live" search stays as the quick alternative.
+// (previous text of this slot, kept) // v8.21 NEW (Tar 2026-10-11, "ຕ້ອງເປັນແບບ 4 ຂໍ້ນີ້ ໄປແກ້ມາເລີຍ") -- Live CF now has a PER-LIVE PRODUCT LIST: staff add POS products to the Live ("➕ ເພີ່ມສິນຄ້າເຂົ້າ Live"), each gets a short code (A1, A2... editable; 1-2 digit codes are refused because "CF 2" already means quantity 2), and a live table shows code / name / price / stock / reserved / remaining-to-sell / handed-to-POS / out-of-stock count / buyers, with a 🎯 button for the product a bare "CF" means. Once a Live has a list, only listed products are accepted (a code or POS barcode that is not in the list goes to the "ຄອມເມັ້ນບໍ່ຮູ້ສິນຄ້າ" tab for staff). Sessions with no list keep the old behaviour. New table live_session_products + RPCs cf_session_add_product / cf_session_products; cf_register_comment_for_session updated (migration live_cf_session_product_list).
 // (previous text of this slot, kept) // v8.20 NEW (Tar 2026-10-11) -- the "📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ" button now reads the last 24 hours of comments through Pancake (cf-pancake-poll with since_minutes=1440 for this session's page) instead of the Meta Graph backfill that needs Advanced access; same idempotent registration, so pressing it twice never double-books.
 // (previous text of this slot, kept) // v8.19 NEW (Tar 2026-10-11, "ລອງ 1 ກ່ອນ" = Pancake route for the Facebook connection) -- Live CF no longer depends on Meta Advanced access: new Edge Function cf-pancake-poll (pg_cron every 15s while a live/draft session exists) reads the page COMMENT conversations through Pancake (pages.fm, an approved Meta Tech Provider) and files CF comments as reserved orders through the same cf_register_comment_for_session path as the webhook (idempotent by comment id; raw.source="pancake" keeps page/post/conversation/comment ids + psid). cf-send-payment v2 answers Pancake-sourced comments through Pancake (reply_inbox; if the chat window is closed -> private_replies on the CF comment; QR images as photos, falling back to a link) and the Live CF card now shows a send warning when only part of the message could be delivered. The Meta webhook path is kept for later.
 // (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ 2: ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າໃນແຊັດ + ກວດສະລິບແທ້") -- Live CF page: (1) "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ" button -> cf-send-payment Edge Function builds the payment message (items, total, shipping fee) and a QR per active payment_banks row with the exact amount embedded (same EMVCo/CRC16 logic as checkout.html), then sends it on Messenger as a private reply to the customer's CF comment (needs pages_messaging; if Facebook refuses, the card shows the message text + QR links to paste manually). (2) Real slip verification: new cf-slip-qr Edge Function decodes the OneProof QR printed on BCEL OnePay slips and asks BCEL's own OneProof service (the lookup the BCEL OneProof app uses; not a documented public API) for the real transaction record -- amount/time/sender/receiver come from BCEL, a forged slip is flagged, receiver account and pay-time-vs-CF-time are cross-checked, the ticket is the duplicate-slip key. Anything that cannot be verified (other banks, BCEL unreachable) falls back to cf-slip-ocr and is shown as not-verified-with-the-bank, with a stronger confirm dialog before sending to POS. live_cf_orders gained fb_psid / payment_msg_* columns. 
@@ -1563,7 +1564,9 @@ const APP_VERSION = "8.21"; // v8.21 NEW (Tar 2026-10-11, "ຕ້ອງເປັ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.20"; // v8.20 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.21"; // v8.21 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.20→8.21 now that 8.22 is current).
+// (previous text of this slot, kept) // v8.20 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.19→8.20 now that 8.21 is current).
 // (previous text of this slot, kept) // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.18→8.19 now that 8.20 is current).
@@ -1585,7 +1588,9 @@ const APP_VERSION_PREV = "8.20"; // v8.20 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.19"; // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.20"; // v8.20 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.19→8.20 now that 8.21 is previous).
+// (previous text of this slot, kept) // v8.19 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.18→8.19 now that 8.20 is previous).
 // (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.17→8.18 now that 8.19 is previous).
@@ -12800,6 +12805,7 @@ function renderLcfSession(s){
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
         <button class="btn btn-sm btn-outline" id="lcf-set-product">➕ ເພີ່ມສິນຄ້າເຂົ້າ Live</button>
+        <a class="btn btn-sm" href="https://pos.touktashop.online/#stock/live" target="_blank" rel="noopener" style="text-decoration:none;">🏪 ເລືອກສິນຄ້າຈາກ POS</a>
         ${L.currentProduct ? `<button class="btn btn-sm btn-outline" id="lcf-clear-product">ລ້າງສິນຄ້າ</button>` : ""}
         ${s.status!=="ended" ? `<button class="btn btn-sm btn-outline" id="lcf-find-video">🔍 ຫາ Live ຈາກເພຈ</button>` : ""}
         ${s.fb_video_id ? `<button class="btn btn-sm btn-outline" id="lcf-backfill">📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ</button>` : ""}
