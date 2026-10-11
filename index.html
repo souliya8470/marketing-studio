@@ -12792,7 +12792,7 @@ function renderLcfSession(s){
           <button class="btn btn-sm" data-lcf-pick-video="${esc(v.video_id)}">ໃຊ້ອັນນີ້</button>
         </div>`).join("")}</div>` : ""}
       ${s.status!=="ended" ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-        <span class="small-muted">ຫຼືໃສ່ Video ID ເອງ:</span><input type="text" id="lcf-video-manual" placeholder="Video ID" style="max-width:200px;">
+        <span class="small-muted">ຫຼືວາງລິ້ງ Live / Video ID ເອງ:</span><input type="text" id="lcf-video-manual" placeholder="https://www.facebook.com/.../videos/123..." style="max-width:320px; flex:1;">
         <button class="btn btn-sm btn-outline" id="lcf-video-manual-save">ເຊື່ອມ</button></div>` : ""}
       ${L.webhookInfo ? `<div class="small-muted" style="margin-top:8px;">${L.webhookInfo}</div>` : ""}
     </div>
@@ -13075,10 +13075,17 @@ async function lcfUpdateSession(patch, okMsg){
   const s = lcfSession(); if(s) Object.assign(s, patch);
   if(okMsg) showToast(okMsg);
 }
+// Accepts a bare numeric Video ID, or a pasted Facebook Live/video link (…/videos/123…, …?v=123…, …/posts/123…)
+function lcfExtractVideoId(input){
+  const t = String(input||"").trim();
+  if(/^\d{5,}$/.test(t)) return t;
+  const m = /\/(?:videos|posts|reel)\/(?:[^\/?#]*\/)?(\d{5,})/.exec(t) || /[?&](?:v|story_fbid|video_id)=(\d{5,})/.exec(t);
+  return m ? m[1] : "";
+}
 async function lcfLinkVideo(videoId){
   const s = lcfSession(); if(!s) return;
-  const vid = String(videoId||"").trim();
-  if(!vid){ showToast("ໃສ່ Video ID ກ່ອນ", "error"); return; }
+  const vid = lcfExtractVideoId(videoId);
+  if(!vid){ showToast("ໃສ່ Video ID (ຕົວເລກ) ຫຼື ວາງລິ້ງ Live ຂອງ Facebook ໃຫ້ຖືກ", "error"); return; }
   try{
     const patch = {fb_video_id: vid, status: "live"};
     if(!s.started_at) patch.started_at = new Date().toISOString();
@@ -13154,7 +13161,10 @@ function attachLiveCfEvents(){
       const r = await lcfAdmin("list_live_videos", {page_id: s.fb_page_id});
       L.videos = r.videos||[];
       if(!L.videos.length) showToast("ບໍ່ພົບ Live ໃນເພຈນີ້ (ຕ້ອງກົດເລີ່ມ Live ກ່ອນ)", "error");
-    }catch(e){ showToast("⚠️ ຫາ Live ບໍ່ສຳເລັດ: "+lcfErr(e), "error"); }
+    }catch(e){
+      console.error("lcf find video failed:", e);
+      showToast("⚠️ ຫາ Live ອັດຕະໂນມັດບໍ່ໄດ້ (Facebook ຍັງບໍ່ອະນຸມັດສິດນີ້) — ເປີດ Live ໃນ Facebook ແລ້ວວາງລິ້ງ Live ໃສ່ຊ່ອງດ້ານລຸ່ມແທນ", "error");
+    }
     render();
   });
   document.querySelectorAll("[data-lcf-pick-video]").forEach(el=>el.addEventListener("click", ()=>lcfLinkVideo(el.getAttribute("data-lcf-pick-video"))));
