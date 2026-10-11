@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.23"; // v8.23 NEW (Tar 2026-10-11, "ບໍ່ຕ້ອງພິມ CF ເລີຍ ພິມພຽງລະຫັດສິນຄ້າ ເຊັ່ນ A1") -- a comment that is only a product code of the Live's product list ("A1", "a2 2") now counts as an order, no "CF" needed (cf-pancake-poll v2; only exact codes from live_session_products match so normal chatter is ignored; "CF A1" still works). The hint line on the product list now says so.
+const APP_VERSION = "8.24"; // v8.24 NEW (Tar 2026-10-11, "ເວລາມີລູກຄ້າ CF ມາ ໜ້ານີ້ເຮົາບໍ່ອັບເດດໃຫ້ realtime ຫວາ") -- the Live CF page now refreshes itself every 8 seconds while it is open (orders, items, product-list stock/reserved, unknown-code comments). It only re-renders when something actually changed, and it skips a tick while the tab is hidden, a request is busy or the user is typing in a field, so unsaved input is never wiped. The old opt-in "ເປີດອັບເດດສົດ" realtime button still works on top of it.
+// (previous text of this slot, kept) // v8.23 NEW (Tar 2026-10-11, "ບໍ່ຕ້ອງພິມ CF ເລີຍ ພິມພຽງລະຫັດສິນຄ້າ ເຊັ່ນ A1") -- a comment that is only a product code of the Live's product list ("A1", "a2 2") now counts as an order, no "CF" needed (cf-pancake-poll v2; only exact codes from live_session_products match so normal chatter is ignored; "CF A1" still works). The hint line on the product list now says so.
 // (previous text of this slot, kept) // v8.22 NEW (Tar 2026-10-11) -- Live CF page: new "🏪 ເລືອກສິນຄ້າຈາກ POS" button that opens the POS tab "🔴 ສິນຄ້າໄລ້ສົດ" (pos.touktashop.online/#stock/live, POS v2.47) where staff tick the products for the Live instead of typing codes here; both screens share live_session_products, so the list below updates after a reload. The "➕ ເພີ່ມສິນຄ້າເຂົ້າ Live" search stays as the quick alternative.
 // (previous text of this slot, kept) // v8.21 NEW (Tar 2026-10-11, "ຕ້ອງເປັນແບບ 4 ຂໍ້ນີ້ ໄປແກ້ມາເລີຍ") -- Live CF now has a PER-LIVE PRODUCT LIST: staff add POS products to the Live ("➕ ເພີ່ມສິນຄ້າເຂົ້າ Live"), each gets a short code (A1, A2... editable; 1-2 digit codes are refused because "CF 2" already means quantity 2), and a live table shows code / name / price / stock / reserved / remaining-to-sell / handed-to-POS / out-of-stock count / buyers, with a 🎯 button for the product a bare "CF" means. Once a Live has a list, only listed products are accepted (a code or POS barcode that is not in the list goes to the "ຄອມເມັ້ນບໍ່ຮູ້ສິນຄ້າ" tab for staff). Sessions with no list keep the old behaviour. New table live_session_products + RPCs cf_session_add_product / cf_session_products; cf_register_comment_for_session updated (migration live_cf_session_product_list).
 // (previous text of this slot, kept) // v8.20 NEW (Tar 2026-10-11) -- the "📥 ດຶງຄອມເມັ້ນຍ້ອນຫຼັງ" button now reads the last 24 hours of comments through Pancake (cf-pancake-poll with since_minutes=1440 for this session's page) instead of the Meta Graph backfill that needs Advanced access; same idempotent registration, so pressing it twice never double-books.
@@ -1565,7 +1566,9 @@ const APP_VERSION = "8.23"; // v8.23 NEW (Tar 2026-10-11, "ບໍ່ຕ້ອງ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.22"; // v8.22 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.23"; // v8.23 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.22→8.23 now that 8.24 is current).
+// (previous text of this slot, kept) // v8.22 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.21→8.22 now that 8.23 is current).
 // (previous text of this slot, kept) // v8.21 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.20→8.21 now that 8.22 is current).
@@ -1591,7 +1594,9 @@ const APP_VERSION_PREV = "8.22"; // v8.22 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.21"; // v8.21 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.22"; // v8.22 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.21→8.22 now that 8.23 is previous).
+// (previous text of this slot, kept) // v8.21 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.20→8.21 now that 8.22 is previous).
 // (previous text of this slot, kept) // v8.20 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.19→8.20 now that 8.21 is previous).
@@ -12745,6 +12750,38 @@ function lcfStartRealtime(){
     .on("postgres_changes",{event:"*",schema:"public",table:"live_cf_items",filter:`session_id=eq.${L.sessionId}`}, kick)
     .subscribe();
   L.realtime = true;
+}
+
+/* ---------- Auto refresh (v8.24) ---------- */
+// Polls every 8s while the Live CF page is open so new CF orders / comments / stock numbers appear without pressing reload.
+function lcfSig(){
+  const L = lcf();
+  try{
+    return JSON.stringify([
+      (L.orders||[]).map(o=>[o.id,o.status,o.updated_at,o.total_kip,o.payment_msg_status,o.payment_msg_sent_at,o.slip_url]),
+      (L.items||[]).map(i=>[i.id,i.status,i.qty]),
+      (L.comments||[]).map(c=>c.id),
+      (L.lsp||[]).map(r=>[r.id,r.code,r.stock_qty,r.reserved_all,r.live_reserved,r.live_handed,r.live_oos,r.buyers,r.is_current])
+    ]);
+  }catch(e){ return String(Math.random()); }
+}
+let lcfAutoTimer = null, lcfAutoBusy = false;
+function lcfAutoTick(){
+  if(STATE.page!=="liveCf" || document.hidden || lcfAutoBusy) return;
+  const L = lcf();
+  if(!L.sessionId || L.loading) return;
+  const s = lcfSession(); if(!s || s.status==="ended") return;
+  if(Object.values(L.busy||{}).some(Boolean)) return;
+  const a = document.activeElement;
+  if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return; // don't wipe what the user is typing
+  lcfAutoBusy = true;
+  const before = lcfSig();
+  loadLiveCfSessionData(true).then(()=>{
+    if(STATE.page==="liveCf" && lcfSig()!==before) render();
+  }).catch(()=>{}).finally(()=>{ lcfAutoBusy = false; });
+}
+function lcfStartAutoRefresh(){
+  if(!lcfAutoTimer) lcfAutoTimer = setInterval(lcfAutoTick, 8000);
 }
 
 /* ---------- Render ---------- */
@@ -26673,7 +26710,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="editLog") loadEditLog();
   if(STATE.page==="pancakeCrm"){ loadCrmCount(); loadCrmResults(true); loadCodReceivedMap(); loadSyncStatus(); }
   if(STATE.page==="waCrmOrders"){ /* shipping_labels ຖືກໂຫຼດເປັນ global data ຢູ່ແລ້ວ ຄືກັນກັບໜ້າ ພິມໃບບິນ */ }
-  if(STATE.page==="liveCf") loadLiveCfSessions(true); // v8.17: one load on page open, no polling
+  if(STATE.page==="liveCf"){ loadLiveCfSessions(true); lcfStartAutoRefresh(); } // v8.17: load on page open; v8.24: + auto refresh every 8s while open
   if(STATE.page==="onlineOrders") loadOnlineOrdersData(); // v7.18: fresh reload so newly-placed orders show up without waiting for a full refreshAll()
   if(STATE.page==="profitDashboard"){ loadProfitData(); loadReturnImportLastAt(); loadSyncStatus(); }
   if(STATE.page==="courierBillImport") loadCourierBillPages();
