@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.18"; // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ 2: ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າໃນແຊັດ + ກວດສະລິບແທ້") -- Live CF page: (1) "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ" button -> cf-send-payment Edge Function builds the payment message (items, total, shipping fee) and a QR per active payment_banks row with the exact amount embedded (same EMVCo/CRC16 logic as checkout.html), then sends it on Messenger as a private reply to the customer's CF comment (needs pages_messaging; if Facebook refuses, the card shows the message text + QR links to paste manually). (2) Real slip verification: new cf-slip-qr Edge Function decodes the OneProof QR printed on BCEL OnePay slips and asks BCEL's own OneProof service (the lookup the BCEL OneProof app uses; not a documented public API) for the real transaction record -- amount/time/sender/receiver come from BCEL, a forged slip is flagged, receiver account and pay-time-vs-CF-time are cross-checked, the ticket is the duplicate-slip key. Anything that cannot be verified (other banks, BCEL unreachable) falls back to cf-slip-ocr and is shown as not-verified-with-the-bank, with a stronger confirm dialog before sending to POS. live_cf_orders gained fb_psid / payment_msg_* columns. 
+const APP_VERSION = "8.19"; // v8.19 NEW (Tar 2026-10-11, "ລອງ 1 ກ່ອນ" = Pancake route for the Facebook connection) -- Live CF no longer depends on Meta Advanced access: new Edge Function cf-pancake-poll (pg_cron every 15s while a live/draft session exists) reads the page COMMENT conversations through Pancake (pages.fm, an approved Meta Tech Provider) and files CF comments as reserved orders through the same cf_register_comment_for_session path as the webhook (idempotent by comment id; raw.source="pancake" keeps page/post/conversation/comment ids + psid). cf-send-payment v2 answers Pancake-sourced comments through Pancake (reply_inbox; if the chat window is closed -> private_replies on the CF comment; QR images as photos, falling back to a link) and the Live CF card now shows a send warning when only part of the message could be delivered. The Meta webhook path is kept for later.
+// (previous text of this slot, kept) // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ 2: ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າໃນແຊັດ + ກວດສະລິບແທ້") -- Live CF page: (1) "📨 ສົ່ງຍອດ+QR ໃຫ້ລູກຄ້າ" button -> cf-send-payment Edge Function builds the payment message (items, total, shipping fee) and a QR per active payment_banks row with the exact amount embedded (same EMVCo/CRC16 logic as checkout.html), then sends it on Messenger as a private reply to the customer's CF comment (needs pages_messaging; if Facebook refuses, the card shows the message text + QR links to paste manually). (2) Real slip verification: new cf-slip-qr Edge Function decodes the OneProof QR printed on BCEL OnePay slips and asks BCEL's own OneProof service (the lookup the BCEL OneProof app uses; not a documented public API) for the real transaction record -- amount/time/sender/receiver come from BCEL, a forged slip is flagged, receiver account and pay-time-vs-CF-time are cross-checked, the ticket is the duplicate-slip key. Anything that cannot be verified (other banks, BCEL unreachable) falls back to cf-slip-ocr and is shown as not-verified-with-the-bank, with a stronger confirm dialog before sending to POS. live_cf_orders gained fb_psid / payment_msg_* columns. 
 // (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11, "ຢາກໄດ້ໂປຣແກຣມດູດ CF ໄລ່ສົດ ... ດູດຮະຫັດມາເຂົ້າ Marketing Studio ໃຫ້ພະນັກງານກວດສະລິບ ແລ້ວສົ່ງໄປ POS ຂຶ້ນບິນ+ລົບສະຕັອກ ແບບຄົບວົງຈອນ") -- new page "🔴 Live CF". Comments "CF [ລະຫັດ] [ຈຳນວນ]" on a Facebook Live arrive via the fb-live-webhook Edge Function (Meta page "feed" webhook) and/or the manual backfill button (fb-live-admin) and become live_cf_items that SOFT-RESERVE stock (cf_reserved_qty; physical stock untouched), one live_cf_orders row per customer per Live. Staff fill in delivery details, upload the transfer slip (cf-slip-ocr reads the amount, shows match/mismatch + duplicate-slip warning), then "✅ ຢືນຢັນສະລິບ → ສົ່ງ POS" hands the order to online_orders (pending_review) and runs the EXISTING confirmOnlineOrder() (now takes opts.skipConfirm) which creates the POS bill, deducts stock and creates the shipping label. Unpaid holds auto-release via pg_cron job cf-release-expired (DB-side). Data loads only on page open/manual reload; live updates are an opt-in Realtime toggle (no polling/timers). Schema: live_cf_migration.sql. 
 // (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05, screenshot of "📬 ລາຍງານ ຮອດປາຍທາງ (n8n)": "ໃນໜ້າສົ່ງບິນ ໃຫ້ເພີ່ມເລກອໍເດີ ໃສ່ນຳ ມີຊ່ອງແລ້ວ ແຕ່ບໍ່ມີຂໍ້ມູນຂຶ້ນມາສະແດງ") -- the ອໍເດີ column always showed "-". Cause: the page read courier_arrival_tag_log.pancake_order_id, a column the n8n arrival-tag script never fills (0 of 1,000+ rows); the order number it found is saved inside detail.orderId. New arrivalTagRowOrderId(r) = pancake_order_id || detail.orderId || detail.lookup.orderId, used for the cell and for the search box (so typing an order number now finds the row). Older rows (before 2026-10-02, found by phone only) have no order number stored and still show "-". Display only, no schema change; the ລູກຄ້າ column is unchanged (its source field is not stored either).
 // v8.15 NEW (Tar 2026-10-05, "ລອງເພີ່ມມາເບິ່ງ" -- daily report "ອັບໂຫລດ COD ແລະ ເຄື່ອງຕີກັບ"): the green dot only meant "at least one file uploaded today", so it could not show that the hourly rounds keep adding newly returned bills during the day. Each courier on the two ເຄື່ອງຕີກັບ lines now shows the number of distinct bills uploaded today and the time of the latest upload, e.g. "ອານຸສິດ ✓ 2 ບິນ · ອັບລ່າສຸດ 10:01". loadDailyChecklistStatus now also selects bill_number + imported_at from courier_return_costs and computes retStats(); dailyChecklistPartsLine appends it. Display only -- no change to what counts as done, no schema change. COD lines unchanged.
@@ -1560,7 +1561,9 @@ const APP_VERSION = "8.18"; // v8.18 NEW (Tar 2026-10-11, "ເຮັດທັງ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.17"; // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.18"; // v8.18 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.17→8.18 now that 8.19 is current).
+// (previous text of this slot, kept) // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.16→8.17 now that 8.18 is current).
 // (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.15→8.16 now that 8.17 is current).
@@ -1576,7 +1579,9 @@ const APP_VERSION_PREV = "8.17"; // v8.17 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.16"; // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.17"; // v8.17 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.16→8.17 now that 8.18 is previous).
+// (previous text of this slot, kept) // v8.16 FIX (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.15→8.16 now that 8.17 is previous).
 // (previous text of this slot, kept) // v8.15 NEW (Tar 2026-10-05) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.14→8.15 now that 8.16 is previous).
@@ -12945,8 +12950,9 @@ function renderLcfPayStatus(o){
   if(o.payment_msg_status==="sent"){
     const stale = o.payment_msg_amount_kip!=null && Number(o.payment_msg_amount_kip)!==(Number(o.total_kip)||0);
     h += `<div class="small-muted" style="margin-top:6px;">📨 ສົ່ງຍອດ+QR ຫາລູກຄ້າແລ້ວ ${esc(lcfTime(o.payment_msg_sent_at))} (ຍອດ ${fmt(o.payment_msg_amount_kip)} ກີບ)${stale?` <b style="color:var(--danger,#c0392b);">— ຍອດປ່ຽນແລ້ວ ກົດສົ່ງໃໝ່</b>`:""}</div>`;
+    if(o.payment_msg_error) h += `<div class="small-muted" style="margin-top:4px; color:var(--danger,#c0392b);">⚠️ ${esc(o.payment_msg_error)}</div>`;
   } else if(o.payment_msg_status==="failed"){
-    h += `<div class="small-muted" style="margin-top:6px; color:var(--danger,#c0392b);">⚠️ ສົ່ງ Messenger ບໍ່ສຳເລັດ: ${esc(o.payment_msg_error||"")}</div>`;
+    h += `<div class="small-muted" style="margin-top:6px; color:var(--danger,#c0392b);">⚠️ ສົ່ງໃນແຊັດບໍ່ສຳເລັດ: ${esc(o.payment_msg_error||"")}</div>`;
   }
   if(r && r.text && !r.sent){
     h += `<div style="margin-top:8px; padding:10px; border:1px dashed var(--border,#ccc); border-radius:8px;">
@@ -12970,7 +12976,8 @@ async function lcfSendPayment(orderId){
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(!data || data.ok===false) throw new Error((data&&data.error)||"ສ້າງຂໍ້ຄວາມບໍ່ສຳເລັດ");
     L.pay[orderId] = {sent: !!data.sent, text: data.message_text, qr: data.qr||[], error: data.send_error||""};
-    showToast(data.sent ? "📨 ສົ່ງຍອດ+QR ຫາລູກຄ້າທາງ Messenger ແລ້ວ" : "⚠️ ສົ່ງ Messenger ບໍ່ໄດ້ — ກ໊ອບຂໍ້ຄວາມໄປສົ່ງເອງ", data.sent?"success":"error");
+    if(data.sent && data.send_warning) showToast("⚠️ ສົ່ງຂໍ້ຄວາມແລ້ວ ແຕ່: "+data.send_warning, "error");
+    else showToast(data.sent ? "📨 ສົ່ງຍອດ+QR ຫາລູກຄ້າໃນແຊັດແລ້ວ" : "⚠️ ສົ່ງໃນແຊັດບໍ່ໄດ້ — ກ໊ອບຂໍ້ຄວາມໄປສົ່ງເອງ", data.sent?"success":"error");
   }catch(e){ console.error("lcfSendPayment failed:", e); showToast("⚠️ "+lcfErr(e), "error"); }
   L.busy[orderId] = false;
   await loadLiveCfSessionData(true); render();
