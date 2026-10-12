@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.29"; // v8.29 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ page: new "✍️ ຂຽນຄຣີເອທີບໃໝ່" card. Pick a product, optional focus, button calls edge function ads-creative-writer (reads the shop's own winning ad captions + results, product facts, pain points, FAQ) and shows DRAFTS: shared angles of winners, 3 captions, 5 headlines, 2 video scripts (shop films them), retarget audiences (built by hand in Ads Manager) and chat messages for people who messaged but did not buy, each with a copy button. Drafts only; nothing is published; tables ad_creative_drafts.
+const APP_VERSION = "8.30"; // v8.30 UI (Tar 2026-10-12 screen recording, "ການຈັດໜ້າ ui ຮູ້ສຶກວ່າມີຄວາມສັບສົນແລະອຶດອັດ") -- 🧠 ຜູ້ຊ່ວຍແອດ page re-laid out: the single very long page is now 3 tabs (📌 ຕ້ອງຕັດສິນໃຈ / ✍️ ຂຽນຄຣີເອທີບ / 🕐 ປະຫວັດ); recommendations are flat rows grouped by priority (one primary button, "ບໍ່ເຮັດ" as a text link) instead of cards inside cards; "keep"/no-action items and each draft section (captions, headlines, video scripts, retarget) are collapsible; data gaps are behind a link; failed test drafts are hidden and drafts are chosen with pills (one draft shown at a time). No logic change.
+// (previous text of this slot, kept) // v8.29 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ page: new "✍️ ຂຽນຄຣີເອທີບໃໝ່" card. Pick a product, optional focus, button calls edge function ads-creative-writer (reads the shop's own winning ad captions + results, product facts, pain points, FAQ) and shows DRAFTS: shared angles of winners, 3 captions, 5 headlines, 2 video scripts (shop films them), retarget audiences (built by hand in Ads Manager) and chat messages for people who messaged but did not buy, each with a copy button. Drafts only; nothing is published; tables ad_creative_drafts.
 // (previous text of this slot, kept) // v8.28 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ: the "ວິເຄາະດຽວນີ້" button now first calls sync-ad-creative-insights (new edge function: Frequency, Reach, CPM, link CTR, video retention per ad + ad caption/headline -> tables ad_perf_window / ad_creatives) so ads-coach v4 can explain WHY an ad is weak in Lao (ad fatigue / low CTR / weak video hook / below break-even). Read-only on Facebook.
 // (previous text of this slot, kept) // v8.27 NEW (Tar 2026-10-12, "ໃຫ້ API ຊ່ວຍສະເກລແອັດ 6 ຂໍ້") -- owner-only page "🧠 ຜູ້ຊ່ວຍແອດ": button calls edge function ads-coach (Claude reads campaign numbers + real per-product break-even) and lists recommendations (increase budget / pause / reopen / clone winner / keep) with Lao reasons. Each rec has ✅ confirm (popup, then the same update-ad-entity set_daily_budget / toggle_status as the ad-spend board; clone opens the existing clone popup) or ✖ reject; status is stored in ad_coach_recs. Nothing is sent to Facebook without the confirm popup. No timers; data loads on page open.
 // (previous text of this slot, kept) // v8.26 NEW (Tar 2026-10-12, "ຂໍ້ມູນທີ່ລູກຄ້າສົ່ງທາງແຊັດ ບໍ່ຖືກດຶງເຂົ້າລະບົບ / ຮູບສະລິບບໍ່ຖືກດຶງ") -- Live CF order cards now show what the server pulled from the customer's Messenger chat: the "💬 ຂໍ້ຄວາມຈາກລູກຄ້າ" text and the slip check notes (slip_hint: BCEL OneProof verified / receiver / time / amount mismatch / duplicate / AI-read-only warnings). The pulling itself is server-side (edge function cf-chat-poll every 45s via pg_cron: slip photo -> storage + cf-slip-qr/cf-slip-ocr -> cf_attach_slip; typed name/phone/province/district/village/carrier -> Claude parse -> cf_update_order, EMPTY fields only). Auto-refresh signature (lcfSig) now includes the chat fields so the card updates by itself.
@@ -1571,7 +1572,9 @@ const APP_VERSION = "8.29"; // v8.29 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.28"; // v8.28 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.29"; // v8.29 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.28→8.29 now that 8.30 is current).
+// (previous text of this slot, kept) // v8.28 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.27→8.28 now that 8.29 is current).
 // (previous text of this slot, kept) // v8.27 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.26→8.27 now that 8.28 is current).
@@ -1609,7 +1612,9 @@ const APP_VERSION_PREV = "8.28"; // v8.28 NEW (Tar 2026-10-12) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.27"; // v8.27 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.28"; // v8.28 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.27→8.28 now that 8.29 is previous).
+// (previous text of this slot, kept) // v8.27 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.26→8.27 now that 8.28 is previous).
 // (previous text of this slot, kept) // v8.26 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.25→8.26 now that 8.27 is previous).
@@ -8142,7 +8147,7 @@ const STATE = {
   adsAnnaFormOpen: false, adsAnnaEditingRuleId: null, adsAnnaForm: null, adsAnnaTargetSearch: "",
   adsAnnaTargetStatusFilter: "all", adsAnnaTargetBudgetFilter: "all",
   adsAnnaPreviewLoading: false, adsAnnaPreviewResults: null,
-  adsCoachRuns: [], adsCoachRecs: [], adsCoachSettings: {}, adsCoachDrafts: [], adsCoachDraftProduct: "veggie_coffee", adsCoachDraftBusy: false, adsCoachDraftFocus: "", adsCoachLoading: false, adsCoachRunning: false, adsCoachBusyId: null, // v8.27
+  adsCoachRuns: [], adsCoachRecs: [], adsCoachSettings: {}, adsCoachDrafts: [], adsCoachDraftProduct: "veggie_coffee", adsCoachDraftBusy: false, adsCoachDraftFocus: "", adsCoachTab: "todo", adsCoachOpen: {}, adsCoachDraftId: null, adsCoachLoading: false, adsCoachRunning: false, adsCoachBusyId: null, // v8.27
   campaignControlLogDateFrom: "", campaignControlLogDateTo: "",
   // v4.80: search + full server-side pagination for the log (replaces the old 200-row client cap)
   campaignControlLogSearch: "", campaignControlLogPage: 1, campaignControlLogPageSize: 50,
@@ -21925,66 +21930,66 @@ async function runAdsCoachCreative(){
     showToast("✅ ຂຽນຮ່າງຄຣີເອທີບສຳເລັດ");
   }catch(e){ showErrorToast("ຂຽນຄຣີເອທີບບໍ່ສຳເລັດ: "+e.message); }
   STATE.adsCoachDraftBusy = false;
+  STATE.adsCoachDraftId = null; // show the newest draft
   await loadAdsCoachData();
 }
 async function adsCoachCopyText(text){
   try{ await navigator.clipboard.writeText(text); showToast("ຄັດລອກແລ້ວ"); }
   catch(e){ showErrorToast("ຄັດລອກບໍ່ໄດ້ — ເລືອກຂໍ້ຄວາມແລ້ວກົດ Ctrl+C ເອງ"); }
 }
-function renderAdsCoachDraftCard(d){
-  const o = d.output||{};
-  const fmtT = (t)=>new Date(t).toLocaleString("en-GB",{timeZone:LAOS_TZ,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-  const copyBtn = (txt)=>`<button class="btn btn-sm btn-outline" data-coach-copy="${esc(txt)}" style="margin-top:6px;">📋 ຄັດລອກ</button>`;
-  const box = (inner)=>`<div class="card" style="background:var(--white); margin:0; padding:10px;">${inner}</div>`;
-  const warn = (d.warnings||[]);
+// v8.30: layout redo (Tar 2026-10-12 screen recording: "ສັບສົນ ແລະ ອຶດອັດ"). One long page -> 3 tabs, flat rows instead of
+// cards inside cards, one primary button per row, secondary content collapsed.
+function adsCoachToggleRow(key, title, bodyHtml, defaultOpen){
+  const o = STATE.adsCoachOpen||{};
+  const open = o[key]===undefined ? !!defaultOpen : !!o[key];
   return `
-    <div class="card" style="background:var(--tint-sand); margin:0;">
-      <div class="flex-between" style="flex-wrap:wrap; gap:6px;">
-        <b>${esc(ADS_COACH_PRODUCTS[d.product_key]||d.product_key)}</b>
-        <span class="small-muted">${fmtT(d.created_at)} · ${esc(d.requested_by||"")}</span>
-      </div>
-      ${d.focus?`<div class="small-muted">ເນັ້ນ: ${esc(d.focus)}</div>`:""}
-      ${d.status!=="done" ? `<div class="small-muted" style="margin-top:6px;">${d.status==="error"?("ຜິດພາດ: "+esc((d.error||"").slice(0,160))):"ກຳລັງຂຽນ..."}</div>` : `
-      ${warn.length?`<div style="margin-top:6px; color:var(--danger); font-size:12.5px;">⚠️ ລະບົບກວດພົບ: ${warn.map(w=>esc(w)).join(" · ")} — ອ່ານກວດກ່ອນໃຊ້</div>`:""}
-      ${o.notes_lo?`<div class="small-muted" style="margin-top:6px;">ℹ️ ${esc(o.notes_lo)}</div>`:""}
-      ${(o.shared_angles||[]).length?`<h4 style="margin:12px 0 4px;">🔎 ຈຸດຮ່ວມຂອງແອດທີ່ຊະນະ</h4>${(o.shared_angles||[]).map(a=>`<div style="margin-bottom:4px;">• <b>${esc(a.angle_lo)}</b><br><span class="small-muted">${esc(a.evidence_lo)}</span></div>`).join("")}`:""}
-      ${(o.avoid_lo||[]).length?`<h4 style="margin:12px 0 4px;">🚫 ຄວນເຊົາໃຊ້ໃນແອດເກົ່າ</h4>${o.avoid_lo.map(x=>`<div class="small-muted">• ${esc(x)}</div>`).join("")}`:""}
-      ${(o.captions||[]).length?`<h4 style="margin:12px 0 4px;">📝 ຄຳບັນຍາຍ</h4><div style="display:flex; flex-direction:column; gap:8px;">${o.captions.map(c=>box(`<div class="small-muted">${esc(c.angle_lo)}</div><div style="white-space:pre-wrap; line-height:1.55; margin-top:4px;">${esc(c.text_lo)}</div>${copyBtn(c.text_lo)}`)).join("")}</div>`:""}
-      ${(o.headlines||[]).length?`<h4 style="margin:12px 0 4px;">🔤 ຫົວຂໍ້</h4>${o.headlines.map(h=>`<div style="display:flex; gap:8px; align-items:center; margin-bottom:4px;"><span style="flex:1;">${esc(h)}</span><button class="btn btn-sm btn-outline" data-coach-copy="${esc(h)}">📋</button></div>`).join("")}`:""}
-      ${(o.video_scripts||[]).length?`<h4 style="margin:12px 0 4px;">🎬 ສະຄຣິບວິດີໂອ (ທ່ານຖ່າຍເອງ)</h4><div style="display:flex; flex-direction:column; gap:8px;">${o.video_scripts.map(v=>{
-        const full = `${v.title_lo}${v.length_sec?` (${v.length_sec} ວິ)`:""}\nເປີດ 3 ວິນາທີ: ${v.hook_lo}\n`+(v.scenes||[]).map((s,i)=>`ສາກ ${i+1}: ຖ່າຍ — ${s.film_lo}\nເວົ້າ — ${s.say_lo}`).join("\n")+`\nປິດ: ${v.cta_lo}`;
-        return box(`<b>${esc(v.title_lo)}</b> ${v.length_sec?`<span class="small-muted">(${v.length_sec} ວິ)</span>`:""}<div style="margin-top:4px;">⚡ ${esc(v.hook_lo)}</div>${(v.scenes||[]).map((s,i)=>`<div class="small-muted" style="margin-top:4px;">ສາກ ${i+1}: ຖ່າຍ — ${esc(s.film_lo)}<br>ເວົ້າ — ${esc(s.say_lo)}</div>`).join("")}<div style="margin-top:4px;">📣 ${esc(v.cta_lo)}</div>${copyBtn(full)}`);
-      }).join("")}</div>`:""}
-      ${(o.retarget_audiences||[]).length?`<h4 style="margin:12px 0 4px;">🎯 ກຸ່ມຄົນທີ່ຄວນຍິງຄືນ (ສ້າງເອງໃນ Ads Manager)</h4>${o.retarget_audiences.map(a=>`<div style="margin-bottom:4px;">• <b>${esc(a.name_lo)}</b>${a.window_days?` <span class="small-muted">(${a.window_days} ວັນ)</span>`:""}<br><span class="small-muted">${esc(a.definition_lo)}</span></div>`).join("")}`:""}
-      ${(o.retarget_messages||[]).length?`<h4 style="margin:12px 0 4px;">💬 ຂໍ້ຄວາມຫາຄົນທີ່ເຄີຍແຊັດແຕ່ຍັງບໍ່ສັ່ງ</h4><div style="display:flex; flex-direction:column; gap:8px;">${o.retarget_messages.map(m=>box(`<div style="white-space:pre-wrap; line-height:1.55;">${esc(m)}</div>${copyBtn(m)}`)).join("")}</div>`:""}
-      `}
+    <div class="coach-sec">
+      <button type="button" class="coach-sec-h" data-coach-toggle="${key}" data-coach-default="${defaultOpen?1:0}">
+        <span>${title}</span><span class="coach-caret">${open?"▾":"▸"}</span>
+      </button>
+      ${open?`<div class="coach-sec-b">${bodyHtml}</div>`:""}
     </div>`;
 }
-function renderAdsCoachRecCard(rec, actionable){
+function renderAdsCoachDraftCard(d){
+  const o = d.output||{};
+  const copyBtn = (txt)=>`<button class="btn btn-sm btn-outline" data-coach-copy="${esc(txt)}">📋 ຄັດລອກ</button>`;
+  const item = (inner, txt)=>`<div class="coach-item">${inner}<div style="margin-top:8px;">${copyBtn(txt)}</div></div>`;
+  const warn = (d.warnings||[]);
+  const sec = [];
+  if((o.avoid_lo||[]).length) sec.push(adsCoachToggleRow(d.id+"-avoid", `🚫 ຄວນເຊົາໃຊ້ໃນແອດເກົ່າ <span class="small-muted">(${o.avoid_lo.length})</span>`, o.avoid_lo.map(x=>`<div class="coach-line">• ${esc(x)}</div>`).join(""), true));
+  if((o.captions||[]).length) sec.push(adsCoachToggleRow(d.id+"-cap", `📝 ຄຳບັນຍາຍ <span class="small-muted">(${o.captions.length})</span>`, o.captions.map(c=>item(`<div class="small-muted">${esc(c.angle_lo)}</div><div class="coach-text">${esc(c.text_lo)}</div>`, c.text_lo)).join(""), true));
+  if((o.headlines||[]).length) sec.push(adsCoachToggleRow(d.id+"-head", `🔤 ຫົວຂໍ້ <span class="small-muted">(${o.headlines.length})</span>`, o.headlines.map(h=>`<div class="coach-line" style="display:flex; gap:10px; align-items:center;"><span style="flex:1;">${esc(h)}</span><button class="btn btn-sm btn-outline" data-coach-copy="${esc(h)}">📋</button></div>`).join(""), false));
+  if((o.video_scripts||[]).length) sec.push(adsCoachToggleRow(d.id+"-vid", `🎬 ສະຄຣິບວິດີໂອ <span class="small-muted">(${o.video_scripts.length} · ທ່ານຖ່າຍເອງ)</span>`, o.video_scripts.map(v=>{
+    const full = `${v.title_lo}${v.length_sec?` (${v.length_sec} ວິ)`:""}\nເປີດ 3 ວິນາທີ: ${v.hook_lo}\n`+(v.scenes||[]).map((s,i)=>`ສາກ ${i+1}: ຖ່າຍ — ${s.film_lo}\nເວົ້າ — ${s.say_lo}`).join("\n")+`\nປິດ: ${v.cta_lo}`;
+    return item(`<b>${esc(v.title_lo)}</b> ${v.length_sec?`<span class="small-muted">(${v.length_sec} ວິ)</span>`:""}<div class="coach-text" style="margin-top:6px;">⚡ ${esc(v.hook_lo)}</div>${(v.scenes||[]).map((s,i)=>`<div class="coach-scene"><b>ສາກ ${i+1}</b> · ຖ່າຍ: ${esc(s.film_lo)}<br>ເວົ້າ: ${esc(s.say_lo)}</div>`).join("")}<div class="coach-text" style="margin-top:6px;">📣 ${esc(v.cta_lo)}</div>`, full);
+  }).join(""), false));
+  if((o.retarget_audiences||[]).length) sec.push(adsCoachToggleRow(d.id+"-aud", `🎯 ກຸ່ມຄົນທີ່ຄວນຍິງຄືນ <span class="small-muted">(${o.retarget_audiences.length} · ສ້າງເອງໃນ Ads Manager)</span>`, o.retarget_audiences.map(a=>`<div class="coach-line"><b>${esc(a.name_lo)}</b>${a.window_days?` <span class="small-muted">· ${a.window_days} ວັນ</span>`:""}<div class="small-muted" style="margin-top:2px;">${esc(a.definition_lo)}</div></div>`).join(""), false));
+  if((o.retarget_messages||[]).length) sec.push(adsCoachToggleRow(d.id+"-msg", `💬 ຂໍ້ຄວາມຫາຄົນທີ່ເຄີຍແຊັດແຕ່ຍັງບໍ່ສັ່ງ <span class="small-muted">(${o.retarget_messages.length})</span>`, o.retarget_messages.map(m=>item(`<div class="coach-text">${esc(m)}</div>`, m)).join(""), false));
+  if((o.shared_angles||[]).length) sec.push(adsCoachToggleRow(d.id+"-ang", `🔎 ຈຸດຮ່ວມຂອງແອດທີ່ຊະນະ <span class="small-muted">(${o.shared_angles.length})</span>`, o.shared_angles.map(a=>`<div class="coach-line"><b>${esc(a.angle_lo)}</b><div class="small-muted" style="margin-top:2px;">${esc(a.evidence_lo)}</div></div>`).join(""), false));
+  return `
+    ${warn.length?`<div class="coach-warn">⚠️ ລະບົບກວດພົບ: ${warn.map(w=>esc(w)).join(" · ")} — ອ່ານກວດກ່ອນໃຊ້</div>`:""}
+    ${o.notes_lo?`<div class="coach-note">ℹ️ ${esc(o.notes_lo)}</div>`:""}
+    ${sec.join("")}`;
+}
+function renderAdsCoachRecRow(rec, mode){
   const a = ADS_COACH_ACTIONS[rec.action] || {label:rec.action, color:""};
   const prod = ADS_COACH_PRODUCTS[rec.product_key] || rec.product_key || "";
   const pctTxt = rec.budget_change_pct!=null ? ` ${rec.action==="decrease_budget"?"-":"+"}${Math.abs(Number(rec.budget_change_pct))}%` : "";
-  const pill = a.color==="sage" ? "pill pill-sage" : "pill";
-  const pillStyle = a.color==="danger" ? "background:var(--tint-danger); color:var(--danger);" : (a.color==="warn" ? "background:var(--tint-sand);" : "");
+  const chipCls = a.color==="sage" ? "pill pill-sage" : (a.color==="danger" ? "pill pill-terra" : "pill pill-gray");
   const busy = STATE.adsCoachBusyId===rec.id;
   const manualOnly = rec.action==="keep"||rec.action==="new_creative"||rec.action==="retarget";
   const okLabel = manualOnly ? "👍 ຮັບຊາບ" : (rec.action==="clone_winner" ? "📋 ເປີດໂຄນ" : "✅ ຢືນຢັນ");
+  const okBtnCls = (mode==="info" || manualOnly) ? "btn btn-sm btn-outline" : "btn btn-sm";
   return `
-    <div class="card" style="background:var(--tint-sand); margin:0;">
-      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span class="${pill}" style="${pillStyle}">${a.label}${esc(pctTxt)}</span>
-        ${prod?`<span class="small-muted">${esc(prod)}</span>`:""}
-        <span class="small-muted">· ບູລິມະສິດ ${rec.priority||3}</span>
+    <div class="coach-row">
+      <div class="coach-row-top"><span class="${chipCls}">${a.label}${esc(pctTxt)}</span><span class="small-muted">${esc(prod)}</span></div>
+      ${rec.campaign_name?`<div class="coach-row-name">${esc(rec.campaign_name)}</div>`:""}
+      <div class="coach-row-why">${esc(rec.reason_lo||"")}</div>
+      ${rec.validation_note?`<div class="small-muted" style="margin-top:4px; font-size:11.5px;">🔒 ${esc(rec.validation_note)}</div>`:""}
+      <div class="coach-row-btns">
+        <button class="${okBtnCls}" data-coach-apply="${rec.id}" ${busy?"disabled":""}>${busy?"ກຳລັງດຳເນີນ...":okLabel}</button>
+        <button class="coach-link" data-coach-reject="${rec.id}" ${busy?"disabled":""}>ບໍ່ເຮັດ</button>
       </div>
-      ${rec.campaign_name?`<div style="margin-top:6px;"><b>${esc(rec.campaign_name)}</b></div>`:""}
-      <div style="margin-top:6px; line-height:1.55; white-space:pre-wrap;">${esc(rec.reason_lo||"")}</div>
-      ${rec.validation_note?`<div class="small-muted" style="margin-top:4px; font-size:11.5px;">🔒 ລະບົບກວດ: ${esc(rec.validation_note)}</div>`:""}
-      ${actionable ? `
-        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-          <button class="btn btn-sm" data-coach-apply="${rec.id}" ${busy?"disabled":""}>${busy?"ກຳລັງດຳເນີນ...":okLabel}</button>
-          <button class="btn btn-sm btn-outline" data-coach-reject="${rec.id}" ${busy?"disabled":""}>✖ ບໍ່ເຮັດ</button>
-          ${(rec.action==="new_creative"||rec.action==="retarget")?`<span class="small-muted" style="align-self:center;">ເຄື່ອງມືຊ່ວຍຂຽນຄຳບັນຍາຍ/ກຸ່ມຍິງຄືນ ກຳລັງສ້າງໃນຂັ້ນຕໍ່ໄປ</span>`:""}
-        </div>` : ""}
     </div>`;
 }
 function renderAdsCoachPage(){
@@ -21992,62 +21997,139 @@ function renderAdsCoachPage(){
   const recs = STATE.adsCoachRecs||[];
   const lastDone = runs.find(r=>r.status==="done");
   const lastRun = runs[0];
+  const tab = STATE.adsCoachTab||"todo";
   const fmtT = (t)=>new Date(t).toLocaleString("en-GB",{timeZone:LAOS_TZ,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
   const active = lastDone ? recs.filter(r=>r.run_id===lastDone.id && r.status==="pending") : [];
-  const decidedNow = lastDone ? recs.filter(r=>r.run_id===lastDone.id && r.status!=="pending") : [];
-  const hist = recs.filter(r=>!lastDone || r.run_id!==lastDone.id).filter(r=>r.status!=="pending").slice(0,40);
+  const todo = active.filter(r=>r.action!=="keep");
+  const infoOnly = active.filter(r=>r.action==="keep");
+  const hist = recs.filter(r=>r.status!=="pending").slice(0,60);
   const gaps = (lastDone && lastDone.output && lastDone.output.data_gaps_lo) || [];
   const st = STATE.adsCoachSettings||{};
   const notSet = (st.return_rate===0 || st.shipping_per_order===0);
   const statusLabel = {applied:"✅ ເຮັດແລ້ວ", accepted:"📋 ເປີດໂຄນແລ້ວ", rejected:"✖ ບໍ່ເຮັດ", acknowledged:"👍 ຮັບຊາບ"};
+  const prioLabel = {1:"ເຮັດມື້ນີ້", 2:"ພິຈາລະນາ", 3:"ໄວ້ກ່ອນ"};
+  const drafts = (STATE.adsCoachDrafts||[]).filter(d=>d.status==="done");
+  const curDraft = drafts.find(d=>d.id===STATE.adsCoachDraftId) || drafts[0];
+  const detailsOpen = !!(STATE.adsCoachOpen||{}).summary;
+
+  let body = "";
+  if(tab==="todo"){
+    const groups = [1,2,3].map(p=>({p, rows: todo.filter(r=>(Number(r.priority)||3)===p)})).filter(g=>g.rows.length);
+    body = `
+      <div class="card coach-card">
+        ${STATE.adsCoachLoading && !lastDone ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` :
+          (todo.length===0 && infoOnly.length===0 ? `<p class="small-muted" style="margin:0;">${lastDone?"ຕັດສິນໃຈຄົບແລ້ວ — ກົດ \"ວິເຄາະດຽວນີ້\" ເພື່ອຂໍລາຍງານໃໝ່":"ກົດ \"ວິເຄາະດຽວນີ້\" ເພື່ອເລີ່ມ"}</p>` :
+          groups.map(g=>`<div class="coach-group">${prioLabel[g.p]} <span class="small-muted">(${g.rows.length})</span></div>${g.rows.map(r=>renderAdsCoachRecRow(r,"todo")).join("")}`).join("") +
+          (todo.length===0 ? `<p class="small-muted" style="margin:0 0 8px;">ບໍ່ມີຫຍັງຕ້ອງຕັດສິນໃຈດຽວນີ້</p>`:""))}
+        ${infoOnly.length?adsCoachToggleRow("info", `ຮັກສາໄວ້ / ຍັງບໍ່ຕັດສິນ <span class="small-muted">(${infoOnly.length})</span>`, infoOnly.map(r=>renderAdsCoachRecRow(r,"info")).join(""), false):""}
+      </div>`;
+  } else if(tab==="write"){
+    body = `
+      <div class="card coach-card">
+        <p class="small-muted" style="margin-top:0;">ຂຽນຮ່າງຈາກຄຳບັນຍາຍແອດທີ່ໄດ້ຜົນດີ + ຂໍ້ມູນສິນຄ້າ + ບັນຫາຂອງລູກຄ້າ. ເປັນພຽງຮ່າງ ບໍ່ໄດ້ເຜີຍແຜ່ຫຍັງ — ອ່ານກວດພາສາ ແລະ ຂໍ້ກ່າວອ້າງສຸຂະພາບກ່ອນໃຊ້.</p>
+        <div class="coach-form">
+          <select id="coach-draft-product">${ADS_COACH_DRAFT_PRODUCTS.map(k=>`<option value="${k}" ${STATE.adsCoachDraftProduct===k?"selected":""}>${esc(ADS_COACH_PRODUCTS[k])}</option>`).join("")}</select>
+          <input type="text" id="coach-draft-focus" placeholder="ເນັ້ນເລື່ອງຫຍັງ (ບໍ່ບັງຄັບ)" value="${esc(STATE.adsCoachDraftFocus)}"/>
+          <button class="btn" id="btn-coach-draft" ${STATE.adsCoachDraftBusy?"disabled":""}>${STATE.adsCoachDraftBusy?"⏳ ກຳລັງຂຽນ (1-2 ນາທີ)...":"✍️ ຂຽນຮ່າງ"}</button>
+        </div>
+        <p class="small-muted" style="margin:8px 0 0;">ແຜ່ນຕິດນອນຫຼັບ ແລະ Jose ຍັງບໍ່ມີຂໍ້ມູນສິນຄ້າໃນລະບົບ ຈຶ່ງຂຽນຮ່າງບໍ່ໄດ້.</p>
+      </div>
+      ${drafts.length?`
+      <div class="card coach-card">
+        <div class="coach-pills">${drafts.map(d=>`<button type="button" class="coach-pill ${curDraft&&curDraft.id===d.id?'on':''}" data-coach-draft="${d.id}">${esc(ADS_COACH_PRODUCTS[d.product_key]||d.product_key)} · ${fmtT(d.created_at)}</button>`).join("")}</div>
+        ${curDraft?renderAdsCoachDraftCard(curDraft):""}
+      </div>`:""}`;
+  } else {
+    body = `
+      <div class="card coach-card">
+        ${hist.length===0?`<p class="small-muted" style="margin:0;">ຍັງບໍ່ມີປະຫວັດ</p>`:`
+        <div style="overflow-x:auto;"><table>
+          <thead><tr><th>ເວລາ</th><th>ການກະທຳ</th><th>ແຄມເປນ</th><th>ຜົນ</th><th>ໂດຍ</th></tr></thead><tbody>
+          ${hist.map(r=>`<tr><td class="small-muted" style="white-space:nowrap;">${fmtT(r.decided_at||r.created_at)}</td><td class="small-muted">${(ADS_COACH_ACTIONS[r.action]||{}).label||esc(r.action)}${r.budget_change_pct!=null?" "+esc(String(r.budget_change_pct))+"%":""}</td><td class="small-muted">${esc(r.campaign_name||ADS_COACH_PRODUCTS[r.product_key]||"-")}</td><td>${statusLabel[r.status]||esc(r.status)}</td><td class="small-muted">${esc(r.decided_by||"-")}</td></tr>`).join("")}
+          </tbody></table></div>`}
+      </div>`;
+  }
+
   return `
-    <div class="page-head">
-      <h1>🧠 ຜູ້ຊ່ວຍແອດ</h1>
-      <p>Claude ອ່ານຕົວເລກແອດ + ຕົ້ນທຶນຈິງຂອງແຕ່ລະສິນຄ້າ ແລ້ວແນະນຳວ່າຈະເພີ່ມງົບ/ປິດ/ເປີດຄືນ/ໂຄນອັນໃດ — <b>ບໍ່ມີຫຍັງປ່ຽນຢູ່ Facebook ຈົນກວ່າທ່ານກົດ ✅ ແລະ ຢືນຢັນ</b></p>
-    </div>
-    <div class="card">
-      <div class="flex-between" style="flex-wrap:wrap; gap:10px;">
-        <div>
-          <b>ລາຍງານລ່າສຸດ:</b> ${lastDone?fmtT(lastDone.created_at):"ຍັງບໍ່ມີ"}
-          ${lastRun && lastRun.status==="error"?`<span class="small-muted" style="color:var(--danger);"> · ຮັນຫຼ້າສຸດຜິດພາດ: ${esc((lastRun.error||"").slice(0,120))}</span>`:""}
+    <style>
+      .coach-wrap{max-width:900px;}
+      .coach-card{padding:8px 22px 14px;}
+      .coach-sum{line-height:1.7; margin:12px 0 0; font-size:14.5px;}
+      .coach-group{font-size:12.5px; font-weight:700; color:var(--muted); letter-spacing:.02em; margin:18px 0 2px;}
+      .coach-row{padding:16px 0; border-bottom:1px solid rgba(0,0,0,.08);}
+      .coach-row:last-child{border-bottom:none;}
+      .coach-row-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+      .coach-row-name{font-weight:700; margin-top:8px; font-size:15px; line-height:1.4;}
+      .coach-row-why{margin-top:6px; line-height:1.65; color:#4a4a42; font-size:14px;}
+      .coach-row-btns{display:flex; align-items:center; gap:16px; margin-top:12px;}
+      .coach-link{background:none; border:none; color:var(--muted); cursor:pointer; font-size:13.5px; padding:4px 0; text-decoration:underline; font-family:inherit;}
+      .coach-sec{border-top:1px solid rgba(0,0,0,.08); margin-top:6px;}
+      .coach-sec:first-of-type{border-top:none;}
+      .coach-sec-h{display:flex; width:100%; justify-content:space-between; align-items:center; background:none; border:none; cursor:pointer; padding:14px 0; font-size:14.5px; font-weight:700; text-align:left; font-family:inherit; color:inherit;}
+      .coach-caret{color:var(--muted); font-size:13px;}
+      .coach-sec-b{padding:0 0 14px;}
+      .coach-item{padding:12px 14px; margin-top:10px; border-radius:10px; background:var(--cream-2, #f3efe3);}
+      .coach-text{white-space:pre-wrap; line-height:1.65; margin-top:4px; font-size:14px;}
+      .coach-scene{margin-top:8px; font-size:13.5px; line-height:1.6; color:#4a4a42;}
+      .coach-line{padding:6px 0; line-height:1.6; font-size:14px;}
+      .coach-warn{margin:10px 0; padding:10px 12px; border-radius:8px; background:var(--tint-danger, #fbe9e7); color:var(--danger); font-size:13px;}
+      .coach-note{margin:10px 0; font-size:13px; color:var(--muted); line-height:1.6;}
+      .coach-form{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+      .coach-form select{max-width:240px; margin:0;}
+      .coach-form input{flex:1; min-width:180px; margin:0;}
+      .coach-pills{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px;}
+      .coach-pill{border:1px solid rgba(0,0,0,.15); background:none; border-radius:999px; padding:6px 14px; font-size:13px; cursor:pointer; font-family:inherit; color:inherit;}
+      .coach-pill.on{background:var(--terracotta); border-color:var(--terracotta); color:#fff;}
+      .coach-more{background:none; border:none; padding:0; color:var(--muted); cursor:pointer; font-size:13px; text-decoration:underline; font-family:inherit;}
+      @media (max-width:600px){ .coach-card{padding:4px 14px 12px;} }
+    </style>
+    <div class="coach-wrap">
+      <div class="page-head">
+        <h1>🧠 ຜູ້ຊ່ວຍແອດ</h1>
+        <p>Claude ອ່ານຕົວເລກແອດ ແລະ ຕົ້ນທຶນຈິງຂອງແຕ່ລະສິນຄ້າ ແລ້ວແນະນຳ. ບໍ່ມີຫຍັງປ່ຽນຢູ່ Facebook ຈົນກວ່າທ່ານກົດ ✅ ແລະ ຢືນຢັນ.</p>
+      </div>
+      <div class="card coach-card" style="padding-top:16px;">
+        <div class="flex-between" style="flex-wrap:wrap; gap:10px;">
+          <div><b>ລາຍງານລ່າສຸດ</b> <span class="small-muted">${lastDone?fmtT(lastDone.created_at):"ຍັງບໍ່ມີ"}</span>
+            ${lastRun && lastRun.status==="error"?`<div class="small-muted" style="color:var(--danger);">ຮັນຫຼ້າສຸດຜິດພາດ: ${esc((lastRun.error||"").slice(0,120))}</div>`:""}</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" id="btn-coach-run" ${STATE.adsCoachRunning?"disabled":""}>${STATE.adsCoachRunning?"⏳ ກຳລັງວິເຄາະ (1-2 ນາທີ)...":"🧠 ວິເຄາະດຽວນີ້"}</button>
+            <button class="btn btn-outline" id="btn-coach-reload" ${STATE.adsCoachLoading?"disabled":""} title="ໂຫຼດຄືນ">🔄</button>
+          </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" id="btn-coach-run" ${STATE.adsCoachRunning?"disabled":""}>${STATE.adsCoachRunning?"⏳ ກຳລັງວິເຄາະ (ປະມານ 1-2 ນາທີ)...":"🧠 ວິເຄາະດຽວນີ້"}</button>
-          <button class="btn btn-outline" id="btn-coach-reload" ${STATE.adsCoachLoading?"disabled":""}>🔄</button>
+        ${lastDone && lastDone.summary_lo?`<p class="coach-sum">${esc(lastDone.summary_lo)}</p>`:""}
+        ${(gaps.length||notSet)?`<div style="margin-top:10px;"><button type="button" class="coach-more" data-coach-toggle="summary" data-coach-default="0">${detailsOpen?"ເຊື່ອງລາຍລະອຽດ ▴":"ຂໍ້ມູນທີ່ຍັງຂາດ ▾"}</button></div>
+          ${detailsOpen?`<div class="coach-note">${gaps.map(g=>`• ${esc(g)}`).join("<br>")}${notSet?`<br>• ຈຸດຄຸ້ມທຶນຍັງບໍ່ລວມອັດຕາຕີກັບ/ຄ່າຂົນສົ່ງ (ຕັ້ງເປັນ 0)`:""}</div>`:""}`:""}
+      </div>
+      <div class="card" style="padding:0 8px;">
+        <div class="tabs">
+          <div class="tab ${tab==="todo"?"active":""}" data-coach-tab="todo">📌 ຕ້ອງຕັດສິນໃຈ${todo.length?` (${todo.length})`:""}</div>
+          <div class="tab ${tab==="write"?"active":""}" data-coach-tab="write">✍️ ຂຽນຄຣີເອທີບ</div>
+          <div class="tab ${tab==="history"?"active":""}" data-coach-tab="history">🕐 ປະຫວັດ</div>
         </div>
       </div>
-      ${lastDone && lastDone.summary_lo?`<div style="margin-top:10px; line-height:1.6; white-space:pre-wrap;">${esc(lastDone.summary_lo)}</div>`:""}
-      ${gaps.length?`<div class="small-muted" style="margin-top:8px;">⚠️ ຂໍ້ມູນທີ່ຍັງຂາດ: ${gaps.map(g=>esc(g)).join(" · ")}</div>`:""}
-      ${notSet?`<div class="small-muted" style="margin-top:8px;">ℹ️ ຈຸດຄຸ້ມທຶນດຽວນີ້ ຍັງບໍ່ລວມອັດຕາບິນຕີກັບ/ຄ່າຂົນສົ່ງ (ຕັ້ງເປັນ 0) — ຈຸດຄຸ້ມທຶນຈິງຈະສູງກວ່າທີ່ສະແດງ.</div>`:""}
+      ${body}
     </div>
-    <div class="card">
-      <h3 style="margin-top:0;">📌 ຄຳແນະນຳທີ່ລໍຖ້າຕັດສິນໃຈ (${active.length})</h3>
-      ${STATE.adsCoachLoading && !lastDone ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` :
-        (active.length===0 ? `<p class="small-muted">${lastDone?"ຕັດສິນໃຈຄົບແລ້ວ — ກົດ \"ວິເຄາະດຽວນີ້\" ເພື່ອຂໍລາຍງານໃໝ່":"ກົດ \"ວິເຄາະດຽວນີ້\" ເພື່ອເລີ່ມ"}</p>` :
-        `<div style="display:flex; flex-direction:column; gap:10px;">${active.map(r=>renderAdsCoachRecCard(r,true)).join("")}</div>`)}
-    </div>
-    ${decidedNow.length?`<div class="card"><h3 style="margin-top:0;">ຕັດສິນໃຈແລ້ວ (ລາຍງານນີ້)</h3>
-      <div style="display:flex; flex-direction:column; gap:6px;">${decidedNow.map(r=>`<div class="small-muted">${statusLabel[r.status]||r.status} · ${(ADS_COACH_ACTIONS[r.action]||{}).label||r.action} · ${esc(r.campaign_name||ADS_COACH_PRODUCTS[r.product_key]||"")}</div>`).join("")}</div></div>`:""}
-    <div class="card">
-      <h3 style="margin-top:0;">✍️ ຂຽນຄຣີເອທີບໃໝ່ (ຄຳບັນຍາຍ / ຫົວຂໍ້ / ສະຄຣິບວິດີໂອ / ຍິງຄືນ)</h3>
-      <p class="small-muted" style="margin-top:0;">Claude ອ່ານຄຳບັນຍາຍຂອງແອດທີ່ໄດ້ຜົນດີ + ຂໍ້ມູນສິນຄ້າ + ບັນຫາຂອງລູກຄ້າ ແລ້ວຂຽນຮ່າງໃໝ່. ເປັນພຽງຮ່າງ — ບໍ່ໄດ້ເຜີຍແຜ່ຫຍັງ. ກະລຸນາອ່ານກວດພາສາ ແລະ ຂໍ້ກ່າວອ້າງສຸຂະພາບກ່ອນນຳໄປໃຊ້ທຸກຄັ້ງ.</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <select id="coach-draft-product" style="max-width:260px;">${ADS_COACH_DRAFT_PRODUCTS.map(k=>`<option value="${k}" ${STATE.adsCoachDraftProduct===k?"selected":""}>${esc(ADS_COACH_PRODUCTS[k])}</option>`).join("")}</select>
-        <input type="text" id="coach-draft-focus" placeholder="ເນັ້ນເລື່ອງຫຍັງ (ບໍ່ບັງຄັບ)" value="${esc(STATE.adsCoachDraftFocus)}" style="flex:1; min-width:200px; margin:0;"/>
-        <button class="btn" id="btn-coach-draft" ${STATE.adsCoachDraftBusy?"disabled":""}>${STATE.adsCoachDraftBusy?"⏳ ກຳລັງຂຽນ (ປະມານ 1-2 ນາທີ)...":"✍️ ຂຽນຮ່າງ"}</button>
-      </div>
-      <p class="small-muted" style="margin-bottom:0;">ສິນຄ້າທີ່ບໍ່ຢູ່ໃນລາຍການ (ເຊັ່ນ ແຜ່ນຕິດນອນຫຼັບ, Jose) ຍັງບໍ່ມີຂໍ້ມູນສິນຄ້າໃນລະບົບ ຈຶ່ງຍັງຂຽນຮ່າງບໍ່ໄດ້.</p>
-      ${(STATE.adsCoachDrafts||[]).length?`<div style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">${STATE.adsCoachDrafts.map(d=>renderAdsCoachDraftCard(d)).join("")}</div>`:""}
-    </div>
-    ${hist.length?`<div class="card"><h3 style="margin-top:0;">🕐 ປະຫວັດ</h3><div style="overflow-x:auto;"><table>
-      <thead><tr><th>ເວລາ</th><th>ການກະທຳ</th><th>ແຄມເປນ</th><th>ຜົນ</th><th>ໂດຍ</th></tr></thead><tbody>
-      ${hist.map(r=>`<tr><td class="small-muted" style="white-space:nowrap;">${fmtT(r.decided_at||r.created_at)}</td><td class="small-muted">${(ADS_COACH_ACTIONS[r.action]||{}).label||esc(r.action)}${r.budget_change_pct!=null?" "+esc(String(r.budget_change_pct))+"%":""}</td><td class="small-muted">${esc(r.campaign_name||ADS_COACH_PRODUCTS[r.product_key]||"-")}</td><td>${statusLabel[r.status]||esc(r.status)}</td><td class="small-muted">${esc(r.decided_by||"-")}</td></tr>`).join("")}
-      </tbody></table></div></div>`:""}
   `;
 }
 function attachAdsCoachEvents(){
   const runBtn = document.getElementById("btn-coach-run");
   if(runBtn) runBtn.addEventListener("click", ()=>runAdsCoach(false));
+  document.querySelectorAll("[data-coach-tab]").forEach(el=>{
+    el.addEventListener("click", ()=>{ STATE.adsCoachTab = el.getAttribute("data-coach-tab"); render(); });
+  });
+  document.querySelectorAll("[data-coach-toggle]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const k = el.getAttribute("data-coach-toggle");
+      const cur = (STATE.adsCoachOpen||{})[k];
+      const def = el.getAttribute("data-coach-default")==="1";
+      STATE.adsCoachOpen = { ...(STATE.adsCoachOpen||{}), [k]: !(cur===undefined ? def : cur) };
+      render();
+    });
+  });
+  document.querySelectorAll("[data-coach-draft]").forEach(el=>{
+    el.addEventListener("click", ()=>{ STATE.adsCoachDraftId = el.getAttribute("data-coach-draft"); render(); });
+  });
   const draftSel = document.getElementById("coach-draft-product");
   if(draftSel) draftSel.addEventListener("change", ()=>{ STATE.adsCoachDraftProduct = draftSel.value; });
   const draftFocus = document.getElementById("coach-draft-focus");
