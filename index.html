@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12, "ມັນເບິ່ງຈຳເຈ ບໍ່ເດັ່ນເບິ່ງຍາກ" + "ທັງສອງຢ່າງ" = redesign and fewer steps) -- 🧪 ທົດສອບ tab redesigned (hero with 3 counters, product pills, big drag-and-drop zone, thumbnail cards for ready tests, running tests with 7-day numbers, all files collapsed) and the flow is shorter: uploading files now queues them automatically (ads-test-planner called for that product), and each card has a single "🚀 ຍິງທົດສອບ" button that does everything in the browser after one confirm popup: fetch the file, read the template ad set (list-campaign-adsets + get-adset-for-prefill), upload the video through the same fb-upload-video chunk steps as the launch page (adsTestFbUploadVideo) or convert the image, then call launch-ad with the same body shape submitLaunchAd sends (flowType new_campaign, objective messages, ABO, daily budget = plan budget). launch-ad still creates everything PAUSED. "ແກ້ກ່ອນຍິງ" keeps the old route into the launch form. Running cards read ad_perf_window (7 days) per ad and have a "🔄 ອັບເດດຕົວເລກ" button (sync-ad-creative-insights). Not built yet: automatic verdicts, scheduled planning.
+const APP_VERSION = "8.33"; // v8.33 NEW (Tar 2026-10-12, "ລອງ B ໂລດ ເພາະຂ້ອຍກຳນົດງົບປະມານສຸງສຸດຕໍ່ວັນໄວ້ໃຫ້ແລ້ວ" = let the AI do the testing itself inside my daily cap) -- 🧪 ທົດສອບ tab is now an automatic pipeline driven by NEW edge function ads-test-auto (cron every 10 min, master switch ad_coach_settings.auto_test_enabled, lock in ad_test_state, every action logged in ad_test_log). (1) On upload the browser now also stores 1 downscaled picture or 3 video snapshots (product-assets/<product>/frames/) so Claude can SEE the file; product_assets.frames. (2) PLAN: Claude (vision) reviews each new file, rejects unusable ones with a Lao reason, and writes caption + headline from what the file shows + the product facts (Lao-only/Thai/garble/risky-claim checks, retry once). Slots = floor((daily_cap - committed)/budget_per_test), max_new_per_day per Laos day. (3) LAUNCH: only inside the product's window (08:00-15:00 Laos), through the existing launch-ad (campaign created ACTIVE with startTime now+3min, name "<label> TEST dd/mm #<plan id8>", idempotent via ad_launch_log), template ad set copied from the product's template campaign; videos upload resumably across ticks (fb-upload-video start/transfer/finish/status, 4MB Range chunks). 3 failed tries -> status failed with the reason. (4) JUDGE: after 3+ days the code gates what verdict is ALLOWED (loser: spend>=250 and no messages / cost per message > 2x the product's own baseline; winner: >=5 days, >=6 messages, <=0.8x baseline) and Claude explains in Lao + says what to change next; a loser's campaign is paused via update-ad-entity. Budgets are NEVER raised automatically. UI: auto switch + "ເຮັດດຽວນີ້", "AI ເບິ່ງແລ້ວ" box on cards, status notes, ⚡ ຍິງດຽວນີ້ (force window), retry for failed, verdict badges with reason/next step, judged list, collapsed system log. "ຕັດອອກ" now retires the file (it used to return it to "new", which would make the AI queue it again).
+// (previous text of this slot, kept) // v8.32 UI+FLOW (Tar 2026-10-12, "ມັນເບິ່ງຈຳເຈ ບໍ່ເດັ່ນເບິ່ງຍາກ" + "ທັງສອງຢ່າງ" = redesign and fewer steps) -- 🧪 ທົດສອບ tab redesigned (hero with 3 counters, product pills, big drag-and-drop zone, thumbnail cards for ready tests, running tests with 7-day numbers, all files collapsed) and the flow is shorter: uploading files now queues them automatically (ads-test-planner called for that product), and each card has a single "🚀 ຍິງທົດສອບ" button that does everything in the browser after one confirm popup: fetch the file, read the template ad set (list-campaign-adsets + get-adset-for-prefill), upload the video through the same fb-upload-video chunk steps as the launch page (adsTestFbUploadVideo) or convert the image, then call launch-ad with the same body shape submitLaunchAd sends (flowType new_campaign, objective messages, ABO, daily budget = plan budget). launch-ad still creates everything PAUSED. "ແກ້ກ່ອນຍິງ" keeps the old route into the launch form. Running cards read ad_perf_window (7 days) per ad and have a "🔄 ອັບເດດຕົວເລກ" button (sync-ad-creative-insights). Not built yet: automatic verdicts, scheduled planning.
 // (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12, "ມີໂຟນເດີສິນຄ້າ ມີວິດີໂອແລະຮູບ ແລ້ວໃຫ້ ai ເອົາໄປເທສແອັດ... ງົບ 100-200 ບາດຕໍ່ມື້ ຕໍ່ສິນຄ້າ") -- 🧠 ຜູ້ຊ່ວຍແອດ: new tab "🧪 ທົດສອບ" (stage 1, proposals only). Library: upload videos/images per product (Supabase Storage bucket product-assets, table product_assets). Queue: button "📥 ຈັດຄິວດຽວນີ້" calls NEW edge function ads-test-planner, which pairs each untested file with a caption + headline from the newest finished ad_creative_drafts row inside the per-product cap (table ad_test_products: daily_cap 200, budget_per_test 100; pilot products veggie_coffee + sesame_coffee, each with a template campaign) and writes ad_test_plans rows (status proposed). It never calls Facebook. "🚀 ເປີດໃນໜ້າຍິງແອັດ" fills the existing launch form (audience/page/goal copied from the template ad set via list-campaign-adsets + applyAdSetPrefill, then the proposal caption/headline and the file) and navigates there; Tar still presses the normal launch button (launch-ad creates everything PAUSED; for video the existing ⬆️ upload step is still needed). After a successful single launch submitLaunchAd links the proposal to the new campaign/adset/ad ids (only if the launched text still equals the proposal caption), marks the file "testing" and adds the campaign to campaign_product_map (source ad_test). Not built yet: automatic verdicts on finished tests, automatic launching, scheduled planning. Note: at 100/day per test a ROAS verdict needs about 7-10 days of data.
 // (previous text of this slot, kept) // v8.30 UI (Tar 2026-10-12 screen recording, "ການຈັດໜ້າ ui ຮູ້ສຶກວ່າມີຄວາມສັບສົນແລະອຶດອັດ") -- 🧠 ຜູ້ຊ່ວຍແອດ page re-laid out: the single very long page is now 3 tabs (📌 ຕ້ອງຕັດສິນໃຈ / ✍️ ຂຽນຄຣີເອທີບ / 🕐 ປະຫວັດ); recommendations are flat rows grouped by priority (one primary button, "ບໍ່ເຮັດ" as a text link) instead of cards inside cards; "keep"/no-action items and each draft section (captions, headlines, video scripts, retarget) are collapsible; data gaps are behind a link; failed test drafts are hidden and drafts are chosen with pills (one draft shown at a time). No logic change.
 // (previous text of this slot, kept) // v8.29 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ page: new "✍️ ຂຽນຄຣີເອທີບໃໝ່" card. Pick a product, optional focus, button calls edge function ads-creative-writer (reads the shop's own winning ad captions + results, product facts, pain points, FAQ) and shows DRAFTS: shared angles of winners, 3 captions, 5 headlines, 2 video scripts (shop films them), retarget audiences (built by hand in Ads Manager) and chat messages for people who messaged but did not buy, each with a copy button. Drafts only; nothing is published; tables ad_creative_drafts.
@@ -1574,7 +1575,9 @@ const APP_VERSION = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12, "ມັນເບ�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.31"; // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.31→8.32 now that 8.33 is current).
+// (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.30→8.31 now that 8.32 is current).
 // (previous text of this slot, kept) // v8.30 UI (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.29→8.30 now that 8.31 is current).
@@ -1618,7 +1621,9 @@ const APP_VERSION_PREV = "8.31"; // v8.31 NEW (Tar 2026-10-12) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.30"; // v8.30 UI (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.31"; // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.30→8.31 now that 8.32 is previous).
+// (previous text of this slot, kept) // v8.30 UI (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.29→8.30 now that 8.31 is previous).
 // (previous text of this slot, kept) // v8.29 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.28→8.29 now that 8.30 is previous).
@@ -8159,6 +8164,7 @@ const STATE = {
   adsAnnaPreviewLoading: false, adsAnnaPreviewResults: null,
   adsCoachRuns: [], adsCoachRecs: [], adsCoachSettings: {}, adsCoachDrafts: [], adsCoachDraftProduct: "veggie_coffee", adsCoachDraftBusy: false, adsCoachDraftFocus: "", adsCoachTab: "todo", adsCoachOpen: {}, adsCoachDraftId: null, adsCoachLoading: false, adsCoachRunning: false, adsCoachBusyId: null, // v8.27
   adsTestProducts: [], adsTestAssets: [], adsTestPlans: [], adsTestUploading: "", adsTestPlanning: false, adsTestOpeningId: null, adsTestNote: "", launchAdTestPlanId: null, adsTestProduct: "", adsTestBusy: null, adsTestPerf: {}, adsTestRefreshing: false, // v8.31/v8.32
+  adsTestLog: [], adsTestState: null, adsTestTicking: false, adsTestAutoBusy: false, // v8.33
   campaignControlLogDateFrom: "", campaignControlLogDateTo: "",
   // v4.80: search + full server-side pagination for the log (replaces the old 200-row client cap)
   campaignControlLogSearch: "", campaignControlLogPage: 1, campaignControlLogPageSize: 50,
@@ -21823,21 +21829,25 @@ const ADS_COACH_ACTIONS = {
 async function loadAdsCoachData(){
   STATE.adsCoachLoading = true;
   try{
-    const [runsRes, recsRes, setRes, draftsRes, tProdRes, tAssetRes, tPlanRes] = await Promise.all([
+    const [runsRes, recsRes, setRes, draftsRes, tProdRes, tAssetRes, tPlanRes, tLogRes, tStateRes] = await Promise.all([
       sb.from("ad_coach_runs").select("id,created_at,requested_by,status,summary_lo,output,error,input_tokens,output_tokens").order("created_at",{ascending:false}).limit(8),
       sb.from("ad_coach_recs").select("*").order("created_at",{ascending:false}).limit(150),
       sb.from("ad_coach_settings").select("key,value"),
       sb.from("ad_creative_drafts").select("id,created_at,product_key,requested_by,status,focus,output,warnings,error").order("created_at",{ascending:false}).limit(6),
       sb.from("ad_test_products").select("*").order("product_key"),
       sb.from("product_assets").select("*").order("created_at",{ascending:false}).limit(300),
-      sb.from("ad_test_plans").select("*").order("created_at",{ascending:false}).limit(120)
+      sb.from("ad_test_plans").select("*").order("created_at",{ascending:false}).limit(120),
+      sb.from("ad_test_log").select("id,created_at,product_key,plan_id,action,detail").order("created_at",{ascending:false}).limit(40),
+      sb.from("ad_test_state").select("last_tick_at,last_tick_summary").eq("id",1).maybeSingle()
     ]);
     if(runsRes.error) throw runsRes.error;
     if(recsRes.error) throw recsRes.error;
     STATE.adsTestProducts = tProdRes.data||[];
     STATE.adsTestAssets = tAssetRes.data||[];
     STATE.adsTestPlans = tPlanRes.data||[];
-    const runIds = STATE.adsTestPlans.filter(p=>p.status==="launched" && p.ad_id).map(p=>p.ad_id);
+    STATE.adsTestLog = tLogRes.data||[];
+    STATE.adsTestState = tStateRes.data||null;
+    const runIds = STATE.adsTestPlans.filter(p=>(p.status==="launched" || p.status==="judged") && p.ad_id).map(p=>p.ad_id);
     STATE.adsTestPerf = {};
     if(runIds.length){
       const pf = await sb.from("ad_perf_window").select("ad_id,spend,messages,link_ctr,impressions,updated_at").eq("window_days",7).in("ad_id", runIds);
@@ -22035,6 +22045,40 @@ function adsTestProductLabel(key){
   const p = (STATE.adsTestProducts||[]).find(x=>x.product_key===key);
   return (p && p.label) || ADS_COACH_PRODUCTS[key] || key;
 }
+// v8.33: frames for the AI. Browser draws a downscaled JPEG of the picture, or 3 snapshots of the video
+// (about 15% / 45% / 75% in), and stores them next to the file. ads-test-auto shows them to Claude.
+function adsTestDrawToBlob(src, sw, sh, maxSide){
+  const sc = Math.min(1, maxSide/Math.max(sw, sh, 1));
+  const w = Math.max(1, Math.round(sw*sc)), h = Math.max(1, Math.round(sh*sc));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(src, 0, 0, w, h);
+  return new Promise((res, rej)=>c.toBlob(b=>b?res(b):rej(new Error("toBlob")), "image/jpeg", 0.82));
+}
+async function adsTestImageFrames(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res, rej)=>{ const i = new Image(); i.onload = ()=>res(i); i.onerror = ()=>rej(new Error("image decode")); i.src = url; });
+    return [await adsTestDrawToBlob(img, img.naturalWidth, img.naturalHeight, 1024)];
+  } finally { URL.revokeObjectURL(url); }
+}
+async function adsTestVideoFrames(file){
+  const url = URL.createObjectURL(file);
+  const v = document.createElement("video");
+  v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+  try{
+    await new Promise((res, rej)=>{ const t = setTimeout(()=>rej(new Error("video metadata timeout")), 10000); v.onloadedmetadata = ()=>{ clearTimeout(t); res(); }; v.onerror = ()=>{ clearTimeout(t); rej(new Error("video decode")); }; });
+    const dur = v.duration;
+    if(!isFinite(dur) || dur <= 0) throw new Error("video duration");
+    const out = [];
+    for(const f of [0.15, 0.45, 0.75]){
+      try{
+        await new Promise((res, rej)=>{ const t = setTimeout(()=>rej(new Error("seek timeout")), 8000); v.onseeked = ()=>{ clearTimeout(t); res(); }; v.currentTime = Math.min(dur-0.05, Math.max(0.05, dur*f)); });
+        out.push(await adsTestDrawToBlob(v, v.videoWidth, v.videoHeight, 768));
+      }catch(e){ console.warn("frame failed:", e); break; }
+    }
+    return out;
+  } finally { URL.revokeObjectURL(url); try{ v.removeAttribute("src"); v.load(); }catch(_e){} }
+}
 async function adsTestUploadFiles(productKey, files){
   const list = Array.from(files||[]);
   if(!list.length || STATE.adsTestUploading) return;
@@ -22042,19 +22086,37 @@ async function adsTestUploadFiles(productKey, files){
   let ok = 0; const fails = [];
   for(const file of list){
     let path = "";
+    const framePaths = [];
     try{
       const kind = (file.type||"").startsWith("video/") ? "video" : (file.type||"").startsWith("image/") ? "image" : null;
       if(!kind) throw new Error("ຮອງຮັບສະເພາະຮູບ ແລະ ວິດີໂອ");
+      const assetId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ("a"+Date.now()+Math.random().toString(16).slice(2)).slice(0,36);
       const ext = ((file.name.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,5)) || "bin";
       path = `${productKey}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
       const { error: upErr } = await sb.storage.from("product-assets").upload(path, file, { contentType: file.type, upsert:false });
       if(upErr) throw upErr;
       const { data: pub } = sb.storage.from("product-assets").getPublicUrl(path);
+      // frames are best effort: without them the AI writes from the product facts only
+      let frameUrls = [];
+      try{
+        const blobs = kind==="video" ? await adsTestVideoFrames(file) : await adsTestImageFrames(file);
+        for(let i=0;i<blobs.length;i++){
+          const fp = `${productKey}/frames/${assetId}_${i+1}.jpg`;
+          const { error: fErr } = await sb.storage.from("product-assets").upload(fp, blobs[i], { contentType:"image/jpeg", upsert:false });
+          if(fErr) throw fErr;
+          framePaths.push(fp);
+          frameUrls.push(sb.storage.from("product-assets").getPublicUrl(fp).data.publicUrl);
+        }
+      }catch(fe){
+        console.warn("frame extraction failed:", fe);
+        frameUrls = [];
+        if(framePaths.length){ try{ await sb.storage.from("product-assets").remove(framePaths); }catch(_e){} }
+      }
       const { error: insErr } = await sb.from("product_assets").insert({
-        product_key: productKey, kind, storage_path: path, public_url: pub.publicUrl, file_name: file.name,
-        size_bytes: file.size, note: null, created_by: STATE.currentUser?STATE.currentUser.name:""
+        id: assetId, product_key: productKey, kind, storage_path: path, public_url: pub.publicUrl, file_name: file.name,
+        size_bytes: file.size, note: null, created_by: STATE.currentUser?STATE.currentUser.name:"", frames: frameUrls
       });
-      if(insErr){ try{ await sb.storage.from("product-assets").remove([path]); }catch(_e){} throw insErr; }
+      if(insErr){ try{ await sb.storage.from("product-assets").remove([path].concat(framePaths)); }catch(_e){} throw insErr; }
       ok++;
     }catch(e){
       const msg = String((e && e.message) || e);
@@ -22063,7 +22125,7 @@ async function adsTestUploadFiles(productKey, files){
   }
   STATE.adsTestUploading = "";
   if(fails.length) showErrorToast("ອັບໂຫຼດບໍ່ສຳເລັດ: "+fails.join(" | "));
-  if(ok){ showToast(`✅ ອັບໂຫຼດແລ້ວ ${ok} ໄຟລ໌`); await adsTestRunPlanner([productKey]); return; } // v8.32: queue right away
+  if(ok){ showToast(`✅ ອັບໂຫຼດແລ້ວ ${ok} ໄຟລ໌ — AI ກຳລັງເບິ່ງ`); await adsTestRunPlanner([productKey]); return; } // AI looks at the new files right away
   await loadAdsCoachData();
 }
 async function adsTestDeleteAsset(assetId){
@@ -22073,7 +22135,7 @@ async function adsTestDeleteAsset(assetId){
   const ok = await customConfirm(`ລົບໄຟລ໌ "${a.file_name||""}" ອອກຖາວອນ?`, {okLabel:"ລົບ", danger:true});
   if(!ok) return;
   try{
-    try{ await sb.storage.from("product-assets").remove([a.storage_path]); }catch(_e){ /* the row delete below is what matters */ }
+    try{ await sb.storage.from("product-assets").remove([a.storage_path, 1, 2, 3].map(x=>typeof x==="number" ? `${a.product_key}/frames/${a.id}_${x}.jpg` : x)); }catch(_e){ /* the row delete below is what matters */ }
     const { error } = await sb.from("product_assets").delete().eq("id", assetId);
     if(error) throw error;
     showToast("ລົບແລ້ວ");
@@ -22087,21 +22149,101 @@ async function adsTestRefreshPerf(){
   STATE.adsTestRefreshing = false;
   await loadAdsCoachData();
 }
+// v8.33: the AI step now lives in ads-test-auto (Claude looks at the picture / video frames, writes the
+// caption, and — when the auto switch is ON — approves the plan so the next tick launches it).
 async function adsTestRunPlanner(keys){
   if(STATE.adsTestPlanning) return;
   const onlyKeys = Array.isArray(keys) && keys.length ? keys : null;
   STATE.adsTestPlanning = true; render();
   try{
-    const { data, error } = await sb.functions.invoke("ads-test-planner", { body: onlyKeys ? { product_keys: onlyKeys } : {} });
+    const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"plan", ...(onlyKeys ? { product_keys: onlyKeys } : {}) } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
-    if(data && data.ok===false) throw new Error(data.error||"ຈັດຄິວບໍ່ສຳເລັດ");
-    const rows = (data && data.results) || [];
-    const made = rows.reduce((s,r)=>s+(r.created||0),0);
-    const skips = rows.filter(r=>r.skipped).map(r=>`${adsTestProductLabel(r.product_key)}: ${ADS_TEST_SKIP_REASON[r.skipped]||r.skipped}`);
-    if(made) showToast(`✅ ຈັດຄິວແລ້ວ ${made} ການທົດສອບ${skips.length?" · "+skips.join(" | "):""}`);
-    else showToast(skips.length ? skips.join(" | ") : "ບໍ່ມີການທົດສອບໃໝ່");
-  }catch(e){ showErrorToast("ຈັດຄິວບໍ່ສຳເລັດ: "+e.message); }
+    if(data && data.ok===false) throw new Error(data.error||"AI ເບິ່ງໄຟລ໌ບໍ່ສຳເລັດ");
+    if(data && data.busy){ showToast("ລະບົບກຳລັງເຮັດວຽກຢູ່ — ຈະເບິ່ງໄຟລ໌ໃຫ້ອັດຕະໂນມັດພາຍໃນ 10 ນາທີ"); }
+    else {
+      const pl = (data && data.planned) || [];
+      const rej = pl.filter(x=>x.rejected).length, made = pl.length - rej;
+      const sk = ((data && data.skipped) || []).join(" | ");
+      if(made || rej) showToast(`✅ AI ເບິ່ງແລ້ວ ${pl.length} ໄຟລ໌${rej?` · ຕັດອອກ ${rej} (ເບິ່ງເຫດຜົນໃນລາຍການໄຟລ໌)`:""}`);
+      else if(/no slot/.test(sk)) showToast("ງົບທົດສອບຕໍ່ມື້ເຕັມແລ້ວ — ລໍໃຫ້ອັນທີ່ແລ່ນຢູ່ຖືກຕັດສິນກ່ອນ");
+      else if(/no new files/.test(sk)) showToast("ບໍ່ມີໄຟລ໌ໃໝ່");
+      else showToast("ບໍ່ມີການທົດສອບໃໝ່");
+    }
+  }catch(e){ showErrorToast("AI ເບິ່ງໄຟລ໌ບໍ່ສຳເລັດ: "+e.message); }
   STATE.adsTestPlanning = false;
+  await loadAdsCoachData();
+}
+// "ເຮັດດຽວນີ້": one full tick without waiting for the 10-minute cron (still respects the launch window).
+async function adsTestTickNow(){
+  if(STATE.adsTestTicking) return;
+  STATE.adsTestTicking = true; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick" } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
+    if(data && data.busy) showToast("ລະບົບກຳລັງເຮັດວຽກຢູ່ — ລອງໃໝ່ອີກຈັກໜ້ອຍ");
+    else if(data && data.auto===false) showToast("ສະວິດອັດຕະໂນມັດປິດຢູ່ — ເປີດສະວິດກ່ອນ");
+    else {
+      const parts = [];
+      const nPlan = ((data && data.planned)||[]).filter(x=>!x.rejected).length;
+      if(data.judged && data.judged.length) parts.push(`ກວດຜົນ ${data.judged.length}`);
+      if(nPlan) parts.push(`ຄັດໄຟລ໌ ${nPlan}`);
+      if(data.launched && data.launched.length) parts.push(`ຍິງແອັດ ${data.launched.length}`);
+      if(data.warnings && data.warnings.length) showErrorToast("ມີບັນຫາ: "+data.warnings.slice(0,2).join(" | "));
+      else showToast(parts.length ? "✅ "+parts.join(" · ") : "ບໍ່ມີຫຍັງຕ້ອງເຮັດໃນຕອນນີ້");
+    }
+  }catch(e){ showErrorToast("ເຮັດບໍ່ສຳເລັດ: "+(e.message||e)); }
+  STATE.adsTestTicking = false;
+  await loadAdsCoachData();
+}
+// Launch one approved plan right now (outside the normal window), through the same server-side path.
+async function adsTestLaunchNow(planId){
+  if(STATE.adsTestTicking) return;
+  const p = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
+  if(!p) return;
+  const ok = await customConfirm(`ຍິງດຽວນີ້ ໂດຍບໍ່ລໍເວລາ?\n\nສິນຄ້າ: ${adsTestProductLabel(p.product_key)}\nງົບ: ${p.daily_budget}/ວັນ\n\nແອັດຈະເລີ່ມແລ່ນພາຍໃນ ~3 ນາທີ (ຢຸດໄດ້ທີ່ ຈັດການແຄມເປນ)`, { okLabel:"⚡ ຍິງເລີຍ", danger:false });
+  if(!ok) return;
+  STATE.adsTestTicking = true; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[p.product_key] } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
+    if(data && data.busy) showToast("ລະບົບກຳລັງເຮັດວຽກຢູ່ — ລອງໃໝ່ອີກຈັກໜ້ອຍ");
+    else if(data.launched && data.launched.length) showToast("✅ ຍິງແອັດແລ້ວ — ເລີ່ມແລ່ນພາຍໃນ ~3 ນາທີ");
+    else if(data.warnings && data.warnings.length) showErrorToast("ຍິງບໍ່ສຳເລັດ: "+data.warnings[0]);
+    else showToast("ກຳລັງກຽມ (ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ) — ລະບົບຈະຍິງໃຫ້ເອງເມື່ອພ້ອມ");
+  }catch(e){ showErrorToast("ຍິງບໍ່ສຳເລັດ: "+(e.message||e)); }
+  STATE.adsTestTicking = false;
+  await loadAdsCoachData();
+}
+async function adsTestRetryPlan(planId){
+  try{
+    const { error } = await sb.from("ad_test_plans").update({ status:"approved", attempts:0, fail_reason:null, last_checked_at:null }).eq("id", planId);
+    if(error) throw error;
+    showToast("ຈະລອງຍິງໃໝ່ໃນຮອບຕໍ່ໄປ");
+  }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); }
+  await loadAdsCoachData();
+}
+async function adsTestToggleAuto(){
+  if(STATE.adsTestAutoBusy) return;
+  const on = Number((STATE.adsCoachSettings||{}).auto_test_enabled)===1;
+  const prods = (STATE.adsTestProducts||[]).filter(p=>p.enabled);
+  if(!on){
+    const capTxt = prods.map(p=>`${p.label} ${Math.round(p.daily_cap)}`).join(", ");
+    const p0 = prods[0] || {};
+    const ok = await customConfirm(
+      `ເປີດໂໝດອັດຕະໂນມັດ?\n\n• AI ເບິ່ງໄຟລ໌ທີ່ອັບໂຫຼດ ແລ້ວຍິງແອັດທົດສອບເອງ ໃນເວລາ ${String(p0.launch_from_hour??8).padStart(2,"0")}:00–${String((p0.launch_to_hour??14)+1).padStart(2,"0")}:00 (ເວລາລາວ)\n• ງົບລວມບໍ່ເກີນຕໍ່ມື້: ${capTxt||"-"}\n• ແອັດທີ່ແພ້ຊັດເຈນ ຈະຖືກຢຸດເອງ\n• ການເພີ່ມງົບ ເຈົ້າເປັນຄົນສັ່ງເອງສະເໝີ`,
+      { okLabel:"ເປີດ", danger:false }
+    );
+    if(!ok) return;
+  }
+  STATE.adsTestAutoBusy = true; render();
+  try{
+    const { error } = await sb.from("ad_coach_settings").upsert({ key:"auto_test_enabled", value: on?0:1, updated_at: new Date().toISOString() }, { onConflict:"key" });
+    if(error) throw error;
+    showToast(on ? "ປິດໂໝດອັດຕະໂນມັດແລ້ວ" : "✅ ເປີດໂໝດອັດຕະໂນມັດແລ້ວ");
+  }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); }
+  STATE.adsTestAutoBusy = false;
   await loadAdsCoachData();
 }
 async function adsTestRejectPlan(planId){
@@ -22110,7 +22252,7 @@ async function adsTestRejectPlan(planId){
   try{
     const { error } = await sb.from("ad_test_plans").update({ status:"rejected" }).eq("id", planId);
     if(error) throw error;
-    if(p.asset_id) await sb.from("product_assets").update({ status:"new" }).eq("id", p.asset_id);
+    if(p.asset_id) await sb.from("product_assets").update({ status:"retired", note:"ເຈົ້າຕັດອອກຈາກຄິວ" }).eq("id", p.asset_id); // v8.33: retired (not "new"), otherwise the AI would queue it again
   }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); }
   await loadAdsCoachData();
 }
@@ -22284,6 +22426,13 @@ function adsTestThumb(a){
   if(a.kind==="video") return `<div class="tst-thumb"><video src="${esc(a.public_url)}#t=0.5" preload="metadata" muted playsinline></video><span class="tst-play">▶</span><span class="tst-kind">ວິດີໂອ</span></div>`;
   return `<div class="tst-thumb"><img src="${esc(a.public_url)}" alt="" loading="lazy"/><span class="tst-kind">ຮູບ</span></div>`;
 }
+const ADS_TEST_LOG_LABEL = {
+  planned:"AI ເລືອກໄຟລ໌", asset_rejected:"AI ຕັດໄຟລ໌ອອກ", plan_error:"AI ເບິ່ງໄຟລ໌ບໍ່ໄດ້",
+  launched:"🚀 ຍິງແອັດແລ້ວ", launch_retry:"ຍິງບໍ່ສຳເລັດ (ຈະລອງໃໝ່)", launch_failed:"ຍິງບໍ່ສຳເລັດ (ຢຸດລອງ)", launch_adopted:"ພົບແອັດທີ່ສ້າງໄວ້ແລ້ວ",
+  video_start:"ເລີ່ມສົ່ງວິດີໂອ", video_progress:"ສົ່ງວິດີໂອ", video_sent:"ສົ່ງວິດີໂອຄົບແລ້ວ",
+  judge_wait:"ກວດຜົນ — ລໍເກັບຂໍ້ມູນ", judge_winner:"🏆 ຕັດສິນ: ຊະນະ", judge_loser:"⛔ ຕັດສິນ: ຢຸດແອັດ", judge_cancelled:"ແອັດຖືກລົບ",
+  judge_error:"ກວດຜົນບໍ່ໄດ້", pause_failed:"ຢຸດແອັດບໍ່ສຳເລັດ"
+};
 function renderAdsTestTab(){
   const prods = (STATE.adsTestProducts||[]).filter(p=>p.enabled);
   const assets = STATE.adsTestAssets||[];
@@ -22292,39 +22441,67 @@ function renderAdsTestTab(){
   const sel = prods.find(p=>p.product_key===STATE.adsTestProduct) || prods[0];
   if(!sel) return `<div class="card coach-card"><p class="small-muted">ຍັງບໍ່ໄດ້ຕັ້ງສິນຄ້າທົດສອບ</p></div>`;
   const assetOf = (id)=>assets.find(a=>a.id===id);
-  const allProposed = plans.filter(p=>p.status==="proposed");
+  const autoOn = Number((STATE.adsCoachSettings||{}).auto_test_enabled)===1;
+  const QUEUE = ["proposed","approved","uploading","failed"];
+  const allQueue = plans.filter(p=>QUEUE.includes(p.status));
   const allRunning = plans.filter(p=>p.status==="launched");
-  const committed = allProposed.concat(allRunning).reduce((s,p)=>s+Number(p.daily_budget||0),0);
+  const committed = plans.filter(p=>["proposed","approved","uploading","launched"].includes(p.status)).reduce((s,p)=>s+Number(p.daily_budget||0),0);
   const capAll = prods.reduce((s,p)=>s+Number(p.daily_cap||0),0);
-  const proposed = allProposed.filter(p=>p.product_key===sel.product_key);
+  const queue = allQueue.filter(p=>p.product_key===sel.product_key);
   const running = allRunning.filter(p=>p.product_key===sel.product_key);
+  const judged = plans.filter(p=>p.status==="judged" && p.product_key===sel.product_key).slice(0,10);
   const mine = assets.filter(a=>a.product_key===sel.product_key);
   const waiting = mine.filter(a=>a.status==="new");
-  const myCommitted = proposed.concat(running).reduce((s,p)=>s+Number(p.daily_budget||0),0);
-  const hasDraft = (STATE.adsCoachDrafts||[]).some(d=>d.product_key===sel.product_key && d.status==="done" && d.output && Array.isArray(d.output.captions) && d.output.captions.length);
+  const myCommitted = plans.filter(p=>p.product_key===sel.product_key && ["proposed","approved","uploading","launched"].includes(p.status)).reduce((s,p)=>s+Number(p.daily_budget||0),0);
   const waitReason = myCommitted + Number(sel.budget_per_test) > Number(sel.daily_cap)
     ? "ງົບທົດສອບເຕັມ — ລໍໃຫ້ອັນທີ່ແລ່ນຢູ່ຖືກຕັດສິນກ່ອນ"
-    : (!hasDraft && STATE.adsCoachDrafts && STATE.adsCoachDrafts.length ? "ຍັງບໍ່ມີແຄັບຊັ່ນຂອງສິນຄ້ານີ້ — ໄປແຖບ ✍️ ຂຽນຄຣີເອທີບ ກ່ອນ" : "ກົດ ຈັດຄິວ ເພື່ອຈັບຄູ່ກັບແຄັບຊັ່ນ");
+    : (autoOn ? "AI ຈະເບິ່ງໃນຮອບຕໍ່ໄປ (ທຸກ 10 ນາທີ)" : "ກົດ ຈັດຄິວ ໃຫ້ AI ເບິ່ງ");
   const upl = STATE.adsTestUploading===sel.product_key;
   const busy = STATE.adsTestBusy;
+  const ticking = !!STATE.adsTestTicking;
   const clip = (s,n)=>{ s = String(s||""); return s.length>n ? s.slice(0,n)+"…" : s; };
   const fmtD = (t)=>new Date(t).toLocaleString("en-GB",{timeZone:LAOS_TZ,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
   const daysSince = (t)=>Math.max(1, Math.floor((Date.now()-new Date(t).getTime())/86400000)+1);
+  const laosH = new Date(Date.now()+7*3600*1000).getUTCHours();
+  const win = (c)=>`${String(c.launch_from_hour??8).padStart(2,"0")}:00–${String((c.launch_to_hour??14)+1).padStart(2,"0")}:00`;
+  const stars = (n)=>{ n = Math.max(0, Math.min(5, Number(n)||0)); return "★".repeat(n)+"☆".repeat(5-n); };
+  const aiBlock = (ai)=> (ai && (ai.shows_lo||ai.angle_lo)) ? `<div class="tst-ai"><div><b>🤖 AI ເບິ່ງແລ້ວ</b> <span class="tst-stars">${stars(ai.hook_score)}</span></div>${ai.shows_lo?`<div>${esc(ai.shows_lo)}</div>`:""}${ai.angle_lo?`<div class="tst-meta" style="margin-top:4px;">ມຸມຂາຍ: ${esc(ai.angle_lo)}</div>`:""}</div>` : "";
+  const planNote = (p)=>{
+    if(p.status==="failed") return `<div class="tst-note bad">❌ ຍິງບໍ່ສຳເລັດ — ${esc(clip(p.fail_reason||"",160))}</div>`;
+    if(p.status==="proposed") return `<div class="tst-note">ລໍເຈົ້າກົດຍິງ</div>`;
+    const retry = (p.attempts>0 && p.fail_reason) ? `<div class="tst-note bad">ລອງຍິງບໍ່ສຳເລັດ ${p.attempts}/3: ${esc(clip(p.fail_reason,140))} — ຈະລອງໃໝ່</div>` : "";
+    if(p.status==="uploading"){
+      const pct = (p.upload_phase==="transfer" && Number(p.upload_size)>0) ? Math.min(99, Math.round(Number(p.upload_offset||0)/Number(p.upload_size)*100)) : null;
+      const t = p.upload_phase==="transfer" ? `ກຳລັງສົ່ງວິດີໂອໃຫ້ Facebook ${pct==null?"":pct+"%"}`
+        : p.upload_phase==="processing" ? "Facebook ກຳລັງປະມວນຜົນວິດີໂອ"
+        : p.upload_phase==="ready" ? "ວິດີໂອພ້ອມແລ້ວ — ລໍຍິງ" : "ກຳລັງກຽມວິດີໂອ";
+      return `<div class="tst-note">⏳ ${t}</div>${retry}`;
+    }
+    const inWin = laosH>=Number(sel.launch_from_hour??8) && laosH<=Number(sel.launch_to_hour??14);
+    return `<div class="tst-note">${inWin ? "🤖 ຈະຍິງໃນຮອບຕໍ່ໄປ (ທຸກ 10 ນາທີ)" : "🕗 ຈະຍິງເອງ "+win(sel)+" (ເວລາລາວ)"}</div>${retry}`;
+  };
 
   const readyCard = (p)=>{
     const a = assetOf(p.asset_id);
     const isBusy = busy && busy.id===p.id;
-    const anyBusy = !!busy;
+    const anyBusy = !!busy || ticking;
+    let primary = "";
+    if(p.status==="proposed") primary = `<button class="btn tst-go" data-test-launch="${p.id}" ${anyBusy||!a?"disabled":""}>${isBusy?"⏳ "+esc(busy.text):"🚀 ຍິງທົດສອບ"}</button>`;
+    else if(p.status==="approved") primary = `<button class="btn tst-go" data-test-now="${p.id}" ${anyBusy||!a?"disabled":""}>⚡ ຍິງດຽວນີ້</button>`;
+    else if(p.status==="failed") primary = `<button class="btn tst-go" data-test-retry="${p.id}" ${anyBusy?"disabled":""}>🔁 ລອງໃໝ່</button>`;
+    const canEdit = p.status==="proposed" || p.status==="approved";
     return `<div class="tst-card">
       ${adsTestThumb(a)}
       <div class="tst-card-body">
+        ${aiBlock(p.ai)}
         <div class="tst-cap">${esc(clip(p.caption,260))}</div>
         ${p.headline?`<div class="tst-head">${esc(p.headline)}</div>`:""}
-        <div class="tst-meta">ງົບ ${esc(String(p.daily_budget))}/ວັນ · ສ້າງເປັນ "ຢຸດໄວ້" ກ່ອນ</div>
+        <div class="tst-meta">ງົບ ${esc(String(p.daily_budget))}/ວັນ</div>
+        ${planNote(p)}
       </div>
       <div class="tst-card-foot">
-        <button class="btn tst-go" data-test-launch="${p.id}" ${anyBusy||!a?"disabled":""}>${isBusy?"⏳ "+esc(busy.text):"🚀 ຍິງທົດສອບ"}</button>
-        <div class="tst-links"><button class="coach-link" data-test-open="${p.id}" ${anyBusy||!a?"disabled":""}>ແກ້ກ່ອນຍິງ</button><button class="coach-link" data-test-reject="${p.id}" ${anyBusy?"disabled":""}>ຕັດອອກ</button></div>
+        ${primary}
+        <div class="tst-links">${canEdit?`<button class="coach-link" data-test-open="${p.id}" ${anyBusy||!a?"disabled":""}>ແກ້ກ່ອນຍິງ</button>`:"<span></span>"}<button class="coach-link" data-test-reject="${p.id}" ${anyBusy?"disabled":""}>ຕັດອອກ</button></div>
       </div>
     </div>`;
   };
@@ -22336,49 +22513,71 @@ function renderAdsTestTab(){
     const cpm = (spend!=null && msgs>0) ? Math.round(spend/msgs) : null;
     const ctr = r && r.link_ctr!=null ? Number(r.link_ctr) : null;
     const stat = (v,l)=>`<div class="tst-stat"><b>${v}</b><span>${l}</span></div>`;
+    const v = p.verdict;
+    const badge = p.status==="judged"
+      ? (v==="winner" ? `<span class="tst-badge win">🏆 ຊະນະ</span>` : v==="loser" ? `<span class="tst-badge lose">⛔ ຢຸດແອັດແລ້ວ</span>` : `<span class="tst-badge">ປິດແລ້ວ</span>`)
+      : `<span class="tst-badge wait">⏳ ກຳລັງເກັບຂໍ້ມູນ</span>`;
+    const verdictBox = (p.verdict_reason || p.next_step)
+      ? `<div class="tst-verdict ${v==="winner"?"win":v==="loser"?"lose":""}">${p.verdict_reason?`<div><b>ຜົນ:</b> ${esc(p.verdict_reason)}</div>`:""}${p.next_step?`<div style="margin-top:4px;"><b>ຄັ້ງຕໍ່ໄປ:</b> ${esc(p.next_step)}</div>`:""}</div>` : "";
     return `<div class="tst-run">
       ${adsTestThumb(a)}
       <div class="tst-run-body">
-        <div class="tst-run-top"><b>ມື້ທີ ${daysSince(p.launched_at||p.created_at)}</b><span class="small-muted">ຍິງເມື່ອ ${fmtD(p.launched_at||p.created_at)} · ງົບ ${esc(String(p.daily_budget))}/ວັນ</span></div>
+        <div class="tst-run-top"><b>ມື້ທີ ${daysSince(p.launched_at||p.created_at)}</b>${badge}<span class="small-muted">ຍິງເມື່ອ ${fmtD(p.launched_at||p.created_at)} · ງົບ ${esc(String(p.daily_budget))}/ວັນ</span></div>
         <div class="tst-cap tst-cap-sm">${esc(clip(p.caption,110))}</div>
         ${r?`<div class="tst-stats">${stat(spend==null?"-":Math.round(spend).toLocaleString("en-US"),"ໃຊ້ໄປ")}${stat(msgs==null?"-":msgs,"ຄົນທັກແຊັດ")}${stat(cpm==null?"-":cpm.toLocaleString("en-US"),"ຕົ້ນທຶນ/ແຊັດ")}${stat(ctr==null?"-":ctr.toFixed(1)+"%","ຄລິກ")}</div>`
-          :`<div class="tst-meta">ຍັງບໍ່ມີຕົວເລກ — ກົດ "ອັບເດດຕົວເລກ" ຫຼັງຈາກເປີດແອັດໃຫ້ແລ່ນແລ້ວ</div>`}
-        <div class="tst-meta">ຕັດສິນຜົນ: ລໍຢ່າງໜ້ອຍ 7 ວັນ ຕົວເລກມື້ທຳອິດໃຊ້ເບິ່ງແນວໂນ້ມເທົ່ານັ້ນ</div>
+          :`<div class="tst-meta">ຍັງບໍ່ມີຕົວເລກຈາກ Facebook</div>`}
+        ${verdictBox || (p.status==="launched" ? `<div class="tst-meta">ລະບົບຕັດສິນເອງ ຫຼັງ 3–7 ມື້ ເມື່ອໃຊ້ງົບພໍ ແລະ ມີຄົນທັກແຊັດພໍ</div>` : "")}
       </div>
     </div>`;
   };
+  const stt = STATE.adsTestState;
+  const lastTick = stt && stt.last_tick_at ? fmtD(stt.last_tick_at) : null;
+  const logRows = (STATE.adsTestLog||[]).map(l=>`<div class="coach-line" style="display:flex; gap:10px; flex-wrap:wrap; align-items:baseline;">
+      <span class="small-muted" style="min-width:86px; font-family:'Segoe UI',Roboto,Arial,sans-serif;">${fmtD(l.created_at)}</span>
+      <b style="min-width:150px;">${esc(ADS_TEST_LOG_LABEL[l.action]||l.action)}</b>
+      <span style="flex:1; min-width:160px;" class="small-muted">${esc(adsTestProductLabel(l.product_key))}${l.detail?" · "+esc(clip(l.detail,140)):""}</span></div>`).join("");
 
   return `
     <div class="tst-hero">
       <div class="tst-hero-text">
         <h2>🧪 ທົດສອບຄຣີເອທີບ</h2>
-        <p>ລາກຮູບ ຫຼື ວິດີໂອມາວາງ — ລະບົບຈັບຄູ່ກັບແຄັບຊັ່ນໃຫ້ ແລ້ວເຈົ້າກົດຍິງປຸ່ມດຽວ</p>
+        <p>ລາກຮູບ ຫຼື ວິດີໂອມາວາງ — AI ເບິ່ງ, ຂຽນແຄັບຊັ່ນ, ຍິງແອັດ ແລະ ຕັດສິນຜົນໃຫ້ເອງ</p>
       </div>
       <div class="tst-tiles">
-        <div class="tst-tile"><div class="tst-num">${allProposed.length}</div><span>ພ້ອມຍິງ</span></div>
+        <div class="tst-tile"><div class="tst-num">${allQueue.filter(p=>p.status!=="failed").length}</div><span>ໃນຄິວຍິງ</span></div>
         <div class="tst-tile"><div class="tst-num">${allRunning.length}</div><span>ກຳລັງທົດສອບ</span></div>
         <div class="tst-tile"><div class="tst-num">${Math.round(committed)}<small>/${Math.round(capAll)}</small></div><span>ງົບ/ວັນ ທີ່ຈອງແລ້ວ</span></div>
       </div>
     </div>
 
+    <div class="tst-auto ${autoOn?"on":""}">
+      <label class="tst-switch"><input type="checkbox" id="tst-auto-toggle" ${autoOn?"checked":""} ${STATE.adsTestAutoBusy?"disabled":""}/><span class="tst-slider"></span></label>
+      <div class="tst-auto-t">
+        <b>🤖 ໂໝດອັດຕະໂນມັດ: ${autoOn?"ເປີດ":"ປິດ"}</b>
+        <span>${autoOn ? `AI ເບິ່ງໄຟລ໌ → ຍິງເອງ ${win(sel)} (ເວລາລາວ) · ງົບບໍ່ເກີນ ${Math.round(sel.daily_cap)}/ວັນ ຕໍ່ສິນຄ້າ · ແອັດທີ່ແພ້ຊັດເຈນຖືກຢຸດເອງ` : "ປິດຢູ່ — ໄຟລ໌ທີ່ອັບໂຫຼດຈະລໍເຈົ້າກົດຍິງເອງ ແລະ ຈະຖືກສ້າງເປັນ ຢຸດໄວ້"}</span>
+        <span class="small-muted">${lastTick?"ລະບົບເຮັດຮອບລ່າສຸດ "+lastTick:"ຍັງບໍ່ທັນມີຮອບ"} · ເພີ່ມງົບ ເຈົ້າສັ່ງເອງສະເໝີ</span>
+      </div>
+      <button class="btn btn-outline" id="btn-test-tick" ${ticking?"disabled":""}>${ticking?"⏳ ກຳລັງເຮັດ...":"▶️ ເຮັດດຽວນີ້"}</button>
+    </div>
+
     <div class="tst-pills">${prods.map(p=>{
-      const n = allProposed.filter(x=>x.product_key===p.product_key).length;
+      const n = allQueue.filter(x=>x.product_key===p.product_key && x.status!=="failed").length;
       return `<button type="button" class="tst-pill ${p.product_key===sel.product_key?"on":""}" data-test-prod="${p.product_key}">${esc(p.label)}${n?`<span class="tst-chip">${n}</span>`:""}</button>`;
     }).join("")}</div>
 
     <div class="tst-drop ${upl?"busy":""}" id="tst-drop" data-prod="${sel.product_key}">
       <div class="tst-drop-ico">${upl?"⏳":"⬆️"}</div>
       <div class="tst-drop-t">${upl?"ກຳລັງອັບໂຫຼດ...":"ລາກໄຟລ໌ມາວາງບ່ອນນີ້"}</div>
-      <div class="tst-drop-s">ຮູບ ຫຼື ວິດີໂອ ຫຼາຍໄຟລ໌ພ້ອມກັນໄດ້ · ຈັດຄິວໃຫ້ອັດຕະໂນມັດຫຼັງອັບໂຫຼດ</div>
+      <div class="tst-drop-s">ຮູບ ຫຼື ວິດີໂອ ຫຼາຍໄຟລ໌ພ້ອມກັນໄດ້ · AI ຈະເບິ່ງໃຫ້ທັນທີຫຼັງອັບໂຫຼດ</div>
       <label class="btn tst-drop-btn">ເລືອກໄຟລ໌<input type="file" multiple accept="image/*,video/*" data-test-upload="${sel.product_key}" style="display:none;" ${upl?"disabled":""}/></label>
     </div>
 
     <div class="tst-sec">
-      <div class="tst-sec-h"><h3>ພ້ອມຍິງ <span class="tst-count">${proposed.length}</span></h3>
-        ${waiting.length?`<button class="btn btn-outline" id="btn-test-plan" ${STATE.adsTestPlanning?"disabled":""}>${STATE.adsTestPlanning?"⏳ ກຳລັງຈັດຄິວ...":"📥 ຈັດຄິວ ("+waiting.length+")"}</button>`:""}</div>
-      ${proposed.length?`<div class="tst-grid">${proposed.map(readyCard).join("")}</div>`
-        :`<div class="tst-empty"><div style="font-size:30px;">🗂️</div><b>ຍັງບໍ່ມີອັນທີ່ພ້ອມຍິງ</b><span>ອັບໂຫຼດໄຟລ໌ຢູ່ເທິງ ລະບົບຈະເຮັດບັດໃຫ້ເອງ</span></div>`}
-      ${waiting.length?`<div class="tst-wait"><b>ໄຟລ໌ທີ່ຍັງລໍຖ້າ (${waiting.length})</b><span class="small-muted"> — ${esc(waitReason)}</span>
+      <div class="tst-sec-h"><h3>ຄິວຍິງ <span class="tst-count">${queue.length}</span></h3>
+        ${waiting.length?`<button class="btn btn-outline" id="btn-test-plan" ${STATE.adsTestPlanning?"disabled":""}>${STATE.adsTestPlanning?"⏳ AI ກຳລັງເບິ່ງ...":"🤖 ໃຫ້ AI ເບິ່ງ ("+waiting.length+")"}</button>`:""}</div>
+      ${queue.length?`<div class="tst-grid">${queue.map(readyCard).join("")}</div>`
+        :`<div class="tst-empty"><div style="font-size:30px;">🗂️</div><b>ຍັງບໍ່ມີອັນໃນຄິວ</b><span>ອັບໂຫຼດໄຟລ໌ຢູ່ເທິງ AI ຈະເບິ່ງ ແລະ ຂຽນແຄັບຊັ່ນໃຫ້ເອງ</span></div>`}
+      ${waiting.length?`<div class="tst-wait"><b>ໄຟລ໌ທີ່ລໍ AI ເບິ່ງ (${waiting.length})</b><span class="small-muted"> — ${esc(waitReason)}</span>
         <div class="tst-wait-row">${waiting.slice(0,12).map(a=>`<div class="tst-wait-item">${adsTestThumb(a)}<button class="tst-x" data-test-del="${a.id}" title="ລົບ">✕</button></div>`).join("")}</div></div>`:""}
     </div>
 
@@ -22388,14 +22587,23 @@ function renderAdsTestTab(){
       ${running.length?running.map(runCard).join(""):`<div class="tst-empty"><div style="font-size:30px;">⏱️</div><b>ຍັງບໍ່ມີການທົດສອບທີ່ກຳລັງແລ່ນ</b><span>ຫຼັງຍິງແລ້ວ ຕົວເລກຈະມາຢູ່ບ່ອນນີ້</span></div>`}
     </div>
 
+    ${judged.length?`<div class="tst-sec">
+      <div class="tst-sec-h"><h3>ຕັດສິນແລ້ວ <span class="tst-count">${judged.length}</span></h3></div>
+      ${judged.map(runCard).join("")}
+    </div>`:""}
+
     <div class="tst-sec">
-      ${adsCoachToggleRow("testall", `ໄຟລ໌ທັງໝົດຂອງສິນຄ້ານີ້ <span class="small-muted">(${mine.length})</span>`, mine.length===0?`<p class="small-muted">ຍັງບໍ່ມີໄຟລ໌</p>`:mine.slice(0,60).map(a=>`
+      ${adsCoachToggleRow("testlog", `📜 ບັນທຶກຂອງລະບົບ <span class="small-muted">(${(STATE.adsTestLog||[]).length})</span>`, logRows || `<p class="small-muted">ຍັງບໍ່ມີບັນທຶກ</p>`, false)}
+      ${adsCoachToggleRow("testall", `ໄຟລ໌ທັງໝົດຂອງສິນຄ້ານີ້ <span class="small-muted">(${mine.length})</span>`, mine.length===0?`<p class="small-muted">ຍັງບໍ່ມີໄຟລ໌</p>`:mine.slice(0,60).map(a=>{
+        const rr = a.ai_review && a.ai_review.usable===false ? (a.ai_review.reject_reason_lo||"") : "";
+        return `
         <div class="coach-line" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <span style="min-width:60px;">${a.kind==="video"?"🎬 ວິດີໂອ":"🖼️ ຮູບ"}</span>
           <span style="flex:1; min-width:140px; word-break:break-all;">${esc(a.file_name||"")}</span>
-          <span class="small-muted">${esc(ADS_TEST_ASSET_STATUS[a.status]||a.status)}</span>
+          <span class="small-muted">${rr?"🤖 AI ຕັດອອກ":esc(ADS_TEST_ASSET_STATUS[a.status]||a.status)}</span>
           ${(a.status==="new"||a.status==="retired")?`<button class="coach-link" data-test-del="${a.id}">ລົບ</button>`:""}
-        </div>`).join(""), false)}
+          ${rr?`<div class="small-muted" style="width:100%;">${esc(rr)}</div>`:""}
+        </div>`; }).join(""), false)}
     </div>`;
 }
 function renderAdsCoachPage(){
@@ -22536,6 +22744,17 @@ function renderAdsCoachPage(){
       .tst-run-top{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; font-size:15px;}
       .tst-stats{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
       .tst-stat{background:var(--cream-2,#f1ead9); border-radius:10px; padding:8px 14px; min-width:84px; text-align:center;} .tst-stat b{display:block; font-size:19px;} .tst-stat span{font-size:11.5px; color:var(--muted);}
+      .tst-auto{display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 18px; border-radius:14px; border:2px solid rgba(128,128,128,.28); background:var(--white,#fff); margin-bottom:14px;}
+      .tst-auto.on{border-color:#2d7a4f; background:rgba(45,122,79,.08);}
+      .tst-auto-t{flex:1; min-width:220px; display:flex; flex-direction:column; gap:3px; font-size:13.5px; line-height:1.5;} .tst-auto-t b{font-size:16px;}
+      .tst-switch{position:relative; display:inline-block; width:54px; height:30px; flex:none; cursor:pointer;} .tst-switch input{opacity:0; width:0; height:0; position:absolute;}
+      .tst-slider{position:absolute; inset:0; background:#b9b4a8; border-radius:999px; transition:background .15s;} .tst-slider::before{content:""; position:absolute; width:24px; height:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.35);}
+      .tst-switch input:checked + .tst-slider{background:#2d7a4f;} .tst-switch input:checked + .tst-slider::before{transform:translateX(24px);}
+      .tst-ai{background:rgba(31,61,46,.07); border-radius:10px; padding:9px 12px; margin-bottom:10px; font-size:13px; line-height:1.55;} .tst-ai b{font-size:13px;}
+      .tst-stars{color:#d49a1f; letter-spacing:1px; font-family:"Segoe UI",Roboto,Arial,sans-serif; font-size:14px;}
+      .tst-note{margin-top:8px; font-size:13px; font-weight:600; color:inherit; line-height:1.5;} .tst-note.bad{color:#d9453b;}
+      .tst-badge{display:inline-block; border-radius:999px; padding:2px 12px; font-size:12.5px; font-weight:700; background:rgba(128,128,128,.18);} .tst-badge.win{background:#d5efdc; color:#14532d;} .tst-badge.lose{background:#f8d9d6; color:#8a1c14;} .tst-badge.wait{background:#fdf0cf; color:#7a5200;}
+      .tst-verdict{margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(128,128,128,.1); font-size:13.5px; line-height:1.55;} .tst-verdict.win{background:#e4f4e8; color:#1b2b21;} .tst-verdict.lose{background:#fbe6e4; color:#2b1b1b;}
       @media (max-width:600px){ .tst-hero{padding:16px;} .tst-run{flex-direction:column;} .tst-run .tst-thumb{width:100%;} .tst-sec{padding:14px;} .tst-grid{grid-template-columns:1fr;} }
       @media (max-width:600px){ .coach-card{padding:4px 14px 12px;} }
     </style>
@@ -22561,7 +22780,7 @@ function renderAdsCoachPage(){
         <div class="tabs">
           <div class="tab ${tab==="todo"?"active":""}" data-coach-tab="todo">📌 ຕ້ອງຕັດສິນໃຈ${todo.length?` (${todo.length})`:""}</div>
           <div class="tab ${tab==="write"?"active":""}" data-coach-tab="write">✍️ ຂຽນຄຣີເອທີບ</div>
-          <div class="tab ${tab==="test"?"active":""}" data-coach-tab="test">🧪 ທົດສອບ${(STATE.adsTestPlans||[]).filter(p=>p.status==="proposed").length?` (${(STATE.adsTestPlans||[]).filter(p=>p.status==="proposed").length})`:""}</div>
+          <div class="tab ${tab==="test"?"active":""}" data-coach-tab="test">🧪 ທົດສອບ${(STATE.adsTestPlans||[]).filter(p=>["proposed","approved","uploading"].includes(p.status)).length?` (${(STATE.adsTestPlans||[]).filter(p=>["proposed","approved","uploading"].includes(p.status)).length})`:""}</div>
           <div class="tab ${tab==="history"?"active":""}" data-coach-tab="history">🕐 ປະຫວັດ</div>
         </div>
       </div>
@@ -22627,6 +22846,16 @@ function attachAdsCoachEvents(){
   document.querySelectorAll("[data-test-reject]").forEach(el=>{
     el.addEventListener("click", ()=>adsTestRejectPlan(el.getAttribute("data-test-reject")));
   });
+  document.querySelectorAll("[data-test-now]").forEach(el=>{
+    el.addEventListener("click", ()=>adsTestLaunchNow(el.getAttribute("data-test-now")));
+  });
+  document.querySelectorAll("[data-test-retry]").forEach(el=>{
+    el.addEventListener("click", ()=>adsTestRetryPlan(el.getAttribute("data-test-retry")));
+  });
+  const autoTgl = document.getElementById("tst-auto-toggle");
+  if(autoTgl) autoTgl.addEventListener("click", (e)=>{ e.preventDefault(); adsTestToggleAuto(); });
+  const tickBtn = document.getElementById("btn-test-tick");
+  if(tickBtn) tickBtn.addEventListener("click", adsTestTickNow);
   document.querySelectorAll("[data-coach-apply]").forEach(el=>{
     el.addEventListener("click", ()=>{
       const rec = (STATE.adsCoachRecs||[]).find(r=>r.id===el.getAttribute("data-coach-apply"));
