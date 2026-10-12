@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.30"; // v8.30 UI (Tar 2026-10-12 screen recording, "ການຈັດໜ້າ ui ຮູ້ສຶກວ່າມີຄວາມສັບສົນແລະອຶດອັດ") -- 🧠 ຜູ້ຊ່ວຍແອດ page re-laid out: the single very long page is now 3 tabs (📌 ຕ້ອງຕັດສິນໃຈ / ✍️ ຂຽນຄຣີເອທີບ / 🕐 ປະຫວັດ); recommendations are flat rows grouped by priority (one primary button, "ບໍ່ເຮັດ" as a text link) instead of cards inside cards; "keep"/no-action items and each draft section (captions, headlines, video scripts, retarget) are collapsible; data gaps are behind a link; failed test drafts are hidden and drafts are chosen with pills (one draft shown at a time). No logic change.
+const APP_VERSION = "8.31"; // v8.31 NEW (Tar 2026-10-12, "ມີໂຟນເດີສິນຄ້າ ມີວິດີໂອແລະຮູບ ແລ້ວໃຫ້ ai ເອົາໄປເທສແອັດ... ງົບ 100-200 ບາດຕໍ່ມື້ ຕໍ່ສິນຄ້າ") -- 🧠 ຜູ້ຊ່ວຍແອດ: new tab "🧪 ທົດສອບ" (stage 1, proposals only). Library: upload videos/images per product (Supabase Storage bucket product-assets, table product_assets). Queue: button "📥 ຈັດຄິວດຽວນີ້" calls NEW edge function ads-test-planner, which pairs each untested file with a caption + headline from the newest finished ad_creative_drafts row inside the per-product cap (table ad_test_products: daily_cap 200, budget_per_test 100; pilot products veggie_coffee + sesame_coffee, each with a template campaign) and writes ad_test_plans rows (status proposed). It never calls Facebook. "🚀 ເປີດໃນໜ້າຍິງແອັດ" fills the existing launch form (audience/page/goal copied from the template ad set via list-campaign-adsets + applyAdSetPrefill, then the proposal caption/headline and the file) and navigates there; Tar still presses the normal launch button (launch-ad creates everything PAUSED; for video the existing ⬆️ upload step is still needed). After a successful single launch submitLaunchAd links the proposal to the new campaign/adset/ad ids (only if the launched text still equals the proposal caption), marks the file "testing" and adds the campaign to campaign_product_map (source ad_test). Not built yet: automatic verdicts on finished tests, automatic launching, scheduled planning. Note: at 100/day per test a ROAS verdict needs about 7-10 days of data.
+// (previous text of this slot, kept) // v8.30 UI (Tar 2026-10-12 screen recording, "ການຈັດໜ້າ ui ຮູ້ສຶກວ່າມີຄວາມສັບສົນແລະອຶດອັດ") -- 🧠 ຜູ້ຊ່ວຍແອດ page re-laid out: the single very long page is now 3 tabs (📌 ຕ້ອງຕັດສິນໃຈ / ✍️ ຂຽນຄຣີເອທີບ / 🕐 ປະຫວັດ); recommendations are flat rows grouped by priority (one primary button, "ບໍ່ເຮັດ" as a text link) instead of cards inside cards; "keep"/no-action items and each draft section (captions, headlines, video scripts, retarget) are collapsible; data gaps are behind a link; failed test drafts are hidden and drafts are chosen with pills (one draft shown at a time). No logic change.
 // (previous text of this slot, kept) // v8.29 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ page: new "✍️ ຂຽນຄຣີເອທີບໃໝ່" card. Pick a product, optional focus, button calls edge function ads-creative-writer (reads the shop's own winning ad captions + results, product facts, pain points, FAQ) and shows DRAFTS: shared angles of winners, 3 captions, 5 headlines, 2 video scripts (shop films them), retarget audiences (built by hand in Ads Manager) and chat messages for people who messaged but did not buy, each with a copy button. Drafts only; nothing is published; tables ad_creative_drafts.
 // (previous text of this slot, kept) // v8.28 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ: the "ວິເຄາະດຽວນີ້" button now first calls sync-ad-creative-insights (new edge function: Frequency, Reach, CPM, link CTR, video retention per ad + ad caption/headline -> tables ad_perf_window / ad_creatives) so ads-coach v4 can explain WHY an ad is weak in Lao (ad fatigue / low CTR / weak video hook / below break-even). Read-only on Facebook.
 // (previous text of this slot, kept) // v8.27 NEW (Tar 2026-10-12, "ໃຫ້ API ຊ່ວຍສະເກລແອັດ 6 ຂໍ້") -- owner-only page "🧠 ຜູ້ຊ່ວຍແອດ": button calls edge function ads-coach (Claude reads campaign numbers + real per-product break-even) and lists recommendations (increase budget / pause / reopen / clone winner / keep) with Lao reasons. Each rec has ✅ confirm (popup, then the same update-ad-entity set_daily_budget / toggle_status as the ad-spend board; clone opens the existing clone popup) or ✖ reject; status is stored in ad_coach_recs. Nothing is sent to Facebook without the confirm popup. No timers; data loads on page open.
@@ -1572,7 +1573,9 @@ const APP_VERSION = "8.30"; // v8.30 UI (Tar 2026-10-12 screen recording, "ກ�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.29"; // v8.29 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.30"; // v8.30 UI (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.29→8.30 now that 8.31 is current).
+// (previous text of this slot, kept) // v8.29 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.28→8.29 now that 8.30 is current).
 // (previous text of this slot, kept) // v8.28 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.27→8.28 now that 8.29 is current).
@@ -1612,7 +1615,9 @@ const APP_VERSION_PREV = "8.29"; // v8.29 NEW (Tar 2026-10-12) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.28"; // v8.28 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.29"; // v8.29 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.28→8.29 now that 8.30 is previous).
+// (previous text of this slot, kept) // v8.28 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.27→8.28 now that 8.29 is previous).
 // (previous text of this slot, kept) // v8.27 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.26→8.27 now that 8.28 is previous).
@@ -8148,6 +8153,7 @@ const STATE = {
   adsAnnaTargetStatusFilter: "all", adsAnnaTargetBudgetFilter: "all",
   adsAnnaPreviewLoading: false, adsAnnaPreviewResults: null,
   adsCoachRuns: [], adsCoachRecs: [], adsCoachSettings: {}, adsCoachDrafts: [], adsCoachDraftProduct: "veggie_coffee", adsCoachDraftBusy: false, adsCoachDraftFocus: "", adsCoachTab: "todo", adsCoachOpen: {}, adsCoachDraftId: null, adsCoachLoading: false, adsCoachRunning: false, adsCoachBusyId: null, // v8.27
+  adsTestProducts: [], adsTestAssets: [], adsTestPlans: [], adsTestUploading: "", adsTestPlanning: false, adsTestOpeningId: null, adsTestNote: "", launchAdTestPlanId: null, // v8.31
   campaignControlLogDateFrom: "", campaignControlLogDateTo: "",
   // v4.80: search + full server-side pagination for the log (replaces the old 200-row client cap)
   campaignControlLogSearch: "", campaignControlLogPage: 1, campaignControlLogPageSize: 50,
@@ -9423,6 +9429,10 @@ async function submitLaunchAd(){
       if(data && data.ok===false) throw new Error(data.error||"ຍິງແອັດບໍ່ສຳເລັດ");
       showToast("✅ ຍິງແອັດສຳເລັດ! (ຢູ່ໃນສະຖານະ 'ຢຸດໄວ້' — ໄປກົດເປີດຢູ່ 'ຈັດການແຄມເປນ')");
       STATE.launchAdLastResults = null;
+      if(STATE.launchAdTestPlanId){ // v8.31: link a 🧪 test proposal to the ad that was just created
+        const testPlanId = STATE.launchAdTestPlanId; STATE.launchAdTestPlanId = null;
+        adsTestMarkLaunched(testPlanId, f.primaryText, data||{});
+      }
       resetLaunchAdForm(f);
     }
   }catch(e){
@@ -21808,14 +21818,20 @@ const ADS_COACH_ACTIONS = {
 async function loadAdsCoachData(){
   STATE.adsCoachLoading = true;
   try{
-    const [runsRes, recsRes, setRes, draftsRes] = await Promise.all([
+    const [runsRes, recsRes, setRes, draftsRes, tProdRes, tAssetRes, tPlanRes] = await Promise.all([
       sb.from("ad_coach_runs").select("id,created_at,requested_by,status,summary_lo,output,error,input_tokens,output_tokens").order("created_at",{ascending:false}).limit(8),
       sb.from("ad_coach_recs").select("*").order("created_at",{ascending:false}).limit(150),
       sb.from("ad_coach_settings").select("key,value"),
-      sb.from("ad_creative_drafts").select("id,created_at,product_key,requested_by,status,focus,output,warnings,error").order("created_at",{ascending:false}).limit(6)
+      sb.from("ad_creative_drafts").select("id,created_at,product_key,requested_by,status,focus,output,warnings,error").order("created_at",{ascending:false}).limit(6),
+      sb.from("ad_test_products").select("*").order("product_key"),
+      sb.from("product_assets").select("*").order("created_at",{ascending:false}).limit(300),
+      sb.from("ad_test_plans").select("*").order("created_at",{ascending:false}).limit(120)
     ]);
     if(runsRes.error) throw runsRes.error;
     if(recsRes.error) throw recsRes.error;
+    STATE.adsTestProducts = tProdRes.data||[];
+    STATE.adsTestAssets = tAssetRes.data||[];
+    STATE.adsTestPlans = tPlanRes.data||[];
     STATE.adsCoachRuns = runsRes.data||[];
     STATE.adsCoachRecs = recsRes.data||[];
     const s = {}; (setRes.data||[]).forEach(r=>{ s[r.key] = Number(r.value); });
@@ -21992,6 +22008,225 @@ function renderAdsCoachRecRow(rec, mode){
       </div>
     </div>`;
 }
+/* ---- v8.31: 🧪 ທົດສອບ — product file library + daily test queue (stage 1) ----
+   Files live in the public Supabase bucket "product-assets" (same convention as the other buckets).
+   ads-test-planner only writes PROPOSALS (ad_test_plans.status = 'proposed'). Nothing reaches Facebook
+   until Tar opens a proposal in the 🚀 launch page and presses the launch button there (which always
+   creates the ad PAUSED). */
+const ADS_TEST_ASSET_STATUS = { new:"ໃໝ່", queued:"ໃນຄິວ", testing:"ກຳລັງທົດສອບ", winner:"ຊະນະ", loser:"ບໍ່ດີ", retired:"ເກັບໄວ້" };
+const ADS_TEST_SKIP_REASON = {
+  cap_full:"ງົບທົດສອບເຕັມແລ້ວ (ມີການທົດສອບທີ່ຍັງແລ່ນຢູ່)",
+  no_assets:"ບໍ່ມີໄຟລ໌ໃໝ່",
+  no_draft:"ຍັງບໍ່ມີແຄັບຊັ່ນ — ໄປແຖບ ✍️ ຂຽນຄຣີເອທີບ ກ່ອນ",
+  disabled:"ປິດໃຊ້ງານ"
+};
+function adsTestProductLabel(key){
+  const p = (STATE.adsTestProducts||[]).find(x=>x.product_key===key);
+  return (p && p.label) || ADS_COACH_PRODUCTS[key] || key;
+}
+async function adsTestUploadFiles(productKey, files, note){
+  const list = Array.from(files||[]);
+  if(!list.length || STATE.adsTestUploading) return;
+  STATE.adsTestUploading = productKey; render();
+  let ok = 0; const fails = [];
+  for(const file of list){
+    let path = "";
+    try{
+      const kind = (file.type||"").startsWith("video/") ? "video" : (file.type||"").startsWith("image/") ? "image" : null;
+      if(!kind) throw new Error("ຮອງຮັບສະເພາະຮູບ ແລະ ວິດີໂອ");
+      const ext = ((file.name.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,5)) || "bin";
+      path = `${productKey}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
+      const { error: upErr } = await sb.storage.from("product-assets").upload(path, file, { contentType: file.type, upsert:false });
+      if(upErr) throw upErr;
+      const { data: pub } = sb.storage.from("product-assets").getPublicUrl(path);
+      const { error: insErr } = await sb.from("product_assets").insert({
+        product_key: productKey, kind, storage_path: path, public_url: pub.publicUrl, file_name: file.name,
+        size_bytes: file.size, note: (note||"").trim()||null, created_by: STATE.currentUser?STATE.currentUser.name:""
+      });
+      if(insErr){ try{ await sb.storage.from("product-assets").remove([path]); }catch(_e){} throw insErr; }
+      ok++;
+    }catch(e){
+      const msg = String((e && e.message) || e);
+      fails.push(`${file.name}: ${/exceed|too large|413|size/i.test(msg) ? "ໄຟລ໌ໃຫຍ່ເກີນຂອບເຂດທີ່ Supabase ຮອງຮັບ" : msg}`);
+    }
+  }
+  STATE.adsTestUploading = "";
+  if(ok) showToast(`✅ ອັບໂຫຼດແລ້ວ ${ok} ໄຟລ໌`);
+  if(fails.length) showErrorToast("ອັບໂຫຼດບໍ່ສຳເລັດ: "+fails.join(" | "));
+  await loadAdsCoachData();
+}
+async function adsTestDeleteAsset(assetId){
+  const a = (STATE.adsTestAssets||[]).find(x=>x.id===assetId);
+  if(!a) return;
+  if(a.status==="queued" || a.status==="testing"){ showErrorToast("ໄຟລ໌ນີ້ຢູ່ໃນຄິວ ຫຼື ກຳລັງທົດສອບ — ລົບບໍ່ໄດ້"); return; }
+  const ok = await customConfirm(`ລົບໄຟລ໌ "${a.file_name||""}" ອອກຖາວອນ?`, {okLabel:"ລົບ", danger:true});
+  if(!ok) return;
+  try{
+    try{ await sb.storage.from("product-assets").remove([a.storage_path]); }catch(_e){ /* the row delete below is what matters */ }
+    const { error } = await sb.from("product_assets").delete().eq("id", assetId);
+    if(error) throw error;
+    showToast("ລົບແລ້ວ");
+  }catch(e){ showErrorToast("ລົບບໍ່ສຳເລັດ: "+(e.message||e)); }
+  await loadAdsCoachData();
+}
+async function adsTestRunPlanner(){
+  if(STATE.adsTestPlanning) return;
+  STATE.adsTestPlanning = true; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-test-planner", { body: {} });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ຈັດຄິວບໍ່ສຳເລັດ");
+    const rows = (data && data.results) || [];
+    const made = rows.reduce((s,r)=>s+(r.created||0),0);
+    const skips = rows.filter(r=>r.skipped).map(r=>`${adsTestProductLabel(r.product_key)}: ${ADS_TEST_SKIP_REASON[r.skipped]||r.skipped}`);
+    if(made) showToast(`✅ ຈັດຄິວແລ້ວ ${made} ການທົດສອບ${skips.length?" · "+skips.join(" | "):""}`);
+    else showToast(skips.length ? skips.join(" | ") : "ບໍ່ມີການທົດສອບໃໝ່");
+  }catch(e){ showErrorToast("ຈັດຄິວບໍ່ສຳເລັດ: "+e.message); }
+  STATE.adsTestPlanning = false;
+  await loadAdsCoachData();
+}
+async function adsTestRejectPlan(planId){
+  const p = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
+  if(!p) return;
+  try{
+    const { error } = await sb.from("ad_test_plans").update({ status:"rejected" }).eq("id", planId);
+    if(error) throw error;
+    if(p.asset_id) await sb.from("product_assets").update({ status:"new" }).eq("id", p.asset_id);
+  }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); }
+  await loadAdsCoachData();
+}
+// Fills the 🚀 launch form from a proposal: ad-set settings (audience, page, goal) copied from the
+// product's template campaign, then the proposal's caption/headline and file. Nothing is sent to
+// Facebook here — Tar reviews the form and presses the normal launch button (ad is created PAUSED).
+async function adsTestOpenInLaunch(planId){
+  if(STATE.adsTestOpeningId) return;
+  const plan = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
+  const asset = plan && (STATE.adsTestAssets||[]).find(a=>a.id===plan.asset_id);
+  const cfg = plan && (STATE.adsTestProducts||[]).find(p=>p.product_key===plan.product_key);
+  if(!plan || !asset || !cfg || !cfg.template_campaign_id || !cfg.ad_account_id){ showErrorToast("ຂໍ້ມູນການທົດສອບບໍ່ຄົບ"); return; }
+  STATE.adsTestOpeningId = planId; render();
+  try{
+    const res = await fetch(asset.public_url);
+    if(!res.ok) throw new Error("ດຶງໄຟລ໌ບໍ່ໄດ້ ("+res.status+")");
+    const blob = await res.blob();
+    const file = new File([blob], asset.file_name || ("asset."+(asset.kind==="video"?"mp4":"jpg")), { type: blob.type || (asset.kind==="video"?"video/mp4":"image/jpeg") });
+    const { data: ls, error: lsErr } = await sb.functions.invoke("list-campaign-adsets", { body: { campaignId: cfg.template_campaign_id } });
+    if(lsErr) throw new Error(await extractFunctionErrorMessage(lsErr));
+    if(ls && ls.ok===false) throw new Error(ls.error||"ໂຫຼດ Ad Set ແມ່ແບບບໍ່ສຳເລັດ");
+    const sets = (ls && ls.adSets) || [];
+    const src = sets.find(a=>a.effectiveStatus==="ACTIVE") || sets[0];
+    if(!src) throw new Error("Campaign ແມ່ແບບບໍ່ມີ Ad Set");
+
+    const d = new Date(Date.now()+7*3600*1000);
+    const dd = String(d.getUTCDate()).padStart(2,"0")+"/"+String(d.getUTCMonth()+1).padStart(2,"0");
+    const name = `${adsTestProductLabel(plan.product_key)} TEST ${dd} #${String(plan.id).slice(0,4)}`;
+    resetLaunchAdForm(STATE.launchAdForm);
+    const f = STATE.launchAdForm;
+    f.connectionMode = "system"; f.adAccountId = cfg.ad_account_id; f.flowType = "new_campaign";
+    f.campaignObjective = "engagement"; f.objective = "messages"; f.budgetType = "abo";
+    f.campaignName = name; f.adsetName = name; f.dailyBudget = String(plan.daily_budget);
+    STATE.launchAdTestPlanId = plan.id;
+    navigateToPage("launchAd");
+    await applyAdSetPrefill(src.id, src.name);   // audience / page / goal from the template ad set
+    f.campaignName = name; f.adsetName = name; f.dailyBudget = String(plan.daily_budget); f.budgetType = "abo"; f.flowType = "new_campaign";
+    f.primaryText = plan.caption || ""; f.headline = plan.headline || "";
+    f.productImageUrl = ""; f.existingImageHash = ""; f.existingPostId = "";
+    if(asset.kind==="video"){
+      f.creativeSource = "video"; f.videoFile = file; f.imageFile = null; f.imagePreviewUrl = "";
+    } else {
+      f.creativeSource = "upload"; f.imageFile = file; f.imagePreviewUrl = URL.createObjectURL(file); f.videoFile = null;
+    }
+    STATE.launchAdVideoUpload = { status:"idle" };
+    render();
+    showToast(asset.kind==="video" ? "✅ ຕື່ມຟອມໃຫ້ແລ້ວ — ກົດ ⬆️ ອັບໂຫລດວິດີໂອ ກ່ອນ ແລ້ວອ່ານກວດ ແລະ ກົດຍິງແອັດ" : "✅ ຕື່ມຟອມໃຫ້ແລ້ວ — ອ່ານກວດ ແລ້ວກົດຍິງແອັດ");
+  }catch(e){
+    STATE.launchAdTestPlanId = null;
+    showErrorToast("ເປີດໃນໜ້າຍິງແອັດບໍ່ສຳເລັດ: "+(e.message||e));
+  }
+  STATE.adsTestOpeningId = null;
+  render();
+}
+// Called by submitLaunchAd after a successful single launch. Only links the proposal if the launched
+// text is still the proposal's caption (so an unrelated launch from the same form is never mislabeled).
+async function adsTestMarkLaunched(planId, launchedText, result){
+  try{
+    const plan = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
+    if(!plan || (plan.caption||"")!==(launchedText||"")) return;
+    const now = new Date().toISOString();
+    await sb.from("ad_test_plans").update({ status:"launched", campaign_id: result.campaignId||null, adset_id: result.adsetId||null, ad_id: result.adId||null, launched_at: now }).eq("id", planId);
+    if(plan.asset_id) await sb.from("product_assets").update({ status:"testing" }).eq("id", plan.asset_id);
+    if(result.campaignId){
+      await sb.from("campaign_product_map").upsert({ campaign_id: result.campaignId, product_key: plan.product_key, product_name: adsTestProductLabel(plan.product_key), source:"ad_test" }, { onConflict:"campaign_id" });
+    }
+  }catch(e){ console.warn("adsTestMarkLaunched failed:", e); }
+}
+function renderAdsTestTab(){
+  const prods = STATE.adsTestProducts||[];
+  const assets = STATE.adsTestAssets||[];
+  const plans = STATE.adsTestPlans||[];
+  const proposed = plans.filter(p=>p.status==="proposed");
+  const running = plans.filter(p=>p.status==="launched");
+  const fmtD = (t)=>new Date(t).toLocaleString("en-GB",{timeZone:LAOS_TZ,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const assetOf = (id)=>assets.find(a=>a.id===id);
+  const kindLabel = (k)=>k==="video"?"🎬 ວິດີໂອ":"🖼️ ຮູບ";
+  const clip = (s,n)=>{ s = String(s||""); return s.length>n ? s.slice(0,n)+"…" : s; };
+  const planRow = (p)=>{
+    const a = assetOf(p.asset_id);
+    const busy = STATE.adsTestOpeningId===p.id;
+    return `<div class="coach-row">
+      <div class="coach-row-top"><span class="coach-pill on" style="cursor:default;">${esc(adsTestProductLabel(p.product_key))}</span><span class="small-muted">${a?kindLabel(a.kind)+" · "+esc(a.file_name||""):"(ໄຟລ໌ຖືກລົບແລ້ວ)"}</span></div>
+      ${a && a.kind==="image" ? `<img src="${esc(a.public_url)}" alt="" style="max-height:120px; border-radius:8px; margin-top:10px; display:block;"/>`:""}
+      <div class="coach-text" style="margin-top:10px;">${esc(clip(p.caption,420))}</div>
+      ${p.headline?`<div class="coach-row-why">ຫົວຂໍ້: ${esc(p.headline)}</div>`:""}
+      <div class="coach-row-why small-muted">ງົບ ${esc(String(p.daily_budget))}/ວັນ</div>
+      <div class="coach-row-btns">
+        <button class="btn" data-test-open="${p.id}" ${busy||!a?"disabled":""}>${busy?"ກຳລັງຕຽມຟອມ...":"🚀 ເປີດໃນໜ້າຍິງແອັດ"}</button>
+        <button class="coach-link" data-test-reject="${p.id}" ${busy?"disabled":""}>ບໍ່ເຮັດ</button>
+      </div>
+    </div>`;
+  };
+  const prodBlock = (p)=>{
+    const mine = assets.filter(a=>a.product_key===p.product_key);
+    const cnt = (s)=>mine.filter(a=>a.status===s).length;
+    const upl = STATE.adsTestUploading===p.product_key;
+    const concurrent = Math.floor(Number(p.daily_cap)/Number(p.budget_per_test));
+    return `<div class="coach-sec">
+      <div style="padding:14px 0 6px;">
+        <b>${esc(p.label)}</b>
+        <span class="small-muted"> · ໃໝ່ ${cnt("new")} · ໃນຄິວ ${cnt("queued")} · ກຳລັງທົດສອບ ${cnt("testing")}</span>
+        <div class="small-muted" style="margin-top:4px;">ງົບທົດສອບ ສູງສຸດ ${esc(String(p.daily_cap))}/ວັນ · ການທົດສອບລະ ${esc(String(p.budget_per_test))}/ວັນ (ພ້ອມກັນໄດ້ ${concurrent} ອັນ)</div>
+      </div>
+      <div class="coach-form" style="margin:6px 0 10px;">
+        <input type="text" data-test-note="${p.product_key}" placeholder="ໝາຍເຫດ (ບໍ່ບັງຄັບ) ເຊັ່ນ ມຸມທີ່ໃຊ້" value="${esc(STATE.adsTestNote||"")}"/>
+        <label class="btn btn-outline" style="margin:0; cursor:pointer;">${upl?"⏳ ກຳລັງອັບໂຫຼດ...":"⬆️ ເພີ່ມໄຟລ໌"}
+          <input type="file" multiple accept="image/*,video/*" data-test-upload="${p.product_key}" style="display:none;" ${upl?"disabled":""}/>
+        </label>
+      </div>
+      ${mine.length===0?`<p class="small-muted" style="margin:0 0 12px;">ຍັງບໍ່ມີໄຟລ໌</p>`:`<div style="margin-bottom:10px;">${mine.slice(0,40).map(a=>`
+        <div class="coach-line" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <span style="min-width:74px;">${kindLabel(a.kind)}</span>
+          <span style="flex:1; min-width:140px; word-break:break-all;">${esc(a.file_name||"")}${a.note?` <span class="small-muted">· ${esc(a.note)}</span>`:""}</span>
+          <span class="small-muted">${esc(ADS_TEST_ASSET_STATUS[a.status]||a.status)}</span>
+          ${(a.status==="new"||a.status==="retired")?`<button class="coach-link" data-test-del="${a.id}">ລົບ</button>`:""}
+        </div>`).join("")}</div>`}
+    </div>`;
+  };
+  return `
+    <div class="card coach-card">
+      <p class="small-muted" style="margin-top:12px;">ເກັບວິດີໂອ ແລະ ຮູບຂອງແຕ່ລະສິນຄ້າໄວ້ບ່ອນນີ້. ລະບົບຈັດເຂົ້າຄິວທົດສອບເທື່ອລະໄຟລ໌ ພາຍໃນງົບທີ່ກຳນົດ ແລະ ຈັບຄູ່ກັບແຄັບຊັ່ນທີ່ຂຽນໄວ້ແລ້ວ.</p>
+      <div class="coach-note">ງົບນ້ອຍເກັບຄຳສັ່ງຊື້ໄດ້ໜ້ອຍ — ຖ້າທົດສອບລະ 100/ວັນ ການຕັດສິນຕາມ ROAS ຕ້ອງລໍປະມານ 7–10 ວັນ. ຕົວເລກວັນທຳອິດ (ຄລິກ, ຄົນທັກແຊັດ, ຄົນເບິ່ງວິດີໂອ) ໃຊ້ເບິ່ງແນວໂນ້ມໄດ້ ແຕ່ຢ່າຕັດສິນຈາກມັນຢ່າງດຽວ.</div>
+      ${prods.length===0?`<p class="small-muted">ຍັງບໍ່ໄດ້ຕັ້ງສິນຄ້າທົດສອບ</p>`:prods.filter(p=>p.enabled).map(prodBlock).join("")}
+    </div>
+    <div class="card coach-card">
+      <div class="flex-between" style="flex-wrap:wrap; gap:10px; padding-top:14px;">
+        <b>ຄິວທົດສອບ <span class="small-muted">(${proposed.length})</span></b>
+        <button class="btn" id="btn-test-plan" ${STATE.adsTestPlanning?"disabled":""}>${STATE.adsTestPlanning?"⏳ ກຳລັງຈັດຄິວ...":"📥 ຈັດຄິວດຽວນີ້"}</button>
+      </div>
+      <div class="coach-note">ກົດ "ເປີດໃນໜ້າຍິງແອັດ" ລະບົບຈະຕື່ມຟອມໃຫ້ (ກຸ່ມເປົ້າໝາຍຄືແອດເກົ່າ). ອ່ານແຄັບຊັ່ນກ່ອນ ແລ້ວກົດຍິງແອັດຢູ່ໜ້ານັ້ນ — ແອັດຈະຖືກສ້າງເປັນ "ຢຸດໄວ້" ສະເໝີ. ຍັງບໍ່ມີຫຍັງຖືກສົ່ງໄປ Facebook ຈາກໜ້ານີ້.</div>
+      ${proposed.length===0?`<p class="small-muted" style="margin:0 0 8px;">ຍັງບໍ່ມີການທົດສອບໃນຄິວ — ອັບໂຫຼດໄຟລ໌ ແລ້ວກົດ "ຈັດຄິວດຽວນີ້"</p>`:proposed.map(planRow).join("")}
+      ${running.length?adsCoachToggleRow("testrun", `ຍິງແລ້ວ <span class="small-muted">(${running.length})</span>`, running.map(p=>{ const a=assetOf(p.asset_id); return `<div class="coach-line">${esc(adsTestProductLabel(p.product_key))} · ${a?esc(a.file_name||""):"-"} <span class="small-muted">· ${fmtD(p.launched_at||p.created_at)} · ງົບ ${esc(String(p.daily_budget))}/ວັນ</span></div>`; }).join("")+`<p class="coach-note">ການຕັດສິນຜົນອັດຕະໂນມັດຈະເພີ່ມໃນຂັ້ນຕໍ່ໄປ. ດຽວນີ້ເບິ່ງຜົນໄດ້ຢູ່ໜ້າ "ຈັດການແຄມເປນ".</p>`, false):""}
+    </div>`;
+}
 function renderAdsCoachPage(){
   const runs = STATE.adsCoachRuns||[];
   const recs = STATE.adsCoachRecs||[];
@@ -22023,6 +22258,8 @@ function renderAdsCoachPage(){
           (todo.length===0 ? `<p class="small-muted" style="margin:0 0 8px;">ບໍ່ມີຫຍັງຕ້ອງຕັດສິນໃຈດຽວນີ້</p>`:""))}
         ${infoOnly.length?adsCoachToggleRow("info", `ຮັກສາໄວ້ / ຍັງບໍ່ຕັດສິນ <span class="small-muted">(${infoOnly.length})</span>`, infoOnly.map(r=>renderAdsCoachRecRow(r,"info")).join(""), false):""}
       </div>`;
+  } else if(tab==="test"){
+    body = renderAdsTestTab();
   } else if(tab==="write"){
     body = `
       <div class="card coach-card">
@@ -22105,6 +22342,7 @@ function renderAdsCoachPage(){
         <div class="tabs">
           <div class="tab ${tab==="todo"?"active":""}" data-coach-tab="todo">📌 ຕ້ອງຕັດສິນໃຈ${todo.length?` (${todo.length})`:""}</div>
           <div class="tab ${tab==="write"?"active":""}" data-coach-tab="write">✍️ ຂຽນຄຣີເອທີບ</div>
+          <div class="tab ${tab==="test"?"active":""}" data-coach-tab="test">🧪 ທົດສອບ${(STATE.adsTestPlans||[]).filter(p=>p.status==="proposed").length?` (${(STATE.adsTestPlans||[]).filter(p=>p.status==="proposed").length})`:""}</div>
           <div class="tab ${tab==="history"?"active":""}" data-coach-tab="history">🕐 ປະຫວັດ</div>
         </div>
       </div>
@@ -22141,6 +22379,27 @@ function attachAdsCoachEvents(){
   });
   const reloadBtn = document.getElementById("btn-coach-reload");
   if(reloadBtn) reloadBtn.addEventListener("click", loadAdsCoachData);
+  // v8.31 🧪 ທົດສອບ tab
+  document.querySelectorAll("[data-test-note]").forEach(el=>{
+    el.addEventListener("input", ()=>{ STATE.adsTestNote = el.value; }); // no render(): keeps typing focus
+  });
+  document.querySelectorAll("[data-test-upload]").forEach(el=>{
+    el.addEventListener("change", ()=>{
+      const note = STATE.adsTestNote; STATE.adsTestNote = "";
+      adsTestUploadFiles(el.getAttribute("data-test-upload"), el.files, note);
+    });
+  });
+  document.querySelectorAll("[data-test-del]").forEach(el=>{
+    el.addEventListener("click", ()=>adsTestDeleteAsset(el.getAttribute("data-test-del")));
+  });
+  const planBtn = document.getElementById("btn-test-plan");
+  if(planBtn) planBtn.addEventListener("click", adsTestRunPlanner);
+  document.querySelectorAll("[data-test-open]").forEach(el=>{
+    el.addEventListener("click", ()=>adsTestOpenInLaunch(el.getAttribute("data-test-open")));
+  });
+  document.querySelectorAll("[data-test-reject]").forEach(el=>{
+    el.addEventListener("click", ()=>adsTestRejectPlan(el.getAttribute("data-test-reject")));
+  });
   document.querySelectorAll("[data-coach-apply]").forEach(el=>{
     el.addEventListener("click", ()=>{
       const rec = (STATE.adsCoachRecs||[]).find(r=>r.id===el.getAttribute("data-coach-apply"));
