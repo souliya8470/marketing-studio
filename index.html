@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.33"; // v8.33 NEW (Tar 2026-10-12, "ລອງ B ໂລດ ເພາະຂ້ອຍກຳນົດງົບປະມານສຸງສຸດຕໍ່ວັນໄວ້ໃຫ້ແລ້ວ" = let the AI do the testing itself inside my daily cap) -- 🧪 ທົດສອບ tab is now an automatic pipeline driven by NEW edge function ads-test-auto (cron every 10 min, master switch ad_coach_settings.auto_test_enabled, lock in ad_test_state, every action logged in ad_test_log). (1) On upload the browser now also stores 1 downscaled picture or 3 video snapshots (product-assets/<product>/frames/) so Claude can SEE the file; product_assets.frames. (2) PLAN: Claude (vision) reviews each new file, rejects unusable ones with a Lao reason, and writes caption + headline from what the file shows + the product facts (Lao-only/Thai/garble/risky-claim checks, retry once). Slots = floor((daily_cap - committed)/budget_per_test), max_new_per_day per Laos day. (3) LAUNCH: only inside the product's window (08:00-15:00 Laos), through the existing launch-ad (campaign created ACTIVE with startTime now+3min, name "<label> TEST dd/mm #<plan id8>", idempotent via ad_launch_log), template ad set copied from the product's template campaign; videos upload resumably across ticks (fb-upload-video start/transfer/finish/status, 4MB Range chunks). 3 failed tries -> status failed with the reason. (4) JUDGE: after 3+ days the code gates what verdict is ALLOWED (loser: spend>=250 and no messages / cost per message > 2x the product's own baseline; winner: >=5 days, >=6 messages, <=0.8x baseline) and Claude explains in Lao + says what to change next; a loser's campaign is paused via update-ad-entity. Budgets are NEVER raised automatically. UI: auto switch + "ເຮັດດຽວນີ້", "AI ເບິ່ງແລ້ວ" box on cards, status notes, ⚡ ຍິງດຽວນີ້ (force window), retry for failed, verdict badges with reason/next step, judged list, collapsed system log. "ຕັດອອກ" now retires the file (it used to return it to "new", which would make the AI queue it again).
+const APP_VERSION = "8.34"; // v8.34 FIX+UI (Tar 2026-10-12, "ຕຳແໜ່ງການສະແດງໂຄສະນາ ແລະຂໍ້ຄວາມເທມເພລດ ... ເຫັນໃນ Ads Manager ບໍ່ມີເທມເພລດທີ່ເຮົາສ້າງ") -- ads launched by the test pipeline now COPY THE TEMPLATE CAMPAIGN FULLY. Before: launch-ad only sent age/countries and forced mobile-only placements, and never sent the saved Messenger welcome-message template, Advantage+ audience, excluded countries (TH...), brand-safety filters, Instagram identity or creative enhancements, so Ads Manager showed a different ad. Now: launch-ad v30 (v21 in its header) has 3 NEW OPTIONAL params (targetingOverride = whole Facebook targeting object, instagramUserId, degreesOfFreedomSpec) and behaves exactly as v29 when they are absent; ads-test-auto v4 reads the template ad set + one of its ads straight from Facebook (Graph, META_ACCESS_TOKEN) and passes targeting + page_welcome_message (template id) + instagram_user_id + creative enhancements (the legacy standard_enhancements bundle is dropped, Facebook rejects it with subcode 3858504; retry without enhancements if Facebook still refuses). New read-only action "template" (ads-test-auto) returns a summary of what will be copied; new flag create_paused (everything created PAUSED, used for the controlled live test). The live test (veggie coffee, PAUSED, image) was verified in ads-template-inspect (Advantage+ placements, Advantage+ audience, TH excluded, brand safety, bid cap 45, welcome template 1333606118911495) and the test campaign was deleted. UI: 🧪 tab has a new collapsible "📋 ຄ່າທີ່ກ໋ອບປີ້ຈາກເທມເພລດ" card for the selected product (button loads it on demand): placements, audience, excluded countries, bid, welcome-message template id + preview, Instagram, creative enhancements, and warnings when the template text contains Thai script or a disease word.
+// (previous text of this slot, kept) // v8.33 NEW (Tar 2026-10-12, "ລອງ B ໂລດ ເພາະຂ້ອຍກຳນົດງົບປະມານສຸງສຸດຕໍ່ວັນໄວ້ໃຫ້ແລ້ວ" = let the AI do the testing itself inside my daily cap) -- 🧪 ທົດສອບ tab is now an automatic pipeline driven by NEW edge function ads-test-auto (cron every 10 min, master switch ad_coach_settings.auto_test_enabled, lock in ad_test_state, every action logged in ad_test_log). (1) On upload the browser now also stores 1 downscaled picture or 3 video snapshots (product-assets/<product>/frames/) so Claude can SEE the file; product_assets.frames. (2) PLAN: Claude (vision) reviews each new file, rejects unusable ones with a Lao reason, and writes caption + headline from what the file shows + the product facts (Lao-only/Thai/garble/risky-claim checks, retry once). Slots = floor((daily_cap - committed)/budget_per_test), max_new_per_day per Laos day. (3) LAUNCH: only inside the product's window (08:00-15:00 Laos), through the existing launch-ad (campaign created ACTIVE with startTime now+3min, name "<label> TEST dd/mm #<plan id8>", idempotent via ad_launch_log), template ad set copied from the product's template campaign; videos upload resumably across ticks (fb-upload-video start/transfer/finish/status, 4MB Range chunks). 3 failed tries -> status failed with the reason. (4) JUDGE: after 3+ days the code gates what verdict is ALLOWED (loser: spend>=250 and no messages / cost per message > 2x the product's own baseline; winner: >=5 days, >=6 messages, <=0.8x baseline) and Claude explains in Lao + says what to change next; a loser's campaign is paused via update-ad-entity. Budgets are NEVER raised automatically. UI: auto switch + "ເຮັດດຽວນີ້", "AI ເບິ່ງແລ້ວ" box on cards, status notes, ⚡ ຍິງດຽວນີ້ (force window), retry for failed, verdict badges with reason/next step, judged list, collapsed system log. "ຕັດອອກ" now retires the file (it used to return it to "new", which would make the AI queue it again).
 // (previous text of this slot, kept) // v8.32 UI+FLOW (Tar 2026-10-12, "ມັນເບິ່ງຈຳເຈ ບໍ່ເດັ່ນເບິ່ງຍາກ" + "ທັງສອງຢ່າງ" = redesign and fewer steps) -- 🧪 ທົດສອບ tab redesigned (hero with 3 counters, product pills, big drag-and-drop zone, thumbnail cards for ready tests, running tests with 7-day numbers, all files collapsed) and the flow is shorter: uploading files now queues them automatically (ads-test-planner called for that product), and each card has a single "🚀 ຍິງທົດສອບ" button that does everything in the browser after one confirm popup: fetch the file, read the template ad set (list-campaign-adsets + get-adset-for-prefill), upload the video through the same fb-upload-video chunk steps as the launch page (adsTestFbUploadVideo) or convert the image, then call launch-ad with the same body shape submitLaunchAd sends (flowType new_campaign, objective messages, ABO, daily budget = plan budget). launch-ad still creates everything PAUSED. "ແກ້ກ່ອນຍິງ" keeps the old route into the launch form. Running cards read ad_perf_window (7 days) per ad and have a "🔄 ອັບເດດຕົວເລກ" button (sync-ad-creative-insights). Not built yet: automatic verdicts, scheduled planning.
 // (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12, "ມີໂຟນເດີສິນຄ້າ ມີວິດີໂອແລະຮູບ ແລ້ວໃຫ້ ai ເອົາໄປເທສແອັດ... ງົບ 100-200 ບາດຕໍ່ມື້ ຕໍ່ສິນຄ້າ") -- 🧠 ຜູ້ຊ່ວຍແອດ: new tab "🧪 ທົດສອບ" (stage 1, proposals only). Library: upload videos/images per product (Supabase Storage bucket product-assets, table product_assets). Queue: button "📥 ຈັດຄິວດຽວນີ້" calls NEW edge function ads-test-planner, which pairs each untested file with a caption + headline from the newest finished ad_creative_drafts row inside the per-product cap (table ad_test_products: daily_cap 200, budget_per_test 100; pilot products veggie_coffee + sesame_coffee, each with a template campaign) and writes ad_test_plans rows (status proposed). It never calls Facebook. "🚀 ເປີດໃນໜ້າຍິງແອັດ" fills the existing launch form (audience/page/goal copied from the template ad set via list-campaign-adsets + applyAdSetPrefill, then the proposal caption/headline and the file) and navigates there; Tar still presses the normal launch button (launch-ad creates everything PAUSED; for video the existing ⬆️ upload step is still needed). After a successful single launch submitLaunchAd links the proposal to the new campaign/adset/ad ids (only if the launched text still equals the proposal caption), marks the file "testing" and adds the campaign to campaign_product_map (source ad_test). Not built yet: automatic verdicts on finished tests, automatic launching, scheduled planning. Note: at 100/day per test a ROAS verdict needs about 7-10 days of data.
 // (previous text of this slot, kept) // v8.30 UI (Tar 2026-10-12 screen recording, "ການຈັດໜ້າ ui ຮູ້ສຶກວ່າມີຄວາມສັບສົນແລະອຶດອັດ") -- 🧠 ຜູ້ຊ່ວຍແອດ page re-laid out: the single very long page is now 3 tabs (📌 ຕ້ອງຕັດສິນໃຈ / ✍️ ຂຽນຄຣີເອທີບ / 🕐 ປະຫວັດ); recommendations are flat rows grouped by priority (one primary button, "ບໍ່ເຮັດ" as a text link) instead of cards inside cards; "keep"/no-action items and each draft section (captions, headlines, video scripts, retarget) are collapsible; data gaps are behind a link; failed test drafts are hidden and drafts are chosen with pills (one draft shown at a time). No logic change.
@@ -1575,7 +1576,9 @@ const APP_VERSION = "8.33"; // v8.33 NEW (Tar 2026-10-12, "ລອງ B ໂລດ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.33"; // v8.33 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.32→8.33 now that 8.34 is current).
+// (previous text of this slot, kept) // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.31→8.32 now that 8.33 is current).
 // (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.30→8.31 now that 8.32 is current).
@@ -1621,7 +1624,9 @@ const APP_VERSION_PREV = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12) — full note
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.31"; // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.31→8.32 now that 8.33 is previous).
+// (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.30→8.31 now that 8.32 is previous).
 // (previous text of this slot, kept) // v8.30 UI (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.29→8.30 now that 8.31 is previous).
@@ -22149,6 +22154,63 @@ async function adsTestRefreshPerf(){
   STATE.adsTestRefreshing = false;
   await loadAdsCoachData();
 }
+// v8.34: read-only look at what a launch copies from the product's template campaign (ads-test-auto action "template").
+async function adsTestLoadTemplate(key){
+  if(STATE.adsTestTplBusy) return;
+  STATE.adsTestTplBusy = key; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"template", product_keys:[key] } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ອ່ານເທມເພລດບໍ່ສຳເລັດ");
+    const t = ((data && data.templates) || [])[0];
+    if(!t) throw new Error("ບໍ່ພົບເທມເພລດຂອງສິນຄ້ານີ້");
+    if(t.error) throw new Error(t.error);
+    STATE.adsTestTemplates = { ...(STATE.adsTestTemplates||{}), [key]: t };
+  }catch(e){ showErrorToast("ອ່ານເທມເພລດບໍ່ສຳເລັດ: "+e.message); }
+  STATE.adsTestTplBusy = null;
+  render();
+}
+function adsTestTemplateCard(sel){
+  const t = (STATE.adsTestTemplates||{})[sel.product_key];
+  const busy = STATE.adsTestTplBusy === sel.product_key;
+  const btn = `<button type="button" class="btn btn-outline" data-test-tpl="${sel.product_key}" ${busy?"disabled":""}>${busy?"⏳ ກຳລັງອ່ານ...":(t?"🔄 ອ່ານໃໝ່":"👁️ ເບິ່ງຄ່າເທມເພລດ")}</button>`;
+  let body = `<p class="small-muted" style="margin:6px 0 0;">ທຸກຄັ້ງທີ່ລະບົບຍິງແອັດທົດສອບ ຈະກ໋ອບປີ້ຄ່າເຫຼົ່ານີ້ຈາກແຄມເປນເທມເພລດຂອງສິນຄ້າ ເພື່ອໃຫ້ຄືກັບທີ່ເຫັນໃນ Ads Manager. ກົດປຸ່ມເພື່ອອ່ານຄ່າປັດຈຸບັນຈາກ Facebook (ອ່ານຢ່າງດຽວ).</p>`;
+  if(t){
+    const pl = t.placements||{}, au = t.audience||{}, w = t.welcome;
+    const posTxt = Object.entries(pl.positions||{}).map(([k,v])=>k.replace("_positions","")+": "+(v||[]).join(", ")).join(" · ");
+    const place = pl.mode==="manual"
+      ? `ກຳນົດເອງ — ${esc(posTxt||(pl.publisher_platforms||[]).join(", "))}${(pl.device_platforms||[]).length?" · ອຸປະກອນ: "+esc(pl.device_platforms.join(", ")):""}`
+      : "Advantage+ (Facebook ເລືອກຕຳແໜ່ງໃຫ້ອັດຕະໂນມັດ)";
+    const gen = au.genders ? (au.genders.join(",")==="1"?"ຊາຍ":au.genders.join(",")==="2"?"ຍິງ":"ທັງໝົດ") : "ທັງໝົດ";
+    const aud = `ອາຍຸ ${au.age_min??"?"}–${au.age_max??"?"} · ${esc(gen)} · ${esc((au.countries||[]).join(", ")||"—")}${au.advantage_audience?" · Advantage+ audience ເປີດ":""}`;
+    const exc = (au.excluded_countries||[]).length ? esc(au.excluded_countries.join(", ")) : "ບໍ່ມີ";
+    const bid = t.bid_strategy ? `${esc(t.bid_strategy)}${t.bid_amount!=null?" · "+esc(t.bid_amount):""}` : "ອັດຕະໂນມັດ (ຕໍ່າສຸດ)";
+    const texts = (w && w.texts) || [];
+    const longest = texts.reduce((a,b)=> (String(b).length > String(a).length ? b : a), "");
+    const hasThai = texts.some(x=>/[\u0E00-\u0E7F]/.test(String(x)));
+    const hasMed = texts.some(x=>/ຄວາມດັນ|ເບົາຫວານ|ປິ່ນປົວ|ມະເຮັງ/.test(String(x)));
+    const warns = [];
+    if(hasThai) warns.push("⚠️ ມີຂໍ້ຄວາມພາສາໄທໃນເທມເພລດຂໍ້ຄວາມທັກທາຍ (ເຊັ່ນ ປຸ່ມຕອບດ່ວນ) — ລູກຄ້າລາວຈະເຫັນຕົວອັກສອນໄທ");
+    if(hasMed) warns.push("⚠️ ມີຄຳກ່ຽວກັບພະຍາດ (ເຊັ່ນ ຄວາມດັນ) ໃນເທມເພລດຂໍ້ຄວາມທັກທາຍ — Facebook ອາດບໍ່ອະນຸມັດ ຫຼື ຈຳກັດແອັດ");
+    const enh = Object.entries(t.creative_enhancements||{}).filter(([k,v])=>v==="OPT_IN").map(([k])=>k);
+    const row = (k,v)=>`<div class="tst-tpl-row"><span>${k}</span><b>${v}</b></div>`;
+    body = `<div class="tst-tpl-grid">
+      ${row("ຕຳແໜ່ງການສະແດງໂຄສະນາ", place)}
+      ${row("ກຸ່ມເປົ້າໝາຍ", aud)}
+      ${row("ຍົກເວັ້ນປະເທດ", exc)}
+      ${row("ເປົ້າໝາຍການປັບປຸງ", esc(t.optimization_goal||"—"))}
+      ${row("ການປະມູນ", bid)}
+      ${row("ຂໍ້ຄວາມທັກທາຍ (ເທມເພລດ)", w ? `ID ${esc(w.template_id||"—")}${longest?`<div class="small-muted" style="font-weight:400;white-space:pre-wrap;margin-top:4px;">${esc(String(longest).slice(0,220))}${String(longest).length>220?"…":""}</div>`:""}` : "ບໍ່ມີ — ແອັດຕົ້ນແບບບໍ່ໄດ້ຕັ້ງ")}
+      ${row("Instagram", t.instagram_user_id ? "ID "+esc(t.instagram_user_id) : "ບໍ່ມີ")}
+      ${row("ການປັບແຕ່ງຄຣີເອທີບ ທີ່ເປີດ", enh.length ? esc(enh.join(", ")) : "ບໍ່ມີ")}
+    </div>${warns.length?`<div class="tst-tpl-warn">${warns.map(esc).join("<br>")}<div class="small-muted" style="margin-top:4px;">ລະບົບບໍ່ແກ້ເທມເພລດຂອງເຈົ້າເອງ — ຖ້າຈະແກ້ ໃຫ້ແກ້ໃນ Ads Manager ແລ້ວກົດ "ອ່ານໃໝ່".</div></div>`:""}`;
+  }
+  return `<details class="tst-tpl card coach-card" ${t?"open":""}>
+    <summary><b>📋 ຄ່າທີ່ກ໋ອບປີ້ຈາກເທມເພລດ — ${esc(sel.label)}</b></summary>
+    ${body}
+    <div style="margin-top:10px;">${btn}</div>
+  </details>`;
+}
 // v8.33: the AI step now lives in ads-test-auto (Claude looks at the picture / video frames, writes the
 // caption, and — when the auto switch is ON — approves the plan so the next tick launches it).
 async function adsTestRunPlanner(keys){
@@ -22565,6 +22627,8 @@ function renderAdsTestTab(){
       return `<button type="button" class="tst-pill ${p.product_key===sel.product_key?"on":""}" data-test-prod="${p.product_key}">${esc(p.label)}${n?`<span class="tst-chip">${n}</span>`:""}</button>`;
     }).join("")}</div>
 
+    ${adsTestTemplateCard(sel)}
+
     <div class="tst-drop ${upl?"busy":""}" id="tst-drop" data-prod="${sel.product_key}">
       <div class="tst-drop-ico">${upl?"⏳":"⬆️"}</div>
       <div class="tst-drop-t">${upl?"ກຳລັງອັບໂຫຼດ...":"ລາກໄຟລ໌ມາວາງບ່ອນນີ້"}</div>
@@ -22747,6 +22811,11 @@ function renderAdsCoachPage(){
       .tst-auto{display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 18px; border-radius:14px; border:2px solid rgba(128,128,128,.28); background:var(--white,#fff); margin-bottom:14px;}
       .tst-auto.on{border-color:#2d7a4f; background:rgba(45,122,79,.08);}
       .tst-auto-t{flex:1; min-width:220px; display:flex; flex-direction:column; gap:3px; font-size:13.5px; line-height:1.5;} .tst-auto-t b{font-size:16px;}
+      .tst-tpl{margin-bottom:14px; padding:12px 16px;} .tst-tpl summary{cursor:pointer; font-size:14.5px;}
+      .tst-tpl-grid{display:flex; flex-direction:column; gap:6px; margin-top:10px;}
+      .tst-tpl-row{display:flex; gap:12px; flex-wrap:wrap; font-size:13.5px; line-height:1.5; padding:6px 0; border-bottom:1px dashed rgba(128,128,128,.25);}
+      .tst-tpl-row span{flex:0 0 190px; color:var(--text-muted,#666);} .tst-tpl-row b{flex:1; min-width:200px; font-weight:600; word-break:break-word;}
+      .tst-tpl-warn{margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(230,150,0,.12); border:1px solid rgba(230,150,0,.45); font-size:13px; line-height:1.55;}
       .tst-switch{position:relative; display:inline-block; width:54px; height:30px; flex:none; cursor:pointer;} .tst-switch input{opacity:0; width:0; height:0; position:absolute;}
       .tst-slider{position:absolute; inset:0; background:#b9b4a8; border-radius:999px; transition:background .15s;} .tst-slider::before{content:""; position:absolute; width:24px; height:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.35);}
       .tst-switch input:checked + .tst-slider{background:#2d7a4f;} .tst-switch input:checked + .tst-slider::before{transform:translateX(24px);}
@@ -22854,6 +22923,9 @@ function attachAdsCoachEvents(){
   });
   const autoTgl = document.getElementById("tst-auto-toggle");
   if(autoTgl) autoTgl.addEventListener("click", (e)=>{ e.preventDefault(); adsTestToggleAuto(); });
+  document.querySelectorAll("[data-test-tpl]").forEach(el=>{
+    el.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); adsTestLoadTemplate(el.getAttribute("data-test-tpl")); });
+  });
   const tickBtn = document.getElementById("btn-test-tick");
   if(tickBtn) tickBtn.addEventListener("click", adsTestTickNow);
   document.querySelectorAll("[data-coach-apply]").forEach(el=>{
