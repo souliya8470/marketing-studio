@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.27"; // v8.27 NEW (Tar 2026-10-12, "ໃຫ້ API ຊ່ວຍສະເກລແອັດ 6 ຂໍ້") -- owner-only page "🧠 ຜູ້ຊ່ວຍແອດ": button calls edge function ads-coach (Claude reads campaign numbers + real per-product break-even) and lists recommendations (increase budget / pause / reopen / clone winner / keep) with Lao reasons. Each rec has ✅ confirm (popup, then the same update-ad-entity set_daily_budget / toggle_status as the ad-spend board; clone opens the existing clone popup) or ✖ reject; status is stored in ad_coach_recs. Nothing is sent to Facebook without the confirm popup. No timers; data loads on page open.
+const APP_VERSION = "8.28"; // v8.28 NEW (Tar 2026-10-12) -- 🧠 ຜູ້ຊ່ວຍແອດ: the "ວິເຄາະດຽວນີ້" button now first calls sync-ad-creative-insights (new edge function: Frequency, Reach, CPM, link CTR, video retention per ad + ad caption/headline -> tables ad_perf_window / ad_creatives) so ads-coach v4 can explain WHY an ad is weak in Lao (ad fatigue / low CTR / weak video hook / below break-even). Read-only on Facebook.
+// (previous text of this slot, kept) // v8.27 NEW (Tar 2026-10-12, "ໃຫ້ API ຊ່ວຍສະເກລແອັດ 6 ຂໍ້") -- owner-only page "🧠 ຜູ້ຊ່ວຍແອດ": button calls edge function ads-coach (Claude reads campaign numbers + real per-product break-even) and lists recommendations (increase budget / pause / reopen / clone winner / keep) with Lao reasons. Each rec has ✅ confirm (popup, then the same update-ad-entity set_daily_budget / toggle_status as the ad-spend board; clone opens the existing clone popup) or ✖ reject; status is stored in ad_coach_recs. Nothing is sent to Facebook without the confirm popup. No timers; data loads on page open.
 // (previous text of this slot, kept) // v8.26 NEW (Tar 2026-10-12, "ຂໍ້ມູນທີ່ລູກຄ້າສົ່ງທາງແຊັດ ບໍ່ຖືກດຶງເຂົ້າລະບົບ / ຮູບສະລິບບໍ່ຖືກດຶງ") -- Live CF order cards now show what the server pulled from the customer's Messenger chat: the "💬 ຂໍ້ຄວາມຈາກລູກຄ້າ" text and the slip check notes (slip_hint: BCEL OneProof verified / receiver / time / amount mismatch / duplicate / AI-read-only warnings). The pulling itself is server-side (edge function cf-chat-poll every 45s via pg_cron: slip photo -> storage + cf-slip-qr/cf-slip-ocr -> cf_attach_slip; typed name/phone/province/district/village/carrier -> Claude parse -> cf_update_order, EMPTY fields only). Auto-refresh signature (lcfSig) now includes the chat fields so the card updates by itself.
 // (previous text of this slot, kept) // v8.25 NEW (Tar 2026-10-11, "ລູກຄ້າ CF ແລ້ວ ບໍ່ມີຂໍ້ຄວາມຢືນຢັນຍອດສົ່ງໃຫ້") -- payment message + QR is now sent to the customer AUTOMATICALLY about 10-25s after their CF (pg_cron job cf-auto-send-payment every 15s -> function cf_auto_send_payments() -> cf-send-payment). Waits 10s after the customer's latest item so several quick comments go out as ONE message; if the total later changes (more items / cancelled) the new total is sent again; failed sends are not retried automatically (the ⚠️ stays on the order, press 📨 manually). New per-Live switch live_sessions.auto_send_payment (default on) with a button "🤖 ສົ່ງຍອດອັດຕະໂນມັດ" next to the realtime button.
 // (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11, "ເວລາມີລູກຄ້າ CF ມາ ໜ້ານີ້ເຮົາບໍ່ອັບເດດໃຫ້ realtime ຫວາ") -- the Live CF page now refreshes itself every 8 seconds while it is open (orders, items, product-list stock/reserved, unknown-code comments). It only re-renders when something actually changed, and it skips a tick while the tab is hidden, a request is busy or the user is typing in a field, so unsaved input is never wiped. The old opt-in "ເປີດອັບເດດສົດ" realtime button still works on top of it.
@@ -1569,7 +1570,9 @@ const APP_VERSION = "8.27"; // v8.27 NEW (Tar 2026-10-12, "ໃຫ້ API ຊ່�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.26"; // v8.26 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.27"; // v8.27 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.26→8.27 now that 8.28 is current).
+// (previous text of this slot, kept) // v8.26 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.25→8.26 now that 8.27 is current).
 // (previous text of this slot, kept) // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.24→8.25 now that 8.26 is current).
@@ -1603,7 +1606,9 @@ const APP_VERSION_PREV = "8.26"; // v8.26 NEW (Tar 2026-10-12) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.25"; // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.26"; // v8.26 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.25→8.26 now that 8.27 is previous).
+// (previous text of this slot, kept) // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.24→8.25 now that 8.26 is previous).
 // (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.23→8.24 now that 8.25 is previous).
@@ -21812,6 +21817,8 @@ async function runAdsCoach(force){
   if(STATE.adsCoachRunning) return;
   STATE.adsCoachRunning = true; render();
   try{
+    // v8.28: refresh Frequency / CPM / CTR / video-hold + ad captions first (read-only on Facebook). Best effort: the analysis still runs without it.
+    try{ await sb.functions.invoke("sync-ad-creative-insights", { body: {} }); }catch(syncErr){ console.warn("sync-ad-creative-insights failed:", syncErr); }
     const { data, error } = await sb.functions.invoke("ads-coach", { body: { mode:"run", force: !!force, requested_by: STATE.currentUser?STATE.currentUser.name:"manual" } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"ວິເຄາະບໍ່ສຳເລັດ");
