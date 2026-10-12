@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.26"; // v8.26 NEW (Tar 2026-10-12, "ຂໍ້ມູນທີ່ລູກຄ້າສົ່ງທາງແຊັດ ບໍ່ຖືກດຶງເຂົ້າລະບົບ / ຮູບສະລິບບໍ່ຖືກດຶງ") -- Live CF order cards now show what the server pulled from the customer's Messenger chat: the "💬 ຂໍ້ຄວາມຈາກລູກຄ້າ" text and the slip check notes (slip_hint: BCEL OneProof verified / receiver / time / amount mismatch / duplicate / AI-read-only warnings). The pulling itself is server-side (edge function cf-chat-poll every 45s via pg_cron: slip photo -> storage + cf-slip-qr/cf-slip-ocr -> cf_attach_slip; typed name/phone/province/district/village/carrier -> Claude parse -> cf_update_order, EMPTY fields only). Auto-refresh signature (lcfSig) now includes the chat fields so the card updates by itself.
+const APP_VERSION = "8.27"; // v8.27 NEW (Tar 2026-10-12, "ໃຫ້ API ຊ່ວຍສະເກລແອັດ 6 ຂໍ້") -- owner-only page "🧠 ຜູ້ຊ່ວຍແອດ": button calls edge function ads-coach (Claude reads campaign numbers + real per-product break-even) and lists recommendations (increase budget / pause / reopen / clone winner / keep) with Lao reasons. Each rec has ✅ confirm (popup, then the same update-ad-entity set_daily_budget / toggle_status as the ad-spend board; clone opens the existing clone popup) or ✖ reject; status is stored in ad_coach_recs. Nothing is sent to Facebook without the confirm popup. No timers; data loads on page open.
+// (previous text of this slot, kept) // v8.26 NEW (Tar 2026-10-12, "ຂໍ້ມູນທີ່ລູກຄ້າສົ່ງທາງແຊັດ ບໍ່ຖືກດຶງເຂົ້າລະບົບ / ຮູບສະລິບບໍ່ຖືກດຶງ") -- Live CF order cards now show what the server pulled from the customer's Messenger chat: the "💬 ຂໍ້ຄວາມຈາກລູກຄ້າ" text and the slip check notes (slip_hint: BCEL OneProof verified / receiver / time / amount mismatch / duplicate / AI-read-only warnings). The pulling itself is server-side (edge function cf-chat-poll every 45s via pg_cron: slip photo -> storage + cf-slip-qr/cf-slip-ocr -> cf_attach_slip; typed name/phone/province/district/village/carrier -> Claude parse -> cf_update_order, EMPTY fields only). Auto-refresh signature (lcfSig) now includes the chat fields so the card updates by itself.
 // (previous text of this slot, kept) // v8.25 NEW (Tar 2026-10-11, "ລູກຄ້າ CF ແລ້ວ ບໍ່ມີຂໍ້ຄວາມຢືນຢັນຍອດສົ່ງໃຫ້") -- payment message + QR is now sent to the customer AUTOMATICALLY about 10-25s after their CF (pg_cron job cf-auto-send-payment every 15s -> function cf_auto_send_payments() -> cf-send-payment). Waits 10s after the customer's latest item so several quick comments go out as ONE message; if the total later changes (more items / cancelled) the new total is sent again; failed sends are not retried automatically (the ⚠️ stays on the order, press 📨 manually). New per-Live switch live_sessions.auto_send_payment (default on) with a button "🤖 ສົ່ງຍອດອັດຕະໂນມັດ" next to the realtime button.
 // (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11, "ເວລາມີລູກຄ້າ CF ມາ ໜ້ານີ້ເຮົາບໍ່ອັບເດດໃຫ້ realtime ຫວາ") -- the Live CF page now refreshes itself every 8 seconds while it is open (orders, items, product-list stock/reserved, unknown-code comments). It only re-renders when something actually changed, and it skips a tick while the tab is hidden, a request is busy or the user is typing in a field, so unsaved input is never wiped. The old opt-in "ເປີດອັບເດດສົດ" realtime button still works on top of it.
 // (previous text of this slot, kept) // v8.23 NEW (Tar 2026-10-11, "ບໍ່ຕ້ອງພິມ CF ເລີຍ ພິມພຽງລະຫັດສິນຄ້າ ເຊັ່ນ A1") -- a comment that is only a product code of the Live's product list ("A1", "a2 2") now counts as an order, no "CF" needed (cf-pancake-poll v2; only exact codes from live_session_products match so normal chatter is ignored; "CF A1" still works). The hint line on the product list now says so.
@@ -1568,7 +1569,9 @@ const APP_VERSION = "8.26"; // v8.26 NEW (Tar 2026-10-12, "ຂໍ້ມູນທ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.25"; // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.26"; // v8.26 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.25→8.26 now that 8.27 is current).
+// (previous text of this slot, kept) // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.24→8.25 now that 8.26 is current).
 // (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.23→8.24 now that 8.25 is current).
@@ -1600,7 +1603,9 @@ const APP_VERSION_PREV = "8.25"; // v8.25 NEW (Tar 2026-10-11) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.24"; // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.25"; // v8.25 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.24→8.25 now that 8.26 is previous).
+// (previous text of this slot, kept) // v8.24 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.23→8.24 now that 8.25 is previous).
 // (previous text of this slot, kept) // v8.23 NEW (Tar 2026-10-11) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.22→8.23 now that 8.24 is previous).
@@ -8127,6 +8132,7 @@ const STATE = {
   adsAnnaFormOpen: false, adsAnnaEditingRuleId: null, adsAnnaForm: null, adsAnnaTargetSearch: "",
   adsAnnaTargetStatusFilter: "all", adsAnnaTargetBudgetFilter: "all",
   adsAnnaPreviewLoading: false, adsAnnaPreviewResults: null,
+  adsCoachRuns: [], adsCoachRecs: [], adsCoachSettings: {}, adsCoachLoading: false, adsCoachRunning: false, adsCoachBusyId: null, // v8.27
   campaignControlLogDateFrom: "", campaignControlLogDateTo: "",
   // v4.80: search + full server-side pagination for the log (replaces the old 200-row client cap)
   campaignControlLogSearch: "", campaignControlLogPage: 1, campaignControlLogPageSize: 50,
@@ -21766,6 +21772,225 @@ async function loadAdsAnnaData(){
   }catch(e){ console.error("loadAdsAnnaData failed:", e); showErrorToast("ໂຫຼດ Ads Anna ບໍ່ສຳເລັດ: "+e.message); }
   render();
 }
+/* ====================== v8.27 — 🧠 ຜູ້ຊ່ວຍແອດ (Ads Coach) ======================
+   Owner-only page. Reads ad_coach_runs / ad_coach_recs written by the ads-coach edge function
+   (Claude analyses the numbers; code-level rules in the function downgrade anything unsafe).
+   NOTHING is changed on Facebook until Tar presses ✅ on a recommendation and confirms the popup;
+   then the SAME existing functions the ad-spend board uses are called (update-ad-entity /
+   clone-ad-campaign modal). No timers: data loads when the page opens and after each action. */
+const ADS_COACH_PRODUCTS = {
+  bio_pro_orange:"Bio Pro", toby_magnesium:"TOBY ແມັກນີ", velaris_lung:"Velaris/Hwasa ດີທອກປອດ",
+  jose_body_oil:"Jose Body Oil", sleep_patch:"ແຜ່ນຕິດນອນຫຼັບ", sesame_coffee:"ກາເຟງາດຳ",
+  veggie_coffee:"ກາເຟຜັກ", tirdian_plus:"Tirdian Plus", fiber_matnad:"Fiber Matnad",
+  mala_tea:"ຊາມະລະ", lutein_coffee:"ກາເຟລູທີນ"
+};
+const ADS_COACH_ACTIONS = {
+  increase_budget:{label:"📈 ເພີ່ມງົບ", color:"sage"}, decrease_budget:{label:"📉 ຫຼຸດງົບ", color:"warn"},
+  pause:{label:"⏸️ ປິດແອດ", color:"danger"}, reopen:{label:"▶️ ເປີດຄືນ", color:"sage"},
+  clone_winner:{label:"📋 ໂຄນແອດທີ່ຊະນະ", color:"sage"}, keep:{label:"⏺️ ຮັກສາໄວ້", color:""},
+  new_creative:{label:"🎨 ຄຣີເອທີບໃໝ່", color:""}, retarget:{label:"🎯 ຍິງຄືນຄົນສົນໃຈ", color:""}
+};
+async function loadAdsCoachData(){
+  STATE.adsCoachLoading = true;
+  try{
+    const [runsRes, recsRes, setRes] = await Promise.all([
+      sb.from("ad_coach_runs").select("id,created_at,requested_by,status,summary_lo,output,error,input_tokens,output_tokens").order("created_at",{ascending:false}).limit(8),
+      sb.from("ad_coach_recs").select("*").order("created_at",{ascending:false}).limit(150),
+      sb.from("ad_coach_settings").select("key,value")
+    ]);
+    if(runsRes.error) throw runsRes.error;
+    if(recsRes.error) throw recsRes.error;
+    STATE.adsCoachRuns = runsRes.data||[];
+    STATE.adsCoachRecs = recsRes.data||[];
+    const s = {}; (setRes.data||[]).forEach(r=>{ s[r.key] = Number(r.value); });
+    STATE.adsCoachSettings = s;
+  }catch(e){ console.error("loadAdsCoachData failed:", e); showErrorToast("ໂຫຼດຜູ້ຊ່ວຍແອດບໍ່ສຳເລັດ: "+e.message); }
+  STATE.adsCoachLoading = false;
+  render();
+}
+async function runAdsCoach(force){
+  if(STATE.adsCoachRunning) return;
+  STATE.adsCoachRunning = true; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-coach", { body: { mode:"run", force: !!force, requested_by: STATE.currentUser?STATE.currentUser.name:"manual" } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ວິເຄາະບໍ່ສຳເລັດ");
+    if(data && data.reused) showToast("ມີລາຍງານທີ່ຫາກໍ່ສ້າງ (ບໍ່ເກີນ 20 ນາທີ) — ສະແດງອັນນັ້ນ");
+    else showToast(`✅ ວິເຄາະສຳເລັດ — ມີ ${data.recommendations||0} ຄຳແນະນຳ`);
+  }catch(e){ showErrorToast("ວິເຄາະບໍ່ສຳເລັດ: "+e.message); }
+  STATE.adsCoachRunning = false;
+  await loadAdsCoachData();
+}
+async function adsCoachMarkRec(rec, status, applied){
+  const now = new Date().toISOString();
+  const patch = { status, decided_by: STATE.currentUser?STATE.currentUser.name:"", decided_at: now };
+  if(applied) patch.applied_at = now;
+  const { error } = await sb.from("ad_coach_recs").update(patch).eq("id", rec.id);
+  if(error) throw error;
+  Object.assign(rec, patch);
+}
+async function adsCoachCallUpdate(body){
+  const { data, error } = await sb.functions.invoke("update-ad-entity", { body: { ...body, changedBy: STATE.currentUser?STATE.currentUser.name:"" } });
+  if(error) throw new Error(await extractFunctionErrorMessage(error));
+  if(data && data.ok===false) throw new Error(data.error||"ສັ່ງ Facebook ບໍ່ສຳເລັດ");
+}
+async function adsCoachApplyRec(rec){
+  if(STATE.adsCoachBusyId) return;
+  const camp = rec.campaign_id ? (STATE.data.adCampaigns||[]).find(c=>c.id===rec.campaign_id) : null;
+  const name = rec.campaign_name || (camp&&camp.campaignName) || rec.campaign_id || "";
+  const why = (rec.reason_lo||"").slice(0,300);
+  STATE.adsCoachBusyId = rec.id;
+  try{
+    if(rec.action==="keep" || rec.action==="new_creative" || rec.action==="retarget"){
+      await adsCoachMarkRec(rec, "acknowledged", false);
+      showToast("ບັນທຶກວ່າຮັບຊາບແລ້ວ");
+    } else if(!camp){
+      showErrorToast("ບໍ່ພົບແຄມເປນນີ້ໃນລະບົບ — ລອງກົດ 🔄 ຊິງຂໍ້ມູນຢູ່ໜ້າຄ່າໂຄສະນາກ່ອນ");
+    } else if(rec.action==="increase_budget" || rec.action==="decrease_budget"){
+      if(camp.dailyBudget==null || !(camp.dailyBudget>0)){
+        showErrorToast("ແຄມເປນນີ້ຕັ້ງງົບຢູ່ລະດັບ Ad Set — ໄປປ່ຽນງົບຢູ່ໜ້າ \"ຄ່າໂຄສະນາລວມ\" ເອງ");
+      } else if(rec.action==="increase_budget" && camp.status!=="ACTIVE"){
+        showErrorToast("ແຄມເປນນີ້ບໍ່ໄດ້ເປີດຢູ່ແລ້ວ — ຄຳແນະນຳນີ້ເກົ່າ ລອງວິເຄາະໃໝ່");
+      } else {
+        const maxInc = (STATE.adsCoachSettings&&STATE.adsCoachSettings.max_budget_increase_pct)||30;
+        let pct = Math.abs(Number(rec.budget_change_pct)||0);
+        if(rec.action==="increase_budget") pct = Math.min(pct, maxInc);
+        const sign = rec.action==="increase_budget" ? 1 : -1;
+        const oldB = Number(camp.dailyBudget);
+        const newB = Math.max(1, Math.round(oldB*(1+sign*pct/100)));
+        if(!pct || newB===oldB){ showErrorToast("ຄຳແນະນຳນີ້ບໍ່ມີ % ປ່ຽນງົບ"); }
+        else {
+          const ok = await customConfirm(`ຢືນຢັນປ່ຽນງົບ "${name}"\n${fmt(oldB)} → ${fmt(newB)} (${sign>0?"+":"-"}${pct}%)\n\nເຫດຜົນ: ${why}\n\nຈະສົ່ງໄປ Facebook ທັນທີ`);
+          if(ok){
+            await adsCoachCallUpdate({ entityType:"campaign", entityId:camp.id, action:"set_daily_budget", budgetAmount:newB, entityName:name });
+            camp.dailyBudget = newB;
+            await adsCoachMarkRec(rec, "applied", true);
+            showToast(`✅ ປ່ຽນງົບ "${name}" ເປັນ ${fmt(newB)} ແລ້ວ`);
+          }
+        }
+      }
+    } else if(rec.action==="pause" || rec.action==="reopen"){
+      const to = rec.action==="pause" ? "PAUSED" : "ACTIVE";
+      if(camp.status===to){
+        await adsCoachMarkRec(rec, "applied", false);
+        showToast("ແຄມເປນຢູ່ສະຖານະນີ້ແລ້ວ — ບັນທຶກແລ້ວ");
+      } else {
+        const ok = await customConfirm(`ຢືນຢັນ${to==="PAUSED"?"ປິດ":"ເປີດ"}ແຄມເປນ "${name}"\n${camp.status||"—"} → ${to}\n\nເຫດຜົນ: ${why}\n\nຈະສົ່ງໄປ Facebook ທັນທີ`);
+        if(ok){
+          await adsCoachCallUpdate({ entityType:"campaign", entityId:camp.id, action:"toggle_status", newStatus:to, entityName:name });
+          camp.status = to; camp.effectiveStatus = to; camp.effectiveStatusReal = to;
+          await adsCoachMarkRec(rec, "applied", true);
+          showToast(`✅ ${to==="PAUSED"?"ປິດ":"ເປີດ"} "${name}" ແລ້ວ`);
+        }
+      }
+    } else if(rec.action==="clone_winner"){
+      await adsCoachMarkRec(rec, "accepted", false);
+      STATE.adsCoachBusyId = null;
+      await loadCloneAdModalForCampaign(camp.id); // existing clone popup — Tar reviews ad sets / budget / copies there before anything is created
+      return;
+    }
+  }catch(e){ showErrorToast("ດຳເນີນການບໍ່ສຳເລັດ: "+e.message); }
+  STATE.adsCoachBusyId = null;
+  render();
+}
+async function adsCoachRejectRec(rec){
+  try{ await adsCoachMarkRec(rec, "rejected", false); showToast("ປະຕິເສດຄຳແນະນຳແລ້ວ"); }
+  catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+e.message); }
+  render();
+}
+function renderAdsCoachRecCard(rec, actionable){
+  const a = ADS_COACH_ACTIONS[rec.action] || {label:rec.action, color:""};
+  const prod = ADS_COACH_PRODUCTS[rec.product_key] || rec.product_key || "";
+  const pctTxt = rec.budget_change_pct!=null ? ` ${rec.action==="decrease_budget"?"-":"+"}${Math.abs(Number(rec.budget_change_pct))}%` : "";
+  const pill = a.color==="sage" ? "pill pill-sage" : "pill";
+  const pillStyle = a.color==="danger" ? "background:var(--tint-danger); color:var(--danger);" : (a.color==="warn" ? "background:var(--tint-sand);" : "");
+  const busy = STATE.adsCoachBusyId===rec.id;
+  const manualOnly = rec.action==="keep"||rec.action==="new_creative"||rec.action==="retarget";
+  const okLabel = manualOnly ? "👍 ຮັບຊາບ" : (rec.action==="clone_winner" ? "📋 ເປີດໂຄນ" : "✅ ຢືນຢັນ");
+  return `
+    <div class="card" style="background:var(--tint-sand); margin:0;">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span class="${pill}" style="${pillStyle}">${a.label}${esc(pctTxt)}</span>
+        ${prod?`<span class="small-muted">${esc(prod)}</span>`:""}
+        <span class="small-muted">· ບູລິມະສິດ ${rec.priority||3}</span>
+      </div>
+      ${rec.campaign_name?`<div style="margin-top:6px;"><b>${esc(rec.campaign_name)}</b></div>`:""}
+      <div style="margin-top:6px; line-height:1.55; white-space:pre-wrap;">${esc(rec.reason_lo||"")}</div>
+      ${rec.validation_note?`<div class="small-muted" style="margin-top:4px; font-size:11.5px;">🔒 ລະບົບກວດ: ${esc(rec.validation_note)}</div>`:""}
+      ${actionable ? `
+        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+          <button class="btn btn-sm" data-coach-apply="${rec.id}" ${busy?"disabled":""}>${busy?"ກຳລັງດຳເນີນ...":okLabel}</button>
+          <button class="btn btn-sm btn-outline" data-coach-reject="${rec.id}" ${busy?"disabled":""}>✖ ບໍ່ເຮັດ</button>
+          ${(rec.action==="new_creative"||rec.action==="retarget")?`<span class="small-muted" style="align-self:center;">ເຄື່ອງມືຊ່ວຍຂຽນຄຳບັນຍາຍ/ກຸ່ມຍິງຄືນ ກຳລັງສ້າງໃນຂັ້ນຕໍ່ໄປ</span>`:""}
+        </div>` : ""}
+    </div>`;
+}
+function renderAdsCoachPage(){
+  const runs = STATE.adsCoachRuns||[];
+  const recs = STATE.adsCoachRecs||[];
+  const lastDone = runs.find(r=>r.status==="done");
+  const lastRun = runs[0];
+  const fmtT = (t)=>new Date(t).toLocaleString("en-GB",{timeZone:LAOS_TZ,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const active = lastDone ? recs.filter(r=>r.run_id===lastDone.id && r.status==="pending") : [];
+  const decidedNow = lastDone ? recs.filter(r=>r.run_id===lastDone.id && r.status!=="pending") : [];
+  const hist = recs.filter(r=>!lastDone || r.run_id!==lastDone.id).filter(r=>r.status!=="pending").slice(0,40);
+  const gaps = (lastDone && lastDone.output && lastDone.output.data_gaps_lo) || [];
+  const st = STATE.adsCoachSettings||{};
+  const notSet = (st.return_rate===0 || st.shipping_per_order===0);
+  const statusLabel = {applied:"✅ ເຮັດແລ້ວ", accepted:"📋 ເປີດໂຄນແລ້ວ", rejected:"✖ ບໍ່ເຮັດ", acknowledged:"👍 ຮັບຊາບ"};
+  return `
+    <div class="page-head">
+      <h1>🧠 ຜູ້ຊ່ວຍແອດ</h1>
+      <p>Claude ອ່ານຕົວເລກແອດ + ຕົ້ນທຶນຈິງຂອງແຕ່ລະສິນຄ້າ ແລ້ວແນະນຳວ່າຈະເພີ່ມງົບ/ປິດ/ເປີດຄືນ/ໂຄນອັນໃດ — <b>ບໍ່ມີຫຍັງປ່ຽນຢູ່ Facebook ຈົນກວ່າທ່ານກົດ ✅ ແລະ ຢືນຢັນ</b></p>
+    </div>
+    <div class="card">
+      <div class="flex-between" style="flex-wrap:wrap; gap:10px;">
+        <div>
+          <b>ລາຍງານລ່າສຸດ:</b> ${lastDone?fmtT(lastDone.created_at):"ຍັງບໍ່ມີ"}
+          ${lastRun && lastRun.status==="error"?`<span class="small-muted" style="color:var(--danger);"> · ຮັນຫຼ້າສຸດຜິດພາດ: ${esc((lastRun.error||"").slice(0,120))}</span>`:""}
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="btn-coach-run" ${STATE.adsCoachRunning?"disabled":""}>${STATE.adsCoachRunning?"⏳ ກຳລັງວິເຄາະ (ປະມານ 1-2 ນາທີ)...":"🧠 ວິເຄາະດຽວນີ້"}</button>
+          <button class="btn btn-outline" id="btn-coach-reload" ${STATE.adsCoachLoading?"disabled":""}>🔄</button>
+        </div>
+      </div>
+      ${lastDone && lastDone.summary_lo?`<div style="margin-top:10px; line-height:1.6; white-space:pre-wrap;">${esc(lastDone.summary_lo)}</div>`:""}
+      ${gaps.length?`<div class="small-muted" style="margin-top:8px;">⚠️ ຂໍ້ມູນທີ່ຍັງຂາດ: ${gaps.map(g=>esc(g)).join(" · ")}</div>`:""}
+      ${notSet?`<div class="small-muted" style="margin-top:8px;">ℹ️ ຈຸດຄຸ້ມທຶນດຽວນີ້ ຍັງບໍ່ລວມອັດຕາບິນຕີກັບ/ຄ່າຂົນສົ່ງ (ຕັ້ງເປັນ 0) — ຈຸດຄຸ້ມທຶນຈິງຈະສູງກວ່າທີ່ສະແດງ.</div>`:""}
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">📌 ຄຳແນະນຳທີ່ລໍຖ້າຕັດສິນໃຈ (${active.length})</h3>
+      ${STATE.adsCoachLoading && !lastDone ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` :
+        (active.length===0 ? `<p class="small-muted">${lastDone?"ຕັດສິນໃຈຄົບແລ້ວ — ກົດ \"ວິເຄາະດຽວນີ້\" ເພື່ອຂໍລາຍງານໃໝ່":"ກົດ \"ວິເຄາະດຽວນີ້\" ເພື່ອເລີ່ມ"}</p>` :
+        `<div style="display:flex; flex-direction:column; gap:10px;">${active.map(r=>renderAdsCoachRecCard(r,true)).join("")}</div>`)}
+    </div>
+    ${decidedNow.length?`<div class="card"><h3 style="margin-top:0;">ຕັດສິນໃຈແລ້ວ (ລາຍງານນີ້)</h3>
+      <div style="display:flex; flex-direction:column; gap:6px;">${decidedNow.map(r=>`<div class="small-muted">${statusLabel[r.status]||r.status} · ${(ADS_COACH_ACTIONS[r.action]||{}).label||r.action} · ${esc(r.campaign_name||ADS_COACH_PRODUCTS[r.product_key]||"")}</div>`).join("")}</div></div>`:""}
+    ${hist.length?`<div class="card"><h3 style="margin-top:0;">🕐 ປະຫວັດ</h3><div style="overflow-x:auto;"><table>
+      <thead><tr><th>ເວລາ</th><th>ການກະທຳ</th><th>ແຄມເປນ</th><th>ຜົນ</th><th>ໂດຍ</th></tr></thead><tbody>
+      ${hist.map(r=>`<tr><td class="small-muted" style="white-space:nowrap;">${fmtT(r.decided_at||r.created_at)}</td><td class="small-muted">${(ADS_COACH_ACTIONS[r.action]||{}).label||esc(r.action)}${r.budget_change_pct!=null?" "+esc(String(r.budget_change_pct))+"%":""}</td><td class="small-muted">${esc(r.campaign_name||ADS_COACH_PRODUCTS[r.product_key]||"-")}</td><td>${statusLabel[r.status]||esc(r.status)}</td><td class="small-muted">${esc(r.decided_by||"-")}</td></tr>`).join("")}
+      </tbody></table></div></div>`:""}
+  `;
+}
+function attachAdsCoachEvents(){
+  const runBtn = document.getElementById("btn-coach-run");
+  if(runBtn) runBtn.addEventListener("click", ()=>runAdsCoach(false));
+  const reloadBtn = document.getElementById("btn-coach-reload");
+  if(reloadBtn) reloadBtn.addEventListener("click", loadAdsCoachData);
+  document.querySelectorAll("[data-coach-apply]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const rec = (STATE.adsCoachRecs||[]).find(r=>r.id===el.getAttribute("data-coach-apply"));
+      if(rec) adsCoachApplyRec(rec);
+    });
+  });
+  document.querySelectorAll("[data-coach-reject]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const rec = (STATE.adsCoachRecs||[]).find(r=>r.id===el.getAttribute("data-coach-reject"));
+      if(rec) adsCoachRejectRec(rec);
+    });
+  });
+}
+
 async function loadAdsAnnaTargets(ruleId){
   try{
     const {data, error} = await sb.from("ads_anna_targets").select("*").eq("rule_id", ruleId);
@@ -26394,6 +26619,7 @@ function getNav(){
       {id:"admin", label:"ຄວບຄຸມແອັດມິນ", icon:"&#9776;"}, // v5.128 (Tar 2026-08-17, "ໃນລະດັບພະນັກງານ ບໍ່ໃຫ້ສາມາດເພີ່ມໜ້າວຽກໄດ້ ມີແຕ່ເບິ່ງຂອງໂຕເອງໄດ້"): moved out of BASE_NAV — was visible to every logged-in account, letting any staff member open the assignment/management form itself (not just their own "📋 ໜ້າວຽກຂອງຂ້ອຍ" view). Owner-only now, same gating as productEconomics/adsAnna just below.
       {id:"gateSettings", label:"⚙️ ຕັ້ງຄ່າປະຕູຮົ້ວ", icon:"&#9881;"}, // v6.64 (Tar 2026-08-21): "ໜ້າປະຕູຮົ້ວ ສະເພາະຂອງເຈົ້າຂອງ ໃຫ້ແຍກການຕັ້ງຄ່າທັງໝົດ ເພີ່ມເປັນອີກໜ້າ" — all owner-only gate settings (travel time, animation delay, auto-open-on-clockin, block schedule, full history) moved out of the shared "ປະຕູຮົ້ວ" page into this owner-only one; "ປະຕູຮົ້ວ" itself now only has the open/close button per gate, same gating as admin/productEconomics just above.
       {id:"productEconomics", label:"ຄິດໄລ່ກຳໄລ", icon:"&#128176;"}, // v5.92: owner-only, never shown to "admin" role
+      {id:"adsCoach", label:"🧠 ຜູ້ຊ່ວຍແອດ", icon:"&#129504;"}, // v8.27: owner-only, Claude-backed ad recommendations
       {id:"adsAnna", label:"🅰️ Ads Anna", icon:"&#9889;"}, // v5.111 (Tar 2026-08-15): fully isolated generic rule-builder engine, separate from ⚙️ ຕັ້ງກົດ — owner-only while still being proven out, see loadAdsAnnaRules's header note
       {id:"users", label:"ຈັດການບັນຊີ", icon:"&#128273;"},
       {id:"loginHistory", label:"ປະຫວັດການເຂົ້າລະບົບ", icon:"&#128203;"},
@@ -26425,6 +26651,7 @@ function getOwnerNavForOrder(){
     {id:"admin", label:"ຄວບຄຸມແອັດມິນ"},
     {id:"gateSettings", label:"⚙️ ຕັ້ງຄ່າປະຕູຮົ້ວ"},
     {id:"productEconomics", label:"ຄິດໄລ່ກຳໄລ"},
+    {id:"adsCoach", label:"🧠 ຜູ້ຊ່ວຍແອດ"},
     {id:"users", label:"ຈັດການບັນຊີ"},
     {id:"loginHistory", label:"ປະຫວັດການເຂົ້າລະບົບ"},
     {id:"pagePermissions", label:"ຕັ້ງຄ່າສິດ"},
@@ -26758,6 +26985,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="noPickup") loadNoPickup();
   if(STATE.page==="summaryReport") loadSummaryReportData();
   if(STATE.page==="adsAnna") loadAdsAnnaData();
+  if(STATE.page==="adsCoach" && isOwner()) loadAdsCoachData(); // v8.27
   if(STATE.page==="launchAd"){
     loadLaunchAdPages(); loadCampaignControlData(); loadLaunchAdMessageTemplates();
     if(STATE.launchAdForm.adAccountId) loadLaunchAdSavedAudiences(STATE.launchAdForm.adAccountId);
@@ -26980,6 +27208,7 @@ function renderPage(){
     case "noPickup": return renderNoPickup();
     case "summaryReport": return renderSummaryReport();
     case "adsAnna": return renderAdsAnnaPage();
+    case "adsCoach": return isOwner() ? renderAdsCoachPage() : renderDashboard(); // v8.27
     case "launchAd": return renderLaunchAd();
     case "pancakeCrm": return renderPancakeCrm();
     case "waCrmOrders": return renderWaCrmOrders();
@@ -37014,6 +37243,7 @@ function attachPageEvents(){
   if(STATE.page==="noPickup") attachNoPickupEvents();
   if(STATE.page==="summaryReport") attachSummaryReportEvents();
   if(STATE.page==="adsAnna") attachAdsAnnaEvents();
+  if(STATE.page==="adsCoach") attachAdsCoachEvents(); // v8.27
   if(STATE.page==="launchAd") attachLaunchAdEvents();
   if(STATE.page==="pancakeCrm") attachPancakeCrmEvents();
   if(STATE.page==="waCrmOrders") attachWaCrmEvents();
