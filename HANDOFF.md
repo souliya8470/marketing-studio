@@ -1,7 +1,7 @@
 # HANDOFF — shared state between chats
 
 Each chat edits ONLY its own section (plus "Join points" when it changes an interface). Date every change.
-Last updated: 2026-10-13 (pipeline chat).
+Last updated: 2026-10-13 (Facebook MCP chat, section 3 and join points; section 1 by the pipeline chat unchanged).
 
 ## 0. Where things live
 | What | Where |
@@ -28,9 +28,15 @@ Last updated: 2026-10-13 (pipeline chat).
 _Not started. Scope: content and direction for building ads (angles, hooks, captions, video ideas, per-product playbooks). Write findings in `docs/content/`. The result that the pipeline consumes is the APPROVED row in `product_playbooks`._
 
 ## 3. Facebook MCP chat — state
-_Not started. Scope: how to connect a Facebook (Meta Ads) MCP, what it could do beyond the current Graph API calls in `launch-ad` / `ads-template-inspect`, security of tokens. Write findings in `docs/facebook-mcp/`._
+_Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what it could do beyond the current Graph API calls, security of tokens. Findings in `docs/facebook-mcp/` (start with its `README.md`)._
+- Verdict: the official Meta Ads MCP (`https://mcp.facebook.com/ads`, open beta, enabled per ad account) is a supervised tool for Tar and chats, NOT part of the pipeline. It adds Meta-side analysis (benchmarks, anomaly, opportunity score, pixel/CAPI quality); it cannot upload media, delete, or replace `launch-ad`.
+- Not tested yet: needs Tar's Facebook login. Next step is Tar's read-only test on one ad account (checklist in `docs/facebook-mcp/01-options-and-setup.md`); record enabled / not enabled and the real `tools/list` here.
+- **Deadline 2026-10-27:** root `GET /?ids=...` is removed for all Graph versions; `sync-ad-creative-insights` v2 uses it. Needs a fix (details in `04-api-deadlines.md`). `v21.0`, pinned everywhere, is removed 2027-01-21.
+- Token and access findings were given to Tar privately (public repo). Standing rules in `03-token-security.md`. Do not add a new Facebook write path before asking Tar about them.
+- Open: type of `META_ACCESS_TOKEN` (System User or user token) unknown; only 11 of ~110 functions were read.
 
 ## 4. Join points (interfaces between chats)
 - Content → Pipeline: approved `product_playbooks.content` (big idea, offer, hooks, caption formula, avoid list). `ads-test-auto` reads it when writing captions.
 - Facebook MCP → Pipeline: any new Facebook capability must be reachable from the edge functions (Deno) or documented as a separate manual tool; the pipeline currently talks to Facebook only through the Graph API in `launch-ad` and `ads-template-inspect`.
+- Facebook MCP → Pipeline (2026-10-13, no interface change): keep direct Graph calls in the edge functions. Correction: Facebook is also called by `ads-test-auto` (read-only), `sync-ad-spend`, `sync-ad-creative-insights`, `update-ad-entity`, `clone-ad-campaign`, `run-campaign-control`, `run-scheduled-ad-pause`, `fb-upload-video`, `fb-oauth-exchange` (list in `docs/facebook-mcp/02-graph-usage-and-gaps.md`). Dated API removals are in `docs/facebook-mcp/04-api-deadlines.md`.
 - Joining later: a chat (or the pipeline chat) reads `docs/content/` and `docs/facebook-mcp/`, then proposes the merged change. Do not edit another chat's section.
