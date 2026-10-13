@@ -1,4 +1,15 @@
-// Supabase Edge Function: ads-test-auto (v5)
+// Supabase Edge Function: ads-test-auto (v6)
+// v6 (2026-10-13): PROMO RULES + REUSE OF OLD WINNERS.
+//     - ad_test_products.current_promo / promo_until: the ONLY promo the caption writer may mention. No current promo
+//       (or expired) = captions must contain no gift/discount/promo wording (code check + retry).
+//     - product_assets.promo_state (none | has_promo | unknown), promo_text, promo_confirmed: a file with a promo inside
+//       is used only while its promo_text equals the current promo; otherwise it is skipped (stays "new").
+//     - new action "import": copies the best OLD ads of a product (video_id / image_url from ad_creatives, same ad account
+//       as the template, ranked by cost per message) into product_assets (source='facebook'). Claude makes a first guess
+//       whether a promo is visible ON the thumbnail (v7 deploy: only the picture counts, caption-only hints give "unknown").
+//       Imported files wait until the owner confirms the promo tag.
+//     - launch of an imported video reuses the Facebook video_id (no upload). If the promo changed between plan and launch
+//       the plan is rejected and the file goes back to "new".
 // v5 (2026-10-13): an APPROVED sales playbook (product_playbooks.status='approved') is passed to the caption writer
 //     (big idea, offer, hooks, caption formula, things to avoid, unconfirmed items). Without one, behaviour is unchanged.
 // v4 (2026-10-12): the legacy `standard_enhancements` bundle in the template's creative enhancements is dropped when copying
@@ -19,7 +30,7 @@
 //               a few minutes ahead), only inside the product's launch window (Laos hours), video upload is
 //               resumable across ticks.
 // Budget is never increased here. Winners stay as they are; Tar decides about scaling.
-// Body: { action?: "tick"|"plan"|"judge"|"template", product_keys?: string[], dry_run?: boolean, force_launch?: boolean, create_paused?: boolean }
+// Body: { action?: "tick"|"plan"|"judge"|"template"|"import", product_keys?: string[], per_product?: number, dry_run?: boolean, force_launch?: boolean, create_paused?: boolean }
 // Secrets: ANTHROPIC_API_KEY, META_ACCESS_TOKEN, optional ADS_COACH_MODEL.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -29,8 +40,8 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const META_TOKEN = Deno.env.get("META_ACCESS_TOKEN") ?? "";
 const MODEL = Deno.env.get("ADS_COACH_MODEL") ?? "claude-sonnet-5-5";
-const THAI_SCRIPT = /[฀-๿]/;
-const GARBLE = /�|\b(MUST|SHOULD|TODO|NOTE)\b/;
+const THAI_SCRIPT = /[\u0E00-\u0E7F]/;
+const GARBLE = /\uFFFD|\b(MUST|SHOULD|TODO|NOTE)\b/;
 const RISKY = /ຮັກສາ|ປິ່ນປົວ|ຫາຍຂາດ|ຫາຍດີ|ເບົາຫວານ|ຄວາມດັນ|ມະເຮັງ|ການັນຕີ|ຮັບປະກັນ|100\s*%/;
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -55,6 +66,30 @@ const laosHour = () => new Date(Date.now() + 7 * HOUR).getUTCHours();
 const laosMidnightUtcIso = () => new Date(Math.floor((Date.now() + 7 * HOUR) / DAY) * DAY - 7 * HOUR).toISOString();
 const laosToday = () => new Date(Date.now() + 7 * HOUR).toISOString().slice(0, 10);
 const laosDDMM = () => { const d = new Date(Date.now() + 7 * HOUR); return String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0"); };
+
+// ---------- promo rules (v6) ----------
+const normPromo = (t: any) => String(t ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+// the promo the owner currently runs for this product ("" = none); expired promos count as none
+function activePromo(cfg: any): string | null {
+  const t = String(cfg?.current_promo ?? "").trim();
+  if (!t) return null;
+  if (cfg.promo_until && String(cfg.promo_until).slice(0, 10) < laosToday()) return null;
+  return t;
+}
+// may this file be used today? (reason when not)
+function assetEligibility(a: any, cfg: any): { ok: boolean; why?: string } {
+  if (a.source === "facebook" && !a.promo_confirmed) return { ok: false, why: "promo tag not confirmed by owner" };
+  if (a.promo_state === "has_promo") {
+    const ap = activePromo(cfg);
+    if (!ap) return { ok: false, why: "file shows a promo but no current promo is set" };
+    if (normPromo(a.promo_text) !== normPromo(ap)) return { ok: false, why: "file promo differs from the current promo" };
+    return { ok: true };
+  }
+  if (a.promo_state === "none") return { ok: true };
+  // unknown: own uploads are assumed promo-free, imported old ads are not
+  return a.source === "facebook" ? { ok: false, why: "promo tag unknown" } : { ok: true };
+}
+const PROMO_WORDS = /ແຖມ|ໂປຣ|ຟຣີ|ສ່ວນຫຼຸດ|ລາຄາພິເສດ|ຫຼຸດລາຄາ/;
 
 function b64(u8: Uint8Array): string {
   let s = ""; const C = 0x8000;
@@ -139,6 +174,7 @@ YOUR JOB: you receive the product facts, the shop's best past ads, recent test c
 2. If usable, write caption_lo (the primary text, at most 450 characters) and headline_lo (at most 40 characters) that fit WHAT THE FILE ACTUALLY SHOWS and speak to one real customer pain point from the list. Use an angle different from the recent captions. Start with a hook line.
 If the data has sales_playbook, it was written for this product and approved by the owner: follow its big_idea_lo, pick or adapt ONE hook from hooks to what the file actually shows (do not copy a hook that does not fit the picture), follow caption_formula_lo, use offer_lo exactly as written (never change prices or add promos), and never use anything listed in avoid or do_not_use_until_confirmed (these are unconfirmed or forbidden claims). Still vary the angle from the recent captions.
 shows_lo: one sentence on what you see. fits_lo: one sentence on how it fits the product and who it appeals to. angle_lo: the angle you chose, a few words.
+PROMO RULE: the data field current_promo is the ONLY promotion you may mention (gift, discount, bundle deal, special price, limited time). If current_promo is null, write NO promotion at all: no gift, no discount, no "promo", no free items, no special price. Never copy a promotion from best_past_ads, recent captions, the playbook or from the picture itself; those may be old. When current_promo is given, you may state it in your own words but never change its items, amounts or dates, and never add anything to it. If the picture or video frames visibly show a promotion that differs from current_promo, set usable=false and say so in reject_reason_lo.
 You cannot hear audio and frames are only snapshots: never claim what is said in a video. If no frames are given, say so in shows_lo and write only from the product facts.`;
 
 const REVIEW_TOOL = {
@@ -386,6 +422,7 @@ async function reviewAsset(asset: any, cfg: any) {
     file_kind: asset.kind, file_name: asset.file_name, frames_available: images.length,
     product_label: cfg.label, product: facts.product, pain_points: facts.pains, faq: facts.faq, knowledge: facts.knowledge,
     sales_playbook: facts.playbook || undefined,
+    current_promo: activePromo(cfg),
     best_past_ads: facts.best, recent_test_captions_to_avoid_repeating: (recent || []).map((r: any) => ({ caption: clip(r.caption, 160), headline: r.headline })),
   };
   content.push({ type: "text", text: "Data (JSON):\n" + JSON.stringify(payload) });
@@ -399,6 +436,7 @@ async function reviewAsset(asset: any, cfg: any) {
       if (c.length > 450) return "caption longer than 450 characters";
       if (h.length > 40) return "headline longer than 40 characters";
       if (RISKY.test(c) || RISKY.test(h)) return "risky claim word: " + ((c + " " + h).match(RISKY) || [])[0];
+      if (!activePromo(cfg) && PROMO_WORDS.test(c + " " + h)) return "promo or gift wording while no current promo is set: " + ((c + " " + h).match(PROMO_WORDS) || [])[0];
     }
     return null;
   };
@@ -407,7 +445,7 @@ async function reviewAsset(asset: any, cfg: any) {
   tokens += r.inTok + r.outTok;
   let problem = check(r.out);
   if (problem) {
-    const retry = [...content, { type: "text", text: `Your previous answer was rejected: ${problem}. Fix it. Clean Lao script only, caption at most 450 characters, headline at most 40 characters, no risky claims.` }];
+    const retry = [...content, { type: "text", text: `Your previous answer was rejected: ${problem}. Fix it. Clean Lao script only, caption at most 450 characters, headline at most 40 characters, no risky claims, and no promotion or gift unless current_promo is given.` }];
     r = await callClaude(REVIEW_SYSTEM, retry, REVIEW_TOOL, 2500);
     tokens += r.inTok + r.outTok;
     problem = check(r.out);
@@ -428,8 +466,11 @@ async function planStage(prods: any[], auto: boolean, only: string[] | null) {
     slots = Math.min(slots, Number(cfg.max_new_per_day || 2) - pendingNew);
     if (slots <= 0) { report.skipped.push(`${cfg.product_key}: no slot (committed ${committed}/${cfg.daily_cap}, new today ${pendingNew}/${cfg.max_new_per_day})`); continue; }
 
-    const { data: assets } = await sb.from("product_assets").select("*").eq("product_key", cfg.product_key).eq("status", "new").order("created_at", { ascending: true }).limit(slots);
-    if (!assets || !assets.length) { report.skipped.push(`${cfg.product_key}: no new files`); continue; }
+    const { data: allNew } = await sb.from("product_assets").select("*").eq("product_key", cfg.product_key).eq("status", "new").order("created_at", { ascending: true }).limit(60);
+    const blocked: Record<string, number> = {};
+    const assets = (allNew || []).filter((x: any) => { const e = assetEligibility(x, cfg); if (!e.ok) blocked[e.why!] = (blocked[e.why!] || 0) + 1; return e.ok; }).slice(0, slots);
+    for (const [why, n] of Object.entries(blocked)) report.skipped.push(`${cfg.product_key}: ${n} file(s) skipped — ${why}`);
+    if (!assets.length) { report.skipped.push(`${cfg.product_key}: no usable new files`); continue; }
 
     for (const a of assets) {
       if (timeLeft() < 35000) { report.skipped.push("plan: out of time"); break; }
@@ -437,7 +478,7 @@ async function planStage(prods: any[], auto: boolean, only: string[] | null) {
       try { res = await reviewAsset(a, cfg); }
       catch (e) { await L(cfg.product_key, null, "plan_error", `${a.file_name}: ${errMsg(e)}`); report.warnings.push("review " + a.file_name + ": " + errMsg(e)); continue; }
       const o = res.out;
-      const review = { usable: !!o.usable && !res.problem, shows_lo: o.shows_lo || null, fits_lo: o.fits_lo || null, angle_lo: o.angle_lo || null, hook_score: o.hook_score ?? null, reject_reason_lo: o.reject_reason_lo || null, frames_used: res.frames_used, model: MODEL, tokens: res.tokens, problem: res.problem };
+      const review = { usable: !!o.usable && !res.problem, shows_lo: o.shows_lo || null, fits_lo: o.fits_lo || null, angle_lo: o.angle_lo || null, hook_score: o.hook_score ?? null, reject_reason_lo: o.reject_reason_lo || null, promo_used: activePromo(cfg), frames_used: res.frames_used, model: MODEL, tokens: res.tokens, problem: res.problem };
 
       if (res.problem || !o.usable) {
         const why = res.problem ? "ຂໍ້ຄວາມທີ່ AI ຂຽນບໍ່ຜ່ານການກວດ (" + res.problem + ")" : (o.reject_reason_lo || "AI ເຫັນວ່າໃຊ້ເປັນແອັດບໍ່ໄດ້");
@@ -460,6 +501,95 @@ async function planStage(prods: any[], auto: boolean, only: string[] | null) {
       }
       await L(cfg.product_key, planId, "planned", `${a.file_name}: hook ${review.hook_score}/5 · ${review.angle_lo || ""}`);
       report.planned.push({ asset: a.file_name, status, caption: o.caption_lo, headline: o.headline_lo, review });
+    }
+  }
+}
+
+// =====================================================================
+// 2b. IMPORT old winners (v6)
+// =====================================================================
+const PROMO_GUESS_SYSTEM = `You help a Lao online shop reuse an OLD Facebook ad creative. You get the old ad's caption, headline and one thumbnail (a video frame or the picture). The caption and headline will be REWRITTEN for the new ad, so a promotion that appears only in them does not matter. What matters is whether the creative itself (the picture or the video) carries a promotion: text or graphics on the thumbnail such as a free gift, bundle, discount, special price or limited time. Answer ONLY by calling the tool.
+- state: "has_promo" = a promotion is clearly visible ON the thumbnail or picture; "none" = nothing like that is visible and the caption/headline do not hint at one; "unknown" = nothing is visible on the thumbnail but the caption or headline mentions a promotion (a video may show or say it in later frames or in its voice-over, which you cannot see or hear), or the thumbnail is unreadable.
+- promo_seen_lo: if has_promo, the promotion exactly as it is shown on the picture, in a few Lao words; otherwise an empty string.
+- reason_lo: one short Lao sentence why.
+LANGUAGE: natural, correct Lao script, no Thai script. Keep numbers as written.`;
+const PROMO_GUESS_TOOL = {
+  name: "submit_promo_guess", description: "Submit the promo guess.",
+  input_schema: { type: "object", required: ["state", "reason_lo"], properties: {
+    state: { type: "string", enum: ["none", "has_promo", "unknown"] }, promo_seen_lo: { type: "string" }, reason_lo: { type: "string" },
+  } },
+};
+const normAcct = (a: any) => String(a ?? "").replace(/^act_/, "");
+
+async function guessPromo(row: { body: string | null; title: string | null; frame: string | null }) {
+  const content: any[] = [];
+  if (row.frame) { const im = await fetchImageB64(row.frame, 3_500_000); if (im) { content.push({ type: "text", text: "Thumbnail:" }); content.push({ type: "image", source: { type: "base64", media_type: im.type, data: im.data } }); } }
+  content.push({ type: "text", text: "Old ad caption: " + String(row.body || "").slice(0, 700) + "\nOld ad headline: " + String(row.title || "").slice(0, 120) });
+  const r = await callClaude(PROMO_GUESS_SYSTEM, content, PROMO_GUESS_TOOL, 600);
+  const o = r.out;
+  if (badText(o) || !["none", "has_promo", "unknown"].includes(o.state)) return { state: "unknown", promo_seen_lo: "", reason_lo: "", note: "AI answer unusable" };
+  return { state: o.state, promo_seen_lo: String(o.promo_seen_lo || "").slice(0, 200), reason_lo: String(o.reason_lo || "").slice(0, 240) };
+}
+
+async function importStage(prods: any[], only: string[] | null, perProduct: number) {
+  report.imported = [];
+  for (const cfg of prods) {
+    if (only && !only.includes(cfg.product_key)) continue;
+    if (!cfg.enabled || !cfg.ad_account_id) continue;
+    if (timeLeft() < 30000) { report.skipped.push("import: out of time"); break; }
+    const { data: maps } = await sb.from("campaign_product_map").select("campaign_id,source").eq("product_key", cfg.product_key);
+    const ids = (maps || []).filter((m: any) => m.source !== "ad_test").map((m: any) => m.campaign_id);
+    if (!ids.length) { report.skipped.push(`${cfg.product_key}: no old campaigns`); continue; }
+    // only ads of the SAME ad account as the template: Facebook videos cannot be reused across accounts
+    const { data: camps } = await sb.from("ad_campaigns").select("id,ad_account_id").in("id", ids.slice(0, 300));
+    const sameAcct = new Set((camps || []).filter((c: any) => normAcct(c.ad_account_id) === normAcct(cfg.ad_account_id)).map((c: any) => c.id));
+    if (!sameAcct.size) { report.skipped.push(`${cfg.product_key}: no old campaigns in ad account ${cfg.ad_account_id}`); continue; }
+    const { data: perf } = await sb.from("ad_perf_window").select("ad_id,campaign_id,spend,messages").eq("window_days", 30).in("campaign_id", [...sameAcct].slice(0, 200));
+    const rows = (perf || []).filter((x: any) => Number(x.spend) >= 300 && Number(x.messages) >= 15)
+      .map((x: any) => ({ ad_id: x.ad_id, spend: Number(x.spend), messages: Number(x.messages), cpm: Number(x.spend) / Number(x.messages) }))
+      .sort((a: any, b: any) => a.cpm - b.cpm);
+    if (!rows.length) { report.skipped.push(`${cfg.product_key}: no old ad with enough data (spend>=300, messages>=15, last 30 days)`); continue; }
+    const { data: cre } = await sb.from("ad_creatives").select("ad_id,kind,body,title,video_id,image_url,thumbnail_url").in("ad_id", rows.map((r: any) => r.ad_id).slice(0, 200));
+    const cm = new Map((cre || []).map((c: any) => [c.ad_id, c]));
+    const { data: have } = await sb.from("product_assets").select("fb_ad_id,fb_video_id,public_url").eq("product_key", cfg.product_key).eq("source", "facebook");
+    const haveAd = new Set((have || []).map((h: any) => h.fb_ad_id)), haveVid = new Set((have || []).map((h: any) => h.fb_video_id).filter(Boolean)), haveUrl = new Set((have || []).map((h: any) => h.public_url));
+    const picks: any[] = [];
+    for (const r of rows) {
+      if (picks.length >= perProduct) break;
+      const c: any = cm.get(r.ad_id);
+      if (!c || haveAd.has(r.ad_id)) continue;
+      if (c.kind === "video" && c.video_id) {
+        if (haveVid.has(c.video_id)) continue;
+        const thumb = c.thumbnail_url || c.image_url;
+        if (!thumb) continue;
+        haveVid.add(c.video_id);
+        picks.push({ r, c, kind: "video", url: thumb, vid: c.video_id });
+      } else if (c.kind === "image" && c.image_url) {
+        if (haveUrl.has(c.image_url)) continue;
+        haveUrl.add(c.image_url);
+        picks.push({ r, c, kind: "image", url: c.image_url, vid: null });
+      }
+    }
+    if (!picks.length) { report.skipped.push(`${cfg.product_key}: no new old creative to import (${rows.length} old ads checked)`); continue; }
+    const guesses = await Promise.all(picks.map(async (p: any) => {
+      try { return await guessPromo({ body: p.c.body, title: p.c.title, frame: p.kind === "video" ? p.url : p.url }); }
+      catch (e) { return { state: "unknown", promo_seen_lo: "", reason_lo: "", note: errMsg(e) }; }
+    }));
+    for (let i = 0; i < picks.length; i++) {
+      const p = picks[i], g: any = guesses[i];
+      const rec = {
+        product_key: cfg.product_key, kind: p.kind, storage_path: "facebook:" + p.r.ad_id, public_url: p.url, file_name: "ແອັດເກົ່າ #" + String(p.r.ad_id).slice(-6),
+        size_bytes: null, note: `ຈາກແອັດເກົ່າ: ຕົ້ນທຶນ/ແຊັດ ${Math.round(p.r.cpm)} · ໃຊ້ໄປ ${Math.round(p.r.spend)} · ${p.r.messages} ແຊັດ (30 ວັນ)`,
+        status: "new", created_by: "ads-test-auto", frames: p.kind === "video" ? [p.url] : [],
+        source: "facebook", fb_video_id: p.vid, fb_ad_id: p.r.ad_id, thumb_url: p.kind === "video" ? p.url : null,
+        source_caption: clip(p.c.body, 1200), promo_state: "unknown", promo_text: null, promo_confirmed: false, promo_guess: g,
+      };
+      if (!DRY) {
+        const { error } = await sb.from("product_assets").insert(rec);
+        if (error) { report.warnings.push("import insert: " + error.message); continue; }
+        await L(cfg.product_key, null, "asset_imported", `${rec.file_name} · ${g.state}${g.promo_seen_lo ? " · " + g.promo_seen_lo : ""}`);
+      }
+      report.imported.push({ product: cfg.product_key, ad_id: p.r.ad_id, kind: p.kind, cost_per_message: Math.round(p.r.cpm), guess: g });
     }
   }
 }
@@ -615,6 +745,17 @@ async function advanceVideo(plan: any, asset: any, cfg: any): Promise<any | null
   return null;
 }
 
+// v6: an old ad's video already lives on Facebook (same ad account): reuse it, fresh thumbnail when Facebook gives one.
+async function existingVideo(asset: any, cfg: any) {
+  const vid = String(asset.fb_video_id);
+  try {
+    const s = await callFn("fb-upload-video", { adAccountId: cfg.ad_account_id, connectionMode: "system", launchedBy: "ads-test-auto", action: "status", videoId: vid }, 60000);
+    if (s && (s.thumbnailImageHash || s.thumbnailUrl)) return { videoId: vid, thumbnailImageHash: s.thumbnailImageHash || null, thumbnailUrl: s.thumbnailUrl || null };
+  } catch (e) { report.warnings.push("video status " + vid + ": " + errMsg(e)); }
+  if (asset.thumb_url) return { videoId: vid, thumbnailImageHash: null, thumbnailUrl: asset.thumb_url };
+  throw new Error("old video has no thumbnail");
+}
+
 async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   const id8 = String(plan.id).slice(0, 8);
   // idempotency: a previous call may have created the ad but died before saving
@@ -630,10 +771,27 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   const { data: asset } = await sb.from("product_assets").select("*").eq("id", plan.asset_id).maybeSingle();
   if (!asset) throw new Error("asset was deleted");
 
+  // v6: the promo may have changed since the caption was written (plans can wait for the next morning)
+  if (plan.ai && Object.prototype.hasOwnProperty.call(plan.ai, "promo_used") && plan.status === "approved" && !plan.upload_phase) {
+    const now = activePromo(cfg), then = plan.ai.promo_used;
+    if (normPromo(now) !== normPromo(then) || !assetEligibility(asset, cfg).ok) {
+      if (!DRY) {
+        await sb.from("ad_test_plans").update({ status: "rejected", fail_reason: "promo changed before launch", ai: { ...plan.ai, promo_changed: true } }).eq("id", plan.id);
+        await sb.from("product_assets").update({ status: "new" }).eq("id", plan.asset_id);
+      }
+      await L(plan.product_key, plan.id, "asset_rejected", "promo changed before launch; the file goes back to the waiting list");
+      report.skipped.push(`${plan.product_key}: plan dropped, promo changed before launch`);
+      return;
+    }
+  }
+
   let video: any = null;
   if (asset.kind === "video") {
-    video = await advanceVideo(plan, asset, cfg);
-    if (!video) return; // more ticks needed
+    if (asset.fb_video_id) video = await existingVideo(asset, cfg);
+    else {
+      video = await advanceVideo(plan, asset, cfg);
+      if (!video) return; // more ticks needed
+    }
   }
   if (!inWindow) { report.skipped.push(`${plan.product_key}: ready but outside launch window`); return; }
   if (DRY) { report.launched.push({ plan: plan.id, dry: true, product: cfg.label }); return; }
@@ -753,6 +911,11 @@ Deno.serve(async (req: Request) => {
     const { data: prods } = await sb.from("ad_test_products").select("*").order("product_key");
     const prodList = prods || [];
     const prodMap = new Map(prodList.map((p: any) => [p.product_key, p]));
+    if (action === "import") {
+      await importStage(prodList, only, Math.max(1, Math.min(6, Number(body.per_product) || 3)));
+      report.action = action; report.dry_run = DRY; report.elapsed_ms = Date.now() - T0;
+      return json({ ok: true, ...report });
+    }
     const auto = await autoOn();
     report.auto = auto; report.dry_run = DRY; report.laos_hour = laosHour(); report.action = action;
 
