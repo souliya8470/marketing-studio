@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.34"; // v8.34 FIX+UI (Tar 2026-10-12, "ຕຳແໜ່ງການສະແດງໂຄສະນາ ແລະຂໍ້ຄວາມເທມເພລດ ... ເຫັນໃນ Ads Manager ບໍ່ມີເທມເພລດທີ່ເຮົາສ້າງ") -- ads launched by the test pipeline now COPY THE TEMPLATE CAMPAIGN FULLY. Before: launch-ad only sent age/countries and forced mobile-only placements, and never sent the saved Messenger welcome-message template, Advantage+ audience, excluded countries (TH...), brand-safety filters, Instagram identity or creative enhancements, so Ads Manager showed a different ad. Now: launch-ad v30 (v21 in its header) has 3 NEW OPTIONAL params (targetingOverride = whole Facebook targeting object, instagramUserId, degreesOfFreedomSpec) and behaves exactly as v29 when they are absent; ads-test-auto v4 reads the template ad set + one of its ads straight from Facebook (Graph, META_ACCESS_TOKEN) and passes targeting + page_welcome_message (template id) + instagram_user_id + creative enhancements (the legacy standard_enhancements bundle is dropped, Facebook rejects it with subcode 3858504; retry without enhancements if Facebook still refuses). New read-only action "template" (ads-test-auto) returns a summary of what will be copied; new flag create_paused (everything created PAUSED, used for the controlled live test). The live test (veggie coffee, PAUSED, image) was verified in ads-template-inspect (Advantage+ placements, Advantage+ audience, TH excluded, brand safety, bid cap 45, welcome template 1333606118911495) and the test campaign was deleted. UI: 🧪 tab has a new collapsible "📋 ຄ່າທີ່ກ໋ອບປີ້ຈາກເທມເພລດ" card for the selected product (button loads it on demand): placements, audience, excluded countries, bid, welcome-message template id + preview, Instagram, creative enhancements, and warnings when the template text contains Thai script or a disease word.
+const APP_VERSION = "8.35"; // v8.35 NEW (Tar 2026-10-13, "ຂ້ອຍບໍ່ມີຄວາມຮູ້ເລື່ອງວິເຄາະວິດີໂອ/ແຄັບຊັນ/ຄຳເວົ້າ ... ໃຫ້ AI ຊ່ວຍວ່າຄວນເວົ້າແນວໃດໃຫ້ຄົນສົນໃຈຢາກຊື້") -- per-product SALES PLAYBOOK ("📖 ຄູ່ມືການເວົ້າ"). Edge function ads-playbook (v4; generate = 4 parallel Claude parts: strategy / hooks+video ideas / sample captions+chat flow / objection replies; get) writes a DRAFT into the new table product_playbooks (product_key pk, status draft|approved, content jsonb, generated_at, approved_at). The 🧪 tab shows a collapsible card above the template card: status badge, buttons generate / regenerate / approve ("✅ ຍອມຮັບ ແລະ ໃຫ້ AI ໃຊ້") / un-approve, a prominent ⚠️ block with the questions Tar must answer (confirm_questions_lo + conflicts_lo), and sections big idea, offer, audiences+pains, 10 hooks (copy, ✕ remove -> saved), caption formula + 3 sample captions, video ideas, chat flow, objection replies, follow-up, things to avoid; every text has a copy button so admins can use the chat replies at once; texts containing GMP/HACCP/free-shipping/certificate words get a "⚠️ ຍັງບໍ່ຢືນຢັນ" tag. ads-test-auto v5 injects ONLY an APPROVED playbook into the caption writer (follow the big idea, adapt a hook to what the file shows, use the offer exactly, never use avoid / unconfirmed items); without an approved playbook behaviour is unchanged.
+// (previous text of this slot, kept) // v8.34 FIX+UI (Tar 2026-10-12, "ຕຳແໜ່ງການສະແດງໂຄສະນາ ແລະຂໍ້ຄວາມເທມເພລດ ... ເຫັນໃນ Ads Manager ບໍ່ມີເທມເພລດທີ່ເຮົາສ້າງ") -- ads launched by the test pipeline now COPY THE TEMPLATE CAMPAIGN FULLY. Before: launch-ad only sent age/countries and forced mobile-only placements, and never sent the saved Messenger welcome-message template, Advantage+ audience, excluded countries (TH...), brand-safety filters, Instagram identity or creative enhancements, so Ads Manager showed a different ad. Now: launch-ad v30 (v21 in its header) has 3 NEW OPTIONAL params (targetingOverride = whole Facebook targeting object, instagramUserId, degreesOfFreedomSpec) and behaves exactly as v29 when they are absent; ads-test-auto v4 reads the template ad set + one of its ads straight from Facebook (Graph, META_ACCESS_TOKEN) and passes targeting + page_welcome_message (template id) + instagram_user_id + creative enhancements (the legacy standard_enhancements bundle is dropped, Facebook rejects it with subcode 3858504; retry without enhancements if Facebook still refuses). New read-only action "template" (ads-test-auto) returns a summary of what will be copied; new flag create_paused (everything created PAUSED, used for the controlled live test). The live test (veggie coffee, PAUSED, image) was verified in ads-template-inspect (Advantage+ placements, Advantage+ audience, TH excluded, brand safety, bid cap 45, welcome template 1333606118911495) and the test campaign was deleted. UI: 🧪 tab has a new collapsible "📋 ຄ່າທີ່ກ໋ອບປີ້ຈາກເທມເພລດ" card for the selected product (button loads it on demand): placements, audience, excluded countries, bid, welcome-message template id + preview, Instagram, creative enhancements, and warnings when the template text contains Thai script or a disease word.
 // (previous text of this slot, kept) // v8.33 NEW (Tar 2026-10-12, "ລອງ B ໂລດ ເພາະຂ້ອຍກຳນົດງົບປະມານສຸງສຸດຕໍ່ວັນໄວ້ໃຫ້ແລ້ວ" = let the AI do the testing itself inside my daily cap) -- 🧪 ທົດສອບ tab is now an automatic pipeline driven by NEW edge function ads-test-auto (cron every 10 min, master switch ad_coach_settings.auto_test_enabled, lock in ad_test_state, every action logged in ad_test_log). (1) On upload the browser now also stores 1 downscaled picture or 3 video snapshots (product-assets/<product>/frames/) so Claude can SEE the file; product_assets.frames. (2) PLAN: Claude (vision) reviews each new file, rejects unusable ones with a Lao reason, and writes caption + headline from what the file shows + the product facts (Lao-only/Thai/garble/risky-claim checks, retry once). Slots = floor((daily_cap - committed)/budget_per_test), max_new_per_day per Laos day. (3) LAUNCH: only inside the product's window (08:00-15:00 Laos), through the existing launch-ad (campaign created ACTIVE with startTime now+3min, name "<label> TEST dd/mm #<plan id8>", idempotent via ad_launch_log), template ad set copied from the product's template campaign; videos upload resumably across ticks (fb-upload-video start/transfer/finish/status, 4MB Range chunks). 3 failed tries -> status failed with the reason. (4) JUDGE: after 3+ days the code gates what verdict is ALLOWED (loser: spend>=250 and no messages / cost per message > 2x the product's own baseline; winner: >=5 days, >=6 messages, <=0.8x baseline) and Claude explains in Lao + says what to change next; a loser's campaign is paused via update-ad-entity. Budgets are NEVER raised automatically. UI: auto switch + "ເຮັດດຽວນີ້", "AI ເບິ່ງແລ້ວ" box on cards, status notes, ⚡ ຍິງດຽວນີ້ (force window), retry for failed, verdict badges with reason/next step, judged list, collapsed system log. "ຕັດອອກ" now retires the file (it used to return it to "new", which would make the AI queue it again).
 // (previous text of this slot, kept) // v8.32 UI+FLOW (Tar 2026-10-12, "ມັນເບິ່ງຈຳເຈ ບໍ່ເດັ່ນເບິ່ງຍາກ" + "ທັງສອງຢ່າງ" = redesign and fewer steps) -- 🧪 ທົດສອບ tab redesigned (hero with 3 counters, product pills, big drag-and-drop zone, thumbnail cards for ready tests, running tests with 7-day numbers, all files collapsed) and the flow is shorter: uploading files now queues them automatically (ads-test-planner called for that product), and each card has a single "🚀 ຍິງທົດສອບ" button that does everything in the browser after one confirm popup: fetch the file, read the template ad set (list-campaign-adsets + get-adset-for-prefill), upload the video through the same fb-upload-video chunk steps as the launch page (adsTestFbUploadVideo) or convert the image, then call launch-ad with the same body shape submitLaunchAd sends (flowType new_campaign, objective messages, ABO, daily budget = plan budget). launch-ad still creates everything PAUSED. "ແກ້ກ່ອນຍິງ" keeps the old route into the launch form. Running cards read ad_perf_window (7 days) per ad and have a "🔄 ອັບເດດຕົວເລກ" button (sync-ad-creative-insights). Not built yet: automatic verdicts, scheduled planning.
 // (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12, "ມີໂຟນເດີສິນຄ້າ ມີວິດີໂອແລະຮູບ ແລ້ວໃຫ້ ai ເອົາໄປເທສແອັດ... ງົບ 100-200 ບາດຕໍ່ມື້ ຕໍ່ສິນຄ້າ") -- 🧠 ຜູ້ຊ່ວຍແອດ: new tab "🧪 ທົດສອບ" (stage 1, proposals only). Library: upload videos/images per product (Supabase Storage bucket product-assets, table product_assets). Queue: button "📥 ຈັດຄິວດຽວນີ້" calls NEW edge function ads-test-planner, which pairs each untested file with a caption + headline from the newest finished ad_creative_drafts row inside the per-product cap (table ad_test_products: daily_cap 200, budget_per_test 100; pilot products veggie_coffee + sesame_coffee, each with a template campaign) and writes ad_test_plans rows (status proposed). It never calls Facebook. "🚀 ເປີດໃນໜ້າຍິງແອັດ" fills the existing launch form (audience/page/goal copied from the template ad set via list-campaign-adsets + applyAdSetPrefill, then the proposal caption/headline and the file) and navigates there; Tar still presses the normal launch button (launch-ad creates everything PAUSED; for video the existing ⬆️ upload step is still needed). After a successful single launch submitLaunchAd links the proposal to the new campaign/adset/ad ids (only if the launched text still equals the proposal caption), marks the file "testing" and adds the campaign to campaign_product_map (source ad_test). Not built yet: automatic verdicts on finished tests, automatic launching, scheduled planning. Note: at 100/day per test a ROAS verdict needs about 7-10 days of data.
@@ -1576,7 +1577,9 @@ const APP_VERSION = "8.34"; // v8.34 FIX+UI (Tar 2026-10-12, "ຕຳແໜ່ງ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.33"; // v8.33 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.34"; // v8.34 FIX+UI (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.33→8.34 now that 8.35 is current).
+// (previous text of this slot, kept) // v8.33 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.32→8.33 now that 8.34 is current).
 // (previous text of this slot, kept) // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.31→8.32 now that 8.33 is current).
@@ -1624,7 +1627,9 @@ const APP_VERSION_PREV = "8.33"; // v8.33 NEW (Tar 2026-10-12) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.32"; // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.33"; // v8.33 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.32→8.33 now that 8.34 is previous).
+// (previous text of this slot, kept) // v8.32 UI+FLOW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.31→8.32 now that 8.33 is previous).
 // (previous text of this slot, kept) // v8.31 NEW (Tar 2026-10-12) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.30→8.31 now that 8.32 is previous).
@@ -21834,7 +21839,7 @@ const ADS_COACH_ACTIONS = {
 async function loadAdsCoachData(){
   STATE.adsCoachLoading = true;
   try{
-    const [runsRes, recsRes, setRes, draftsRes, tProdRes, tAssetRes, tPlanRes, tLogRes, tStateRes] = await Promise.all([
+    const [runsRes, recsRes, setRes, draftsRes, tProdRes, tAssetRes, tPlanRes, tLogRes, tStateRes, pbRes] = await Promise.all([
       sb.from("ad_coach_runs").select("id,created_at,requested_by,status,summary_lo,output,error,input_tokens,output_tokens").order("created_at",{ascending:false}).limit(8),
       sb.from("ad_coach_recs").select("*").order("created_at",{ascending:false}).limit(150),
       sb.from("ad_coach_settings").select("key,value"),
@@ -21843,7 +21848,8 @@ async function loadAdsCoachData(){
       sb.from("product_assets").select("*").order("created_at",{ascending:false}).limit(300),
       sb.from("ad_test_plans").select("*").order("created_at",{ascending:false}).limit(120),
       sb.from("ad_test_log").select("id,created_at,product_key,plan_id,action,detail").order("created_at",{ascending:false}).limit(40),
-      sb.from("ad_test_state").select("last_tick_at,last_tick_summary").eq("id",1).maybeSingle()
+      sb.from("ad_test_state").select("last_tick_at,last_tick_summary").eq("id",1).maybeSingle(),
+      sb.from("product_playbooks").select("*")
     ]);
     if(runsRes.error) throw runsRes.error;
     if(recsRes.error) throw recsRes.error;
@@ -21852,6 +21858,7 @@ async function loadAdsCoachData(){
     STATE.adsTestPlans = tPlanRes.data||[];
     STATE.adsTestLog = tLogRes.data||[];
     STATE.adsTestState = tStateRes.data||null;
+    STATE.adsPlaybooks = {}; ((pbRes && pbRes.data)||[]).forEach(r=>{ STATE.adsPlaybooks[r.product_key] = r; });
     const runIds = STATE.adsTestPlans.filter(p=>(p.status==="launched" || p.status==="judged") && p.ad_id).map(p=>p.ad_id);
     STATE.adsTestPerf = {};
     if(runIds.length){
@@ -22153,6 +22160,112 @@ async function adsTestRefreshPerf(){
   try{ await sb.functions.invoke("sync-ad-creative-insights", { body: {} }); }catch(e){ console.warn("sync-ad-creative-insights failed:", e); }
   STATE.adsTestRefreshing = false;
   await loadAdsCoachData();
+}
+// v8.35: per-product sales playbook (ads-playbook edge function -> product_playbooks table).
+const PB_UNCONFIRMED_RE = /GMP|HACCP|ສົ່ງຟຣີ|ສົ່ງຟີ|ໃບຮັບຮອງ/i;
+async function adsPlaybookGenerate(key){
+  if(STATE.adsPbBusy) return;
+  const cur = (STATE.adsPlaybooks||{})[key];
+  if(cur && cur.status==="approved"){
+    const ok = await customConfirm("ຄູ່ມືນີ້ຖືກຍອມຮັບ ແລະ AI ກຳລັງໃຊ້ຢູ່. ຂຽນໃໝ່ຈະປ່ຽນເປັນ \"ຮ່າງ\" ແລະ AI ຈະຢຸດໃຊ້ຈົນກວ່າເຈົ້າຈະຍອມຮັບອີກຄັ້ງ. ເຮັດຕໍ່ບໍ?", {okLabel:"ຂຽນໃໝ່"});
+    if(!ok) return;
+  }
+  STATE.adsPbBusy = key; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-playbook", { body: { action:"generate", product_key:key } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"AI ຂຽນຄູ່ມືບໍ່ສຳເລັດ");
+    const r = await sb.from("product_playbooks").select("*").eq("product_key",key).maybeSingle();
+    if(r.data){ STATE.adsPlaybooks = { ...(STATE.adsPlaybooks||{}), [key]: r.data }; }
+    showToast("AI ຂຽນຄູ່ມືແລ້ວ — ອ່ານແລ້ວກົດຍອມຮັບ");
+  }catch(e){ showErrorToast("AI ຂຽນຄູ່ມືບໍ່ສຳເລັດ: "+e.message); }
+  STATE.adsPbBusy = null;
+  render();
+}
+async function adsPlaybookSetStatus(key, status){
+  const cur = (STATE.adsPlaybooks||{})[key];
+  if(!cur) return;
+  if(status==="approved"){
+    const qs = ((cur.content||{}).confirm_questions_lo||[]).length + ((cur.content||{}).conflicts_lo||[]).length;
+    const ok = await customConfirm("ຍອມຮັບຄູ່ມືນີ້ ແລ້ວໃຫ້ AI ໃຊ້ຂຽນແຄັບຊັນແອັດ?"+(qs?"\n\nຍັງມີ "+qs+" ຂໍ້ທີ່ຕ້ອງຢືນຢັນ — AI ຈະບໍ່ໃຊ້ຂໍ້ມູນເຫຼົ່ານັ້ນຈົນກວ່າເຈົ້າຈະຢືນຢັນ.":""), {okLabel:"ຍອມຮັບ"});
+    if(!ok) return;
+  }
+  const patch = status==="approved" ? { status, approved_at:new Date().toISOString() } : { status:"draft", approved_at:null };
+  const { error } = await sb.from("product_playbooks").update(patch).eq("product_key", key);
+  if(error){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+error.message); return; }
+  STATE.adsPlaybooks[key] = { ...cur, ...patch };
+  showToast(status==="approved" ? "ຍອມຮັບແລ້ວ — AI ຈະໃຊ້ຄູ່ມືນີ້" : "ຍົກເລີກການໃຊ້ແລ້ວ");
+  render();
+}
+async function adsPlaybookRemoveHook(key, idx){
+  const cur = (STATE.adsPlaybooks||{})[key];
+  if(!cur || !cur.content) return;
+  const hooks = (cur.content.hooks||[]).slice();
+  if(idx<0 || idx>=hooks.length) return;
+  hooks.splice(idx,1);
+  const content = { ...cur.content, hooks };
+  const { error } = await sb.from("product_playbooks").update({ content }).eq("product_key", key);
+  if(error){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+error.message); return; }
+  STATE.adsPlaybooks[key] = { ...cur, content };
+  render();
+}
+function adsPlaybookCard(sel){
+  const key = sel.product_key;
+  const pb = (STATE.adsPlaybooks||{})[key];
+  const busy = STATE.adsPbBusy === key;
+  STATE._pbCopy = [];
+  const cp = (text)=>{ STATE._pbCopy.push(String(text||"")); return `<button type="button" class="pb-copy" data-pb-copy="${STATE._pbCopy.length-1}" title="ຄັດລອກ">📋</button>`; };
+  const flag = (t)=> PB_UNCONFIRMED_RE.test(String(t||"")) ? ` <span class="pb-flag">⚠️ ຍັງບໍ່ຢືນຢັນ</span>` : "";
+  const fmt = (v)=> v ? new Date(v).toLocaleString("en-GB",{timeZone:LAOS_TZ,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+  const genBtn = `<button type="button" class="btn ${pb?"btn-outline":""}" data-pb-gen="${key}" ${STATE.adsPbBusy?"disabled":""}>${busy?"⏳ AI ກຳລັງຂຽນ... (1–2 ນາທີ)":(pb?"🔄 ຂຽນໃໝ່":"✨ ໃຫ້ AI ຂຽນຄູ່ມື")}</button>`;
+  if(!pb || !pb.content){
+    return `<details class="pb-card card coach-card" open>
+      <summary><b>📖 ຄູ່ມືການເວົ້າ — ${esc(sel.label)}</b> <span class="pb-badge">ຍັງບໍ່ມີ</span></summary>
+      <p class="small-muted" style="margin:6px 0 10px;">ໃຫ້ AI ຂຽນວ່າ "ຄວນເວົ້າຫຍັງໃຫ້ຄົນສົນໃຈຢາກຊື້" — ຈຸດຂາຍຫຼັກ, ຫົວຂໍ້ດຶງຄວາມສົນໃຈ, ແຄັບຊັນຕົວຢ່າງ, ວິທີຕອບແຊັດ ແລະ ຄຳຕອບເວລາລູກຄ້າສົງໄສ. ເຈົ້າອ່ານແລ້ວກົດຍອມຮັບ ຈຶ່ງຈະໃຫ້ AI ນຳໄປໃຊ້ຂຽນແຄັບຊັນແອັດ.</p>
+      ${genBtn}
+    </details>`;
+  }
+  const c = pb.content||{};
+  const approved = pb.status==="approved";
+  const badge = approved ? `<span class="pb-badge ok">✅ ໃຊ້ງານ</span>` : `<span class="pb-badge">📝 ຮ່າງ — ລໍຖ້າເຈົ້າຍອມຮັບ</span>`;
+  const when = pb.generated_at ? `<span class="small-muted"> · ຂຽນເມື່ອ ${esc(fmt(pb.generated_at))}</span>` : "";
+  const confirmQ = (c.confirm_questions_lo||[]), conflicts = (c.conflicts_lo||[]);
+  const warnBlock = (confirmQ.length||conflicts.length) ? `<div class="pb-warn">
+      <b>⚠️ ເຈົ້າຕ້ອງຕອບກ່ອນ — AI ຈະບໍ່ໃຊ້ຂໍ້ມູນເຫຼົ່ານີ້ຈົນກວ່າຈະຢືນຢັນ</b>
+      ${confirmQ.length?`<ol>${confirmQ.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:""}
+      ${conflicts.length?`<div style="margin-top:6px;"><b>ຂໍ້ມູນທີ່ຂັດກັນ:</b><ul>${conflicts.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}
+    </div>` : "";
+  const secOpen = STATE.adsPbOpen||{};
+  const sec = (title, inner, open)=> `<details class="pb-sec" data-pb-sec="${esc(title.slice(0,6))}" ${(secOpen[title.slice(0,6)]===undefined?open:secOpen[title.slice(0,6)])?"open":""}><summary>${title}</summary><div class="pb-sec-b">${inner}</div></details>`;
+  const line = (text, extra)=> `<div class="pb-line"><div class="pb-t">${esc(text)}${flag(text)}${extra||""}</div>${cp(text)}</div>`;
+  const hooks = (c.hooks||[]).map((h,i)=>`<div class="pb-line"><div class="pb-t">${esc(h.text_lo)}${flag(h.text_lo)} <span class="small-muted">(${esc(h.type||"")})</span></div>${cp(h.text_lo)}<button type="button" class="pb-copy" data-pb-rmhook="${i}" title="ລຶບອອກ">✕</button></div>`).join("");
+  const audiences = (c.audiences||[]).map(a=>`<div class="pb-line"><div class="pb-t"><b>${esc(a.who_lo)}</b><br>${esc(a.situation_lo)}</div></div>`).join("");
+  const pains = (c.core_pains_lo||[]).map(x=>`<li>${esc(x)}</li>`).join("");
+  const caps = (c.sample_captions||[]).map(x=>{
+    const full = (x.headline_lo?x.headline_lo+"\n\n":"")+(x.caption_lo||"");
+    return `<div class="pb-cap"><div class="small-muted">ມຸມ: ${esc(x.angle_lo||"")}</div>${x.headline_lo?`<div><b>${esc(x.headline_lo)}</b></div>`:""}<div class="pb-t" style="white-space:pre-wrap;">${esc(x.caption_lo||"")}${flag(full)}</div><div>${cp(full)}</div></div>`;
+  }).join("");
+  const vids = (c.video_ideas||[]).map(v=>`<div class="pb-line"><div class="pb-t"><b>3 ວິນາທີທຳອິດ:</b> ${esc(v.first_3_seconds_lo)}<br><b>ຂໍ້ຄວາມເທິງຈໍ:</b> ${esc(v.on_screen_text_lo)}${flag(v.first_3_seconds_lo+" "+v.on_screen_text_lo)}</div>${cp((v.first_3_seconds_lo||"")+"\n"+(v.on_screen_text_lo||""))}</div>`).join("");
+  const chat = (c.chat_flow||[]).map(x=>`<div class="pb-cap"><div><b>${esc(x.step_lo)}</b></div><div class="pb-t" style="white-space:pre-wrap;">${esc(x.example_lo)}${flag(x.example_lo)}</div><div>${cp(x.example_lo)}</div></div>`).join("");
+  const objs = (c.objections||[]).map(x=>`<div class="pb-cap"><div><b>ລູກຄ້າເວົ້າ:</b> ${esc(x.customer_says_lo)}</div><div class="pb-t" style="white-space:pre-wrap;"><b>ຕອບ:</b> ${esc(x.reply_lo)}${flag(x.reply_lo)}</div><div>${cp(x.reply_lo)}</div></div>`).join("");
+  const avoid = (c.avoid||[]).map(x=>`<div class="pb-line"><div class="pb-t">❌ ${esc(x.claim_lo)}<br>✅ ${esc(x.say_instead_lo)}</div></div>`).join("");
+  const actions = approved
+    ? `<button type="button" class="btn btn-outline" data-pb-status="draft">↩️ ຍົກເລີກການໃຊ້</button>`
+    : `<button type="button" class="btn" data-pb-status="approved">✅ ຍອມຮັບ ແລະ ໃຫ້ AI ໃຊ້</button>`;
+  return `<details class="pb-card card coach-card" ${approved?"":"open"} data-pb-key="${key}">
+    <summary><b>📖 ຄູ່ມືການເວົ້າ — ${esc(sel.label)}</b> ${badge}${when}</summary>
+    <div class="pb-actions">${actions}${genBtn}</div>
+    ${warnBlock}
+    ${sec("💡 ແນວຄິດຫຼັກ (ຈຸດຂາຍ)", line(c.big_idea_lo||""), true)}
+    ${sec("🎁 ຂໍ້ສະເໜີ / ລາຄາ", line(c.offer_lo||""), true)}
+    ${sec("👥 ໃຜຄືລູກຄ້າ ແລະ ເຈັບປວດຫຍັງ", audiences+(pains?`<ul class="pb-ul">${pains}</ul>`:""), false)}
+    ${sec("🎣 ຫົວຂໍ້ດຶງຄວາມສົນໃຈ (ກົດ ✕ ລຶບອັນທີ່ບໍ່ມັກ)", hooks, false)}
+    ${sec("✍️ ສູດແຄັບຊັນ ແລະ ຕົວຢ່າງ", (c.caption_formula_lo?line(c.caption_formula_lo):"")+caps, false)}
+    ${sec("🎬 ໄອເດຍວິດີໂອ", vids, false)}
+    ${sec("💬 ວິທີຕອບແຊັດ (ແອັດມິນຄັດລອກໄປໃຊ້ໄດ້ເລີຍ)", chat+(c.follow_up_lo?`<div class="pb-cap"><div><b>ຕິດຕາມລູກຄ້າທີ່ງຽບ</b></div><div class="pb-t" style="white-space:pre-wrap;">${esc(c.follow_up_lo)}${flag(c.follow_up_lo)}</div><div>${cp(c.follow_up_lo)}</div></div>`:""), false)}
+    ${sec("🛡️ ຄຳຕອບເວລາລູກຄ້າສົງໄສ", objs, false)}
+    ${sec("🚫 ຫ້າມເວົ້າ / ເວົ້າແທນ", avoid, false)}
+  </details>`;
 }
 // v8.34: read-only look at what a launch copies from the product's template campaign (ads-test-auto action "template").
 async function adsTestLoadTemplate(key){
@@ -22627,6 +22740,7 @@ function renderAdsTestTab(){
       return `<button type="button" class="tst-pill ${p.product_key===sel.product_key?"on":""}" data-test-prod="${p.product_key}">${esc(p.label)}${n?`<span class="tst-chip">${n}</span>`:""}</button>`;
     }).join("")}</div>
 
+    ${adsPlaybookCard(sel)}
     ${adsTestTemplateCard(sel)}
 
     <div class="tst-drop ${upl?"busy":""}" id="tst-drop" data-prod="${sel.product_key}">
@@ -22811,6 +22925,16 @@ function renderAdsCoachPage(){
       .tst-auto{display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 18px; border-radius:14px; border:2px solid rgba(128,128,128,.28); background:var(--white,#fff); margin-bottom:14px;}
       .tst-auto.on{border-color:#2d7a4f; background:rgba(45,122,79,.08);}
       .tst-auto-t{flex:1; min-width:220px; display:flex; flex-direction:column; gap:3px; font-size:13.5px; line-height:1.5;} .tst-auto-t b{font-size:16px;}
+      .pb-card{margin-bottom:14px; padding:12px 16px;} .pb-card summary{cursor:pointer; font-size:14.5px;}
+      .pb-badge{display:inline-block; margin-left:8px; padding:2px 10px; border-radius:999px; font-size:12px; background:rgba(128,128,128,.18);} .pb-badge.ok{background:rgba(45,122,79,.18); color:#1f6b41;}
+      .pb-actions{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;}
+      .pb-warn{margin:8px 0 12px; padding:10px 14px; border-radius:10px; background:rgba(230,150,0,.12); border:1px solid rgba(230,150,0,.5); font-size:13.5px; line-height:1.6;} .pb-warn ol,.pb-warn ul{margin:6px 0 0 18px; padding:0;}
+      .pb-sec{border-top:1px dashed rgba(128,128,128,.3); padding:8px 0;} .pb-sec>summary{cursor:pointer; font-weight:600; font-size:14px;} .pb-sec-b{margin-top:8px; display:flex; flex-direction:column; gap:8px;}
+      .pb-line{display:flex; gap:8px; align-items:flex-start;} .pb-t{flex:1; font-size:13.5px; line-height:1.6; word-break:break-word;}
+      .pb-cap{padding:8px 12px; border-radius:10px; background:var(--cream-2,#f1ead9); display:flex; flex-direction:column; gap:4px;}
+      .pb-copy{flex:0 0 auto; border:1px solid rgba(128,128,128,.35); background:transparent; border-radius:8px; padding:2px 8px; cursor:pointer; font-size:13px;}
+      .pb-flag{display:inline-block; font-size:11.5px; padding:1px 7px; border-radius:6px; background:rgba(230,150,0,.2); color:#8a5a00;}
+      .pb-ul{margin:4px 0 0 18px; padding:0; font-size:13.5px; line-height:1.6;}
       .tst-tpl{margin-bottom:14px; padding:12px 16px;} .tst-tpl summary{cursor:pointer; font-size:14.5px;}
       .tst-tpl-grid{display:flex; flex-direction:column; gap:6px; margin-top:10px;}
       .tst-tpl-row{display:flex; gap:12px; flex-wrap:wrap; font-size:13.5px; line-height:1.5; padding:6px 0; border-bottom:1px dashed rgba(128,128,128,.25);}
@@ -22923,6 +23047,21 @@ function attachAdsCoachEvents(){
   });
   const autoTgl = document.getElementById("tst-auto-toggle");
   if(autoTgl) autoTgl.addEventListener("click", (e)=>{ e.preventDefault(); adsTestToggleAuto(); });
+  document.querySelectorAll("details[data-pb-sec]").forEach(el=>{
+    el.addEventListener("toggle", ()=>{ STATE.adsPbOpen = { ...(STATE.adsPbOpen||{}), [el.getAttribute("data-pb-sec")]: el.open }; });
+  });
+  document.querySelectorAll("[data-pb-gen]").forEach(el=>{
+    el.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); adsPlaybookGenerate(el.getAttribute("data-pb-gen")); });
+  });
+  document.querySelectorAll("[data-pb-status]").forEach(el=>{
+    el.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); const k=(el.closest("[data-pb-key]")||{}).getAttribute?.("data-pb-key"); if(k) adsPlaybookSetStatus(k, el.getAttribute("data-pb-status")); });
+  });
+  document.querySelectorAll("[data-pb-copy]").forEach(el=>{
+    el.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); adsCoachCopyText((STATE._pbCopy||[])[+el.getAttribute("data-pb-copy")]||""); });
+  });
+  document.querySelectorAll("[data-pb-rmhook]").forEach(el=>{
+    el.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); const k=(el.closest("[data-pb-key]")||{}).getAttribute?.("data-pb-key"); if(k) adsPlaybookRemoveHook(k, +el.getAttribute("data-pb-rmhook")); });
+  });
   document.querySelectorAll("[data-test-tpl]").forEach(el=>{
     el.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); adsTestLoadTemplate(el.getAttribute("data-test-tpl")); });
   });
