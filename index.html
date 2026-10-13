@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.39"; // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິທີໃຊ້ງານເປັນແບບໃດ") -- 🧪 tab: the 🚀 "ຍິງທົດສອບ" button on a proposed plan now goes through the SERVER path (ads-test-auto v9 manual_go) when the auto switch is ON. The old client path (adsTestLaunch, v8.31) did not copy the template welcome message / full targeting / IG and could not launch imported old Facebook videos; the server path copies the whole template via launch-ad and reuses fb_video_id. Click = plan.ai.manual_go=true + status "approved" + ads-test-auto tick {force_launch:true, product_keys:[key]}; the server launches it even if the product has auto_launch=false (review-first products such as Velaris) and outside the 08:00-14:59 window. The ad is created ACTIVE (starts within ~3 min), unlike the legacy path which created PAUSED. With the auto switch OFF the legacy PAUSED path is kept. planNote shows "🚀 ເຈົ້າກົດຍິງແລ້ວ" for manual_go plans.
+const APP_VERSION = "8.40"; // v8.40 FIX (Tar 2026-10-13 22:37, screen recording: after "ແກ້ກ່ອນຍິງ" the greeting-template dropdown showed "-- ພິມໃໝ່ --" and the greeting was empty) -- 🧪 tab: adsTestOpenInLaunch now fills the 💬 greeting section of the launch form from the product's TEMPLATE campaign. It calls ads-test-auto {action:"template"} (read-only), takes the template ad's welcome texts and selects the saved ad_message_templates row whose greeting_text is one of them (also copies its image + quick replies); if no saved row matches, it fills only greeting text + quick replies from the texts and says so in the toast. Before this the form only copied audience/page/goal, so an ad launched from that form had NO welcome message (the one-click server path 🚀 was already copying the template welcome message correctly).
+// (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິທີໃຊ້ງານເປັນແບບໃດ") -- 🧪 tab: the 🚀 "ຍິງທົດສອບ" button on a proposed plan now goes through the SERVER path (ads-test-auto v9 manual_go) when the auto switch is ON. The old client path (adsTestLaunch, v8.31) did not copy the template welcome message / full targeting / IG and could not launch imported old Facebook videos; the server path copies the whole template via launch-ad and reuses fb_video_id. Click = plan.ai.manual_go=true + status "approved" + ads-test-auto tick {force_launch:true, product_keys:[key]}; the server launches it even if the product has auto_launch=false (review-first products such as Velaris) and outside the 08:00-14:59 window. The ad is created ACTIVE (starts within ~3 min), unlike the legacy path which created PAUSED. With the auto switch OFF the legacy PAUSED path is kept. planNote shows "🚀 ເຈົ້າກົດຍິງແລ້ວ" for manual_go plans.
 // (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13, "ບາງສິນຄ້າ/ບາງຊ່ວງເວລາ ເຮົາໃຊ້ຄອນເທັນເກົ່າບໍ່ໄດ້ ... ໂປຣໃນວິດີໂອເດືອນແລ້ວບໍ່ກົງກັບເດືອນນີ້" = stale promo problem; then "ເລີ່ມ") -- 🧪 ທົດສອບ tab: PROMO RULES + REUSE OF OLD WINNERS (edge function ads-test-auto v6/v7 + new columns). (1) New card "🎁 ໂປຣປັດຈຸບັນ" per product: ad_test_products.current_promo (+ promo_until, promo_updated_at) is the ONLY promo the AI may mention in a caption; empty/expired = captions get no gift/discount wording (server checks it and retries). (2) New button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ" calls ads-test-auto {action:"import"}: best old ads of the product (cost per message, same ad account as the template) are copied into product_assets (source "facebook", fb_video_id/fb_ad_id/thumb_url, promo_guess by Claude from the thumbnail). Imported files are NOT used until the owner confirms the promo tag in the new list "ແອັດເກົ່າລໍຢືນຢັນໂປຣ": ✅ no promo / 🎁 has the current promo / ✖ has an old promo (retired). A file tagged with a promo is used only while its promo_text equals the current promo; when the promo changes the file is skipped (and an approved plan is rejected at launch, file back to "new"). (3) adsTestThumb shows imported videos as their thumbnail picture (the stored public_url is an image, not a video file); the "waiting" list no longer includes unconfirmed imports; blocked files show the reason; plan cards show which promo the caption was allowed to use (ai.promo_used); the drop zone says to shoot promo-free videos. Uploaded files are assumed promo-free unless tagged.
 // (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13, "POS ຂາຍຕັດຕາມ LOT ແລະຄິດຕົ້ນທຶນຕາມ LOT") -- v8.37: confirmOnlineOrder (online order / Live CF -> real POS bill) now takes cost_at_sale and total_cost from the POS FIFO function pos_fifo_cost (weighted cost of the lots that will be consumed) instead of the single pos_products.avg_cost; falls back to avg_cost if the RPC fails. Stock is still decremented through adjust_product_stock, which now consumes the oldest lots first inside the database. No other behaviour changed.
 // v8.36 NEW (Tar 2026-10-13, "ຂໍ້ມູນພວກນີ້ຄວນໃຫ້ AI ຄົ້ນຫາເອງ ... ໃຊ້ເຄຣດິດ API 100 ໂດລາກ່ອນ") -- the sales playbook now starts with WEB RESEARCH done by Claude. New edge function ads-research (v1): Claude web_search server tool (max 6 searches, Thai pages first) returns 12 facts per product (ingredients, vegetable count, collagen/vitamin/ginseng, creamer/milk/sweetener, Thai FDA no., manufacturer, certificates and validity, pack/usage, cautions, claims sellers make, customer questions, Thai price range), each with a status (confirmed / single_source / conflicting / not_found) and only source links that the search really returned; saved in the new table product_research. One run is about 70 s and ~130k tokens. ads-playbook v5 reads product_research: only CONFIRMED facts, only in soft wording, the shop own data wins for price/pack/promos, and it no longer asks the owner what research already settled. UI: playbook card has a new primary button "🔎 ຄົ້ນເວັບ + ຂຽນຄູ່ມືໃໝ່" (research, then write) and a collapsible section "🔎 ຂໍ້ມູນທີ່ AI ຄົ້ນຈາກເວັບ" listing every fact with its status badge and source links; the old button stays as "ຂຽນໃໝ່" (shop data + saved research only).
@@ -1581,7 +1582,9 @@ const APP_VERSION = "8.39"; // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.38"; // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.39"; // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.38→8.39 now that 8.40 is current).
+// (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.37→8.38 now that 8.39 is current).
 // (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.36→8.37 now that 8.38 is current).
@@ -1639,7 +1642,9 @@ const APP_VERSION_PREV = "8.38"; // v8.38 NEW (Tar 2026-10-13) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.37"; // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.38"; // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.37→8.38 now that 8.39 is previous).
+// (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.36→8.37 now that 8.38 is previous).
 // (previous text of this slot, kept) // v8.36 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.35→8.36 now that 8.37 is previous).
@@ -22490,12 +22495,38 @@ async function adsTestRejectPlan(planId){
 // Fills the 🚀 launch form from a proposal: ad-set settings (audience, page, goal) copied from the
 // product's template campaign, then the proposal's caption/headline and file. Nothing is sent to
 // Facebook here — Tar reviews the form and presses the normal launch button (ad is created PAUSED).
+// v8.40: fill the 💬 greeting section from the template campaign's welcome message (read-only call).
+// Returns a short Lao note for the toast ("" when nothing could be filled).
+async function adsTestApplyTemplateGreeting(productKey){
+  try{
+    const f = STATE.launchAdForm;
+    if(!(STATE.launchAdMessageTemplates||[]).length) await loadLaunchAdMessageTemplates();
+    const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"template", product_keys:[productKey] } });
+    if(error || !data || data.ok===false) return "";
+    const w = data.templates && data.templates[0] && data.templates[0].welcome;
+    const texts = ((w && w.texts)||[]).filter(t=>typeof t==="string");
+    if(!texts.length) return "";
+    const norm = (t)=>String(t||"").replace(/\s+/g," ").trim();
+    const tpl = (STATE.launchAdMessageTemplates||[]).find(t=>t.greetingText && texts.some(x=>norm(x)===norm(t.greetingText)));
+    if(tpl){
+      f.selectedTemplateId = tpl.id; f.greetingText = tpl.greetingText; f.quickReplies = [...(tpl.quickReplies||[])]; f.greetingImageUrl = tpl.greetingImageUrl||"";
+      return `ເທມເພລດຄຳທັກທາຍ: "${tpl.name}"`;
+    }
+    const marker = texts.findIndex(x=>/^ກະລຸນາເລືອກ/.test(x));
+    const body = texts.filter((x,i)=>!/^https?:/i.test(x) && x!=="image" && i!==marker && (marker<0 || i<marker));
+    if(!body.length) return "";
+    f.selectedTemplateId = ""; f.greetingText = body[0];
+    f.quickReplies = marker>=0 ? texts.slice(marker+1).filter(x=>x.length<=20) : [];
+    return "ຄຳທັກທາຍ: ກ໊ອບຈາກແອັດແມ່ແບບ (ບໍ່ມີເທມເພລດທີ່ບັນທຶກໄວ້ກົງກັນ — ບໍ່ມີຮູບ)";
+  }catch(e){ console.warn("adsTestApplyTemplateGreeting failed:", e); return ""; }
+}
 async function adsTestOpenInLaunch(planId){
   if(STATE.adsTestOpeningId) return;
   const plan = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
   const asset = plan && (STATE.adsTestAssets||[]).find(a=>a.id===plan.asset_id);
   const cfg = plan && (STATE.adsTestProducts||[]).find(p=>p.product_key===plan.product_key);
   if(!plan || !asset || !cfg || !cfg.template_campaign_id || !cfg.ad_account_id){ showErrorToast("ຂໍ້ມູນການທົດສອບບໍ່ຄົບ"); return; }
+  if(asset.source==="facebook"){ showErrorToast("ແອັດເກົ່າຈາກ Facebook ເປີດໃນຟອມບໍ່ໄດ້ (ໄຟລ໌ເປັນພຽງຮູບຕົວຢ່າງ) — ໃຊ້ປຸ່ມ 🚀 ຍິງທົດສອບ"); return; } // v8.40
   STATE.adsTestOpeningId = planId; render();
   try{
     const res = await fetch(asset.public_url);
@@ -22523,6 +22554,7 @@ async function adsTestOpenInLaunch(planId){
     f.campaignName = name; f.adsetName = name; f.dailyBudget = String(plan.daily_budget); f.budgetType = "abo"; f.flowType = "new_campaign";
     f.primaryText = plan.caption || ""; f.headline = plan.headline || "";
     f.productImageUrl = ""; f.existingImageHash = ""; f.existingPostId = "";
+    const greetNote = await adsTestApplyTemplateGreeting(cfg.product_key); // v8.40
     if(asset.kind==="video"){
       f.creativeSource = "video"; f.videoFile = file; f.imageFile = null; f.imagePreviewUrl = "";
     } else {
@@ -22530,7 +22562,7 @@ async function adsTestOpenInLaunch(planId){
     }
     STATE.launchAdVideoUpload = { status:"idle" };
     render();
-    showToast(asset.kind==="video" ? "✅ ຕື່ມຟອມໃຫ້ແລ້ວ — ກົດ ⬆️ ອັບໂຫລດວິດີໂອ ກ່ອນ ແລ້ວອ່ານກວດ ແລະ ກົດຍິງແອັດ" : "✅ ຕື່ມຟອມໃຫ້ແລ້ວ — ອ່ານກວດ ແລ້ວກົດຍິງແອັດ");
+    showToast(asset.kind==="video" ? "✅ ຕື່ມຟອມໃຫ້ແລ້ວ — ກົດ ⬆️ ອັບໂຫລດວິດີໂອ ກ່ອນ ແລ້ວອ່ານກວດ ແລະ ກົດຍິງແອັດ" : "✅ ຕື່ມຟອມໃຫ້ແລ້ວ — ອ່ານກວດ ແລ້ວກົດຍິງແອັດ" + (greetNote ? "\n"+greetNote : "\n⚠️ ຄຳທັກທາຍ: ດຶງຈາກແມ່ແບບບໍ່ໄດ້ — ເລືອກເທມເພລດເອງ"));
   }catch(e){
     STATE.launchAdTestPlanId = null;
     showErrorToast("ເປີດໃນໜ້າຍິງແອັດບໍ່ສຳເລັດ: "+(e.message||e));
