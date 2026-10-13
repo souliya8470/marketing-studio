@@ -41,6 +41,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - **Deadline 2026-10-27:** root `GET /?ids=...` is removed for all Graph versions; `sync-ad-creative-insights` v2 uses it. Needs a fix (details in `04-api-deadlines.md`). `v21.0`, pinned everywhere, is removed 2027-01-21.
 - Token and access findings were given to Tar privately (public repo). Standing rules in `03-token-security.md`. Do not add a new Facebook write path before asking Tar about them.
 - Open: type of `META_ACCESS_TOKEN` (System User or user token) unknown; only 11 of ~110 functions were read.
+- Ads Manager UI (2026-10-13): column preset "Scale Ads เพิ่มงบ" (16 columns, from the one that already existed on ToukShop) now also exists on Rich1, Rich2 and the USD account. Presets are per ad account. Not addable in Rich1/Rich2/USD: ROAS and new messaging contacts. Done through Claude in Chrome (the built-in browser is not signed in to Facebook). Only a UI preference changed, no campaign data.
 
 ## 4. Join points (interfaces between chats)
 - Content → Pipeline: approved `product_playbooks.content` (big idea, offer, hooks, caption formula, avoid list). `ads-test-auto` reads it when writing captions.
