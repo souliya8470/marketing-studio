@@ -7,7 +7,7 @@ Last updated: 2026-10-13 (pipeline chat: section 1 + table rows in section 0 for
 | What | Where |
 |---|---|
 | App code | `index.html` (this repo, `main`) — currently v8.38 (pipeline chat: promo card + import of old winners in the 🧪 tab; 8.37 was another chat's POS FIFO cost) |
-| Edge functions | Supabase (authoritative). Snapshot of `ads-test-auto` (deployed version 7) in `supabase/functions/ads-test-auto/`. Fetch the others with `get_edge_function`: `launch-ad` v30, `ads-template-inspect` v1, `ads-research` v1, `ads-playbook` v7 |
+| Edge functions | Supabase (authoritative). Snapshot of `ads-test-auto` (deployed version 8) in `supabase/functions/ads-test-auto/`. Fetch the others with `get_edge_function`: `launch-ad` v30, `ads-template-inspect` v1, `ads-research` v1, `ads-playbook` v7 |
 | Product facts / playbooks / research | DB tables `products`, `pain_points`, `product_faq`, `product_knowledge`, `product_playbooks` (draft/approved), `product_research` |
 | Daily test pipeline config | DB tables `ad_test_products`, `ad_test_plans`, `ad_test_state`, `ad_coach_settings` (master switch `auto_test_enabled`) |
 
@@ -25,6 +25,7 @@ Last updated: 2026-10-13 (pipeline chat: section 1 + table rows in section 0 for
     - Action `import` of `ads-test-auto` (button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ"): best old ads by cost per message (spend≥300, messages≥15, same ad account as the template) → `product_assets` (source 'facebook', `fb_video_id`, `fb_ad_id`, `thumb_url`, `promo_guess`). Claude only looks at the thumbnail; caption-only hints give "unknown". Tar must confirm the tag (✅ none / 🎁 = current promo / ✖ old promo → retired) before a file is used.
     - Launch reuses the Facebook `video_id` (no upload). If the promo changed between plan and launch the plan is rejected and the file returns to "new".
     - NEVER TESTED LIVE: reusing an old `video_id` in a new ad via launch-ad (videoId + thumbnailUrl) and fb-upload-video `status` on an old video; FB CDN thumbnail URLs may expire.
+    - v8 edge (2026-10-13): when `current_promo` states a price ("...ກີບ"), `products.price` is NOT passed to the caption writer (list price can differ from the advertised price). Velaris `current_promo` = "ລາຄາ 179,000 ກີບ ສົ່ງຟຣີ ເກັບເງິນປາຍທາງ" (set by Tar's statement; the `products.price` 249,000 is not advertised).
   - Not built: old-vs-new comparison and pause suggestions for bad old ads.
   - Waiting for Tar: total daily test-budget ceiling; whether old bad ads are auto-paused or he clicks.
   - Tar's template has a disease-claim line and a Thai quick reply (reported, not edited).

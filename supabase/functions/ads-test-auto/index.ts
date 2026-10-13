@@ -1,4 +1,5 @@
-// Supabase Edge Function: ads-test-auto (v6)
+// Supabase Edge Function: ads-test-auto (v8)
+// v8 (2026-10-13): when current_promo states a price, product.price_kip is dropped from the caption data (the shop's list price can differ from the advertised price).
 // v6 (2026-10-13): PROMO RULES + REUSE OF OLD WINNERS.
 //     - ad_test_products.current_promo / promo_until: the ONLY promo the caption writer may mention. No current promo
 //       (or expired) = captions must contain no gift/discount/promo wording (code check + retry).
@@ -174,7 +175,7 @@ YOUR JOB: you receive the product facts, the shop's best past ads, recent test c
 2. If usable, write caption_lo (the primary text, at most 450 characters) and headline_lo (at most 40 characters) that fit WHAT THE FILE ACTUALLY SHOWS and speak to one real customer pain point from the list. Use an angle different from the recent captions. Start with a hook line.
 If the data has sales_playbook, it was written for this product and approved by the owner: follow its big_idea_lo, pick or adapt ONE hook from hooks to what the file actually shows (do not copy a hook that does not fit the picture), follow caption_formula_lo, use offer_lo exactly as written (never change prices or add promos), and never use anything listed in avoid or do_not_use_until_confirmed (these are unconfirmed or forbidden claims). Still vary the angle from the recent captions.
 shows_lo: one sentence on what you see. fits_lo: one sentence on how it fits the product and who it appeals to. angle_lo: the angle you chose, a few words.
-PROMO RULE: the data field current_promo is the ONLY promotion you may mention (gift, discount, bundle deal, special price, limited time). If current_promo is null, write NO promotion at all: no gift, no discount, no "promo", no free items, no special price. Never copy a promotion from best_past_ads, recent captions, the playbook or from the picture itself; those may be old. When current_promo is given, you may state it in your own words but never change its items, amounts or dates, and never add anything to it. If the picture or video frames visibly show a promotion that differs from current_promo, set usable=false and say so in reject_reason_lo.
+PROMO RULE: the data field current_promo is the ONLY promotion you may mention (gift, discount, bundle deal, special price, limited time). If current_promo is null, write NO promotion at all: no gift, no discount, no "promo", no free items, no special price. Never copy a promotion from best_past_ads, recent captions, the playbook or from the picture itself; those may be old. When current_promo is given, you may state it in your own words but never change its items, amounts or dates, and never add anything to it. If current_promo states a price, that is the ONLY price you may write; ignore any other price in the data. If the picture or video frames visibly show a promotion that differs from current_promo, set usable=false and say so in reject_reason_lo.
 You cannot hear audio and frames are only snapshots: never claim what is said in a video. If no frames are given, say so in shows_lo and write only from the product facts.`;
 
 const REVIEW_TOOL = {
@@ -418,9 +419,11 @@ async function reviewAsset(asset: any, cfg: any) {
     content.push({ type: "text", text: asset.kind === "video" ? `Frame ${i + 1} of ${images.length} from the video (spread across the video):` : "The picture:" });
     content.push({ type: "image", source: { type: "base64", media_type: im.type, data: im.data } });
   });
+  const promoNow = activePromo(cfg);
+  const promoHasPrice = !!promoNow && /\d[\d,.\s]*(ກີບ|kip|₭)/i.test(promoNow);
   const payload = {
     file_kind: asset.kind, file_name: asset.file_name, frames_available: images.length,
-    product_label: cfg.label, product: facts.product, pain_points: facts.pains, faq: facts.faq, knowledge: facts.knowledge,
+    product_label: cfg.label, product: (promoHasPrice && facts.product) ? { ...facts.product, price_kip: null, price_note: "current_promo states the selling price: write only that price" } : facts.product, pain_points: facts.pains, faq: facts.faq, knowledge: facts.knowledge,
     sales_playbook: facts.playbook || undefined,
     current_promo: activePromo(cfg),
     best_past_ads: facts.best, recent_test_captions_to_avoid_repeating: (recent || []).map((r: any) => ({ caption: clip(r.caption, 160), headline: r.headline })),
