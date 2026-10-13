@@ -4,7 +4,7 @@ The deployed copy in Supabase is the source of truth. Files here are snapshots k
 
 | Function | Snapshot here | Deployed version |
 |---|---|---|
-| ads-test-auto | `ads-test-auto/index.ts` | v5 |
+| ads-test-auto | `ads-test-auto/index.ts` | v7 (file header says source v6; v7 only changed the promo-guess prompt) |
 | launch-ad | not exported yet | v30 |
 | ads-template-inspect | not exported yet | v1 |
 | ads-research | not exported yet | v1 |

@@ -1,13 +1,13 @@
 # HANDOFF — shared state between chats
 
 Each chat edits ONLY its own section (plus "Join points" when it changes an interface). Date every change.
-Last updated: 2026-10-13 (Facebook MCP chat, section 3 and join points; section 1 by the pipeline chat unchanged).
+Last updated: 2026-10-13 (pipeline chat: section 1 + table rows in section 0 for v8.38 / promo rules; Facebook MCP chat edited section 3 earlier).
 
 ## 0. Where things live
 | What | Where |
 |---|---|
-| App code | `index.html` (this repo, `main`) — currently v8.37 (another chat shipped 8.37: online order → POS bill FIFO cost) |
-| Edge functions | Supabase (authoritative). Snapshot of `ads-test-auto` v5 in `supabase/functions/ads-test-auto/`. Fetch the others with `get_edge_function`: `launch-ad` v30, `ads-template-inspect` v1, `ads-research` v1, `ads-playbook` v7 |
+| App code | `index.html` (this repo, `main`) — currently v8.38 (pipeline chat: promo card + import of old winners in the 🧪 tab; 8.37 was another chat's POS FIFO cost) |
+| Edge functions | Supabase (authoritative). Snapshot of `ads-test-auto` (deployed version 7) in `supabase/functions/ads-test-auto/`. Fetch the others with `get_edge_function`: `launch-ad` v30, `ads-template-inspect` v1, `ads-research` v1, `ads-playbook` v7 |
 | Product facts / playbooks / research | DB tables `products`, `pain_points`, `product_faq`, `product_knowledge`, `product_playbooks` (draft/approved), `product_research` |
 | Daily test pipeline config | DB tables `ad_test_products`, `ad_test_plans`, `ad_test_state`, `ad_coach_settings` (master switch `auto_test_enabled`) |
 
@@ -19,7 +19,13 @@ Last updated: 2026-10-13 (Facebook MCP chat, section 3 and join points; section 
 - Open items:
   - bio_pro_orange (goal VALUE) and toby (MESSAGING_PURCHASE_CONVERSION, template campaign paused) never launched live through the pipeline.
   - No real files queued for any product yet; loser-pausing and video upload never run live.
-  - Offered, not yet confirmed by Tar: reuse old winning videos/images (`ad_creatives.video_id` / `image_url`) with new AI captions as daily test ads, plus old-vs-new comparison and pause suggestions for bad old ads.
+  - DONE 2026-10-13 (v8.38 + edge v6/v7): PROMO RULES + REUSE OF OLD WINNERS.
+    - `ad_test_products.current_promo` / `promo_until` = the ONLY promo AI may write in a caption; empty/expired = no gift/discount wording (code check + retry). Set in the 🎁 card of the 🧪 tab.
+    - `product_assets.promo_state` (none/has_promo/unknown) + `promo_text` + `promo_confirmed`. A has_promo file is used only while `promo_text` = current promo; own uploads count as promo-free unless tagged. Rule lives in `assetEligibility()` (edge) and `adsTestAssetBlock()` (index.html) — keep both in sync.
+    - Action `import` of `ads-test-auto` (button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ"): best old ads by cost per message (spend≥300, messages≥15, same ad account as the template) → `product_assets` (source 'facebook', `fb_video_id`, `fb_ad_id`, `thumb_url`, `promo_guess`). Claude only looks at the thumbnail; caption-only hints give "unknown". Tar must confirm the tag (✅ none / 🎁 = current promo / ✖ old promo → retired) before a file is used.
+    - Launch reuses the Facebook `video_id` (no upload). If the promo changed between plan and launch the plan is rejected and the file returns to "new".
+    - NEVER TESTED LIVE: reusing an old `video_id` in a new ad via launch-ad (videoId + thumbnailUrl) and fb-upload-video `status` on an old video; FB CDN thumbnail URLs may expire.
+  - Not built: old-vs-new comparison and pause suggestions for bad old ads.
   - Waiting for Tar: total daily test-budget ceiling; whether old bad ads are auto-paused or he clicks.
   - Tar's template has a disease-claim line and a Thai quick reply (reported, not edited).
   - RLS is disabled on all public tables (pre-existing advisory; mention only, do not auto-apply).
