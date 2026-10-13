@@ -1,4 +1,6 @@
-// Supabase Edge Function: ads-test-auto (v8)
+// Supabase Edge Function: ads-test-auto (v9)
+// v9 (2026-10-13): plan.ai.manual_go = the owner pressed "launch" on a plan in the UI: launchStage launches it even when the product is
+//     review-first (ad_test_products.auto_launch = false) and outside the launch window (full template copy, same path as auto launches).
 // v8 (2026-10-13): when current_promo states a price, product.price_kip is dropped from the caption data (the shop's list price can differ from the advertised price).
 // v6 (2026-10-13): PROMO RULES + REUSE OF OLD WINNERS.
 //     - ad_test_products.current_promo / promo_until: the ONLY promo the caption writer may mention. No current promo
@@ -855,8 +857,9 @@ async function launchStage(prodMap: Map<string, any>, force: boolean, only: stri
     if (only && !only.includes(plan.product_key)) continue;
     if (timeLeft() < 25000 || done >= 3) { report.skipped.push("launch: limit/time reached"); break; }
     const cfg = prodMap.get(plan.product_key);
-    if (!cfg || !cfg.enabled || !cfg.auto_launch) continue;
-    const inWindow = force || (h >= Number(cfg.launch_from_hour) && h <= Number(cfg.launch_to_hour));
+    const manual = !!(plan.ai && plan.ai.manual_go); // v9: the owner pressed launch on this plan
+    if (!cfg || !cfg.enabled || (!cfg.auto_launch && !manual)) continue;
+    const inWindow = force || manual || (h >= Number(cfg.launch_from_hour) && h <= Number(cfg.launch_to_hour));
     // a plan that has not started uploading waits for the window; one already uploading keeps going
     if (!inWindow && plan.status === "approved") { report.skipped.push(`${plan.product_key}: waiting for launch window ${cfg.launch_from_hour}-${cfg.launch_to_hour}h (now ${h}h)`); continue; }
     // back off after a failure (30 minutes)

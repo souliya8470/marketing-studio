@@ -1,13 +1,13 @@
 # HANDOFF — shared state between chats
 
 Each chat edits ONLY its own section (plus "Join points" when it changes an interface). Date every change.
-Last updated: 2026-10-13 (pipeline chat: section 1 + table rows in section 0 for v8.38 / promo rules; Facebook MCP chat edited section 3 earlier).
+Last updated: 2026-10-13 (pipeline chat: section 1 + table rows in section 0 for v8.39 / manual_go / promo rules; Facebook MCP chat edited section 3 earlier).
 
 ## 0. Where things live
 | What | Where |
 |---|---|
-| App code | `index.html` (this repo, `main`) — currently v8.38 (pipeline chat: promo card + import of old winners in the 🧪 tab; 8.37 was another chat's POS FIFO cost) |
-| Edge functions | Supabase (authoritative). Snapshot of `ads-test-auto` (deployed version 8) in `supabase/functions/ads-test-auto/`. Fetch the others with `get_edge_function`: `launch-ad` v30, `ads-template-inspect` v1, `ads-research` v1, `ads-playbook` v7 |
+| App code | `index.html` (this repo, `main`) — currently v8.39 (pipeline chat: 🚀 manual_go via server path; v8.38 promo card + import of old winners in the 🧪 tab; 8.37 was another chat's POS FIFO cost) |
+| Edge functions | Supabase (authoritative). Snapshot of `ads-test-auto` (deployed version 9) in `supabase/functions/ads-test-auto/`. Fetch the others with `get_edge_function`: `launch-ad` v30, `ads-template-inspect` v1, `ads-research` v1, `ads-playbook` v7 |
 | Product facts / playbooks / research | DB tables `products`, `pain_points`, `product_faq`, `product_knowledge`, `product_playbooks` (draft/approved), `product_research` |
 | Daily test pipeline config | DB tables `ad_test_products`, `ad_test_plans`, `ad_test_state`, `ad_coach_settings` (master switch `auto_test_enabled`) |
 
@@ -26,6 +26,10 @@ Last updated: 2026-10-13 (pipeline chat: section 1 + table rows in section 0 for
     - Launch reuses the Facebook `video_id` (no upload). If the promo changed between plan and launch the plan is rejected and the file returns to "new".
     - NEVER TESTED LIVE: reusing an old `video_id` in a new ad via launch-ad (videoId + thumbnailUrl) and fb-upload-video `status` on an old video; FB CDN thumbnail URLs may expire.
     - v8 edge (2026-10-13): when `current_promo` states a price ("...ກີບ"), `products.price` is NOT passed to the caption writer (list price can differ from the advertised price). Velaris `current_promo` = "ລາຄາ 179,000 ກີບ ສົ່ງຟຣີ ເກັບເງິນປາຍທາງ" (set by Tar's statement; the `products.price` 249,000 is not advertised).
+  - DONE 2026-10-13 (v8.39 + edge v9): MANUAL GO. The 🚀 button on a proposed plan now uses the server path when the auto switch is ON: sets `plan.ai.manual_go=true` + status 'approved', then calls `ads-test-auto` tick `{force_launch:true, product_keys:[key]}`. In `launchStage`, `manual_go` launches the plan even if `auto_launch=false` and outside the 08:00–14:59 window, with the full template copy (welcome message, targeting, IG) and reuse of imported `fb_video_id`. The ad is created ACTIVE (not paused). The old client path `adsTestLaunch` (PAUSED, no welcome message/targeting, cannot launch imported videos) remains only for auto switch OFF.
+  - Velaris (`velaris_lung`) is REVIEW-FIRST: `auto_launch=false`, so plans stay "proposed" until Tar presses 🚀. `current_promo` = 179,000 ກີບ ສົ່ງຟຣີ ເກັບເງິນປາຍທາງ. Knowledge rows `pk_velaris_01` and pain points `pp_velaris_01..05` come from the on-screen text of Tar's 2 Thai-language videos (speech was NOT transcribed; only 3 frames stored per uploaded video). Tar chose not to filter Facebook-rule content in his own videos; review is done together with him before release.
+  - Open: speech-to-text for videos needs a key (OpenAI Whisper / Google STT) added by Tar as a Supabase secret; denser frames would also help.
+  - NEVER TESTED LIVE: video upload through fb-upload-video from the pipeline, and the manual_go launch. Suggest a first launch with a short check in the campaign manager.
   - Not built: old-vs-new comparison and pause suggestions for bad old ads.
   - Waiting for Tar: total daily test-budget ceiling; whether old bad ads are auto-paused or he clicks.
   - Tar's template has a disease-claim line and a Thai quick reply (reported, not edited).

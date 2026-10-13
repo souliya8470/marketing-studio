@@ -4,7 +4,7 @@ The deployed copy in Supabase is the source of truth. Files here are snapshots k
 
 | Function | Snapshot here | Deployed version |
 |---|---|---|
-| ads-test-auto | `ads-test-auto/index.ts` | v8 (promo price overrides list price in caption data) |
+| ads-test-auto | `ads-test-auto/index.ts` | v9 (manual_go: owner-pressed launch bypasses auto_launch/window; v8 promo price overrides list price) |
 | launch-ad | not exported yet | v30 |
 | ads-template-inspect | not exported yet | v1 |
 | ads-research | not exported yet | v1 |

@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.38"; // v8.38 NEW (Tar 2026-10-13, "ບາງສິນຄ້າ/ບາງຊ່ວງເວລາ ເຮົາໃຊ້ຄອນເທັນເກົ່າບໍ່ໄດ້ ... ໂປຣໃນວິດີໂອເດືອນແລ້ວບໍ່ກົງກັບເດືອນນີ້" = stale promo problem; then "ເລີ່ມ") -- 🧪 ທົດສອບ tab: PROMO RULES + REUSE OF OLD WINNERS (edge function ads-test-auto v6/v7 + new columns). (1) New card "🎁 ໂປຣປັດຈຸບັນ" per product: ad_test_products.current_promo (+ promo_until, promo_updated_at) is the ONLY promo the AI may mention in a caption; empty/expired = captions get no gift/discount wording (server checks it and retries). (2) New button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ" calls ads-test-auto {action:"import"}: best old ads of the product (cost per message, same ad account as the template) are copied into product_assets (source "facebook", fb_video_id/fb_ad_id/thumb_url, promo_guess by Claude from the thumbnail). Imported files are NOT used until the owner confirms the promo tag in the new list "ແອັດເກົ່າລໍຢືນຢັນໂປຣ": ✅ no promo / 🎁 has the current promo / ✖ has an old promo (retired). A file tagged with a promo is used only while its promo_text equals the current promo; when the promo changes the file is skipped (and an approved plan is rejected at launch, file back to "new"). (3) adsTestThumb shows imported videos as their thumbnail picture (the stored public_url is an image, not a video file); the "waiting" list no longer includes unconfirmed imports; blocked files show the reason; plan cards show which promo the caption was allowed to use (ai.promo_used); the drop zone says to shoot promo-free videos. Uploaded files are assumed promo-free unless tagged.
+const APP_VERSION = "8.39"; // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິທີໃຊ້ງານເປັນແບບໃດ") -- 🧪 tab: the 🚀 "ຍິງທົດສອບ" button on a proposed plan now goes through the SERVER path (ads-test-auto v9 manual_go) when the auto switch is ON. The old client path (adsTestLaunch, v8.31) did not copy the template welcome message / full targeting / IG and could not launch imported old Facebook videos; the server path copies the whole template via launch-ad and reuses fb_video_id. Click = plan.ai.manual_go=true + status "approved" + ads-test-auto tick {force_launch:true, product_keys:[key]}; the server launches it even if the product has auto_launch=false (review-first products such as Velaris) and outside the 08:00-14:59 window. The ad is created ACTIVE (starts within ~3 min), unlike the legacy path which created PAUSED. With the auto switch OFF the legacy PAUSED path is kept. planNote shows "🚀 ເຈົ້າກົດຍິງແລ້ວ" for manual_go plans.
+// (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13, "ບາງສິນຄ້າ/ບາງຊ່ວງເວລາ ເຮົາໃຊ້ຄອນເທັນເກົ່າບໍ່ໄດ້ ... ໂປຣໃນວິດີໂອເດືອນແລ້ວບໍ່ກົງກັບເດືອນນີ້" = stale promo problem; then "ເລີ່ມ") -- 🧪 ທົດສອບ tab: PROMO RULES + REUSE OF OLD WINNERS (edge function ads-test-auto v6/v7 + new columns). (1) New card "🎁 ໂປຣປັດຈຸບັນ" per product: ad_test_products.current_promo (+ promo_until, promo_updated_at) is the ONLY promo the AI may mention in a caption; empty/expired = captions get no gift/discount wording (server checks it and retries). (2) New button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ" calls ads-test-auto {action:"import"}: best old ads of the product (cost per message, same ad account as the template) are copied into product_assets (source "facebook", fb_video_id/fb_ad_id/thumb_url, promo_guess by Claude from the thumbnail). Imported files are NOT used until the owner confirms the promo tag in the new list "ແອັດເກົ່າລໍຢືນຢັນໂປຣ": ✅ no promo / 🎁 has the current promo / ✖ has an old promo (retired). A file tagged with a promo is used only while its promo_text equals the current promo; when the promo changes the file is skipped (and an approved plan is rejected at launch, file back to "new"). (3) adsTestThumb shows imported videos as their thumbnail picture (the stored public_url is an image, not a video file); the "waiting" list no longer includes unconfirmed imports; blocked files show the reason; plan cards show which promo the caption was allowed to use (ai.promo_used); the drop zone says to shoot promo-free videos. Uploaded files are assumed promo-free unless tagged.
 // (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13, "POS ຂາຍຕັດຕາມ LOT ແລະຄິດຕົ້ນທຶນຕາມ LOT") -- v8.37: confirmOnlineOrder (online order / Live CF -> real POS bill) now takes cost_at_sale and total_cost from the POS FIFO function pos_fifo_cost (weighted cost of the lots that will be consumed) instead of the single pos_products.avg_cost; falls back to avg_cost if the RPC fails. Stock is still decremented through adjust_product_stock, which now consumes the oldest lots first inside the database. No other behaviour changed.
 // v8.36 NEW (Tar 2026-10-13, "ຂໍ້ມູນພວກນີ້ຄວນໃຫ້ AI ຄົ້ນຫາເອງ ... ໃຊ້ເຄຣດິດ API 100 ໂດລາກ່ອນ") -- the sales playbook now starts with WEB RESEARCH done by Claude. New edge function ads-research (v1): Claude web_search server tool (max 6 searches, Thai pages first) returns 12 facts per product (ingredients, vegetable count, collagen/vitamin/ginseng, creamer/milk/sweetener, Thai FDA no., manufacturer, certificates and validity, pack/usage, cautions, claims sellers make, customer questions, Thai price range), each with a status (confirmed / single_source / conflicting / not_found) and only source links that the search really returned; saved in the new table product_research. One run is about 70 s and ~130k tokens. ads-playbook v5 reads product_research: only CONFIRMED facts, only in soft wording, the shop own data wins for price/pack/promos, and it no longer asks the owner what research already settled. UI: playbook card has a new primary button "🔎 ຄົ້ນເວັບ + ຂຽນຄູ່ມືໃໝ່" (research, then write) and a collapsible section "🔎 ຂໍ້ມູນທີ່ AI ຄົ້ນຈາກເວັບ" listing every fact with its status badge and source links; the old button stays as "ຂຽນໃໝ່" (shop data + saved research only).
 // (previous text of this slot, kept) // v8.35 NEW (Tar 2026-10-13, "ຂ້ອຍບໍ່ມີຄວາມຮູ້ເລື່ອງວິເຄາະວິດີໂອ/ແຄັບຊັນ/ຄຳເວົ້າ ... ໃຫ້ AI ຊ່ວຍວ່າຄວນເວົ້າແນວໃດໃຫ້ຄົນສົນໃຈຢາກຊື້") -- per-product SALES PLAYBOOK ("📖 ຄູ່ມືການເວົ້າ"). Edge function ads-playbook (v4; generate = 4 parallel Claude parts: strategy / hooks+video ideas / sample captions+chat flow / objection replies; get) writes a DRAFT into the new table product_playbooks (product_key pk, status draft|approved, content jsonb, generated_at, approved_at). The 🧪 tab shows a collapsible card above the template card: status badge, buttons generate / regenerate / approve ("✅ ຍອມຮັບ ແລະ ໃຫ້ AI ໃຊ້") / un-approve, a prominent ⚠️ block with the questions Tar must answer (confirm_questions_lo + conflicts_lo), and sections big idea, offer, audiences+pains, 10 hooks (copy, ✕ remove -> saved), caption formula + 3 sample captions, video ideas, chat flow, objection replies, follow-up, things to avoid; every text has a copy button so admins can use the chat replies at once; texts containing GMP/HACCP/free-shipping/certificate words get a "⚠️ ຍັງບໍ່ຢືນຢັນ" tag. ads-test-auto v5 injects ONLY an APPROVED playbook into the caption writer (follow the big idea, adapt a hook to what the file shows, use the offer exactly, never use avoid / unconfirmed items); without an approved playbook behaviour is unchanged.
@@ -1580,7 +1581,9 @@ const APP_VERSION = "8.38"; // v8.38 NEW (Tar 2026-10-13, "ບາງສິນຄ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.37"; // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.38"; // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.37→8.38 now that 8.39 is current).
+// (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.36→8.37 now that 8.38 is current).
 // (previous text of this slot, kept) // v8.36 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.35→8.36 now that 8.37 is current).
@@ -1636,7 +1639,9 @@ const APP_VERSION_PREV = "8.37"; // v8.37 NEW (Tar 2026-10-13) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.36"; // v8.36 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.37"; // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.36→8.37 now that 8.38 is previous).
+// (previous text of this slot, kept) // v8.36 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.35→8.36 now that 8.37 is previous).
 // (previous text of this slot, kept) // v8.35 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.34→8.35 now that 8.36 is previous).
@@ -22576,8 +22581,37 @@ async function adsTestFbUploadVideo(file, acct, title, onStep){
   }
   throw new Error("ລໍຖ້າການປະມວນຜົນນານເກີນໄປ (5 ນາທີ) — ວິດີໂອອາດຍາວ ຫຼື ໃຫຍ່ເກີນໄປ");
 }
+// v8.39: the 🚀 button -> server path. The server copies the full template (welcome message, targeting, IG)
+// and can reuse imported Facebook videos. manual_go lets it launch even when auto_launch=false / outside the window.
+async function adsTestLaunchViaServer(planId){
+  if(STATE.adsTestTicking || STATE.adsTestBusy) return;
+  const plan = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
+  if(!plan) return;
+  const preview = String(plan.caption||"");
+  const ok = await customConfirm(
+    `ຢືນຢັນຍິງແອັດ?\n\nສິນຄ້າ: ${adsTestProductLabel(plan.product_key)}\nງົບ: ${plan.daily_budget}/ວັນ\nຂໍ້ຄວາມ: "${preview.slice(0,80)}${preview.length>80?"...":""}"\n\nລະບົບຈະກ໊ອບປີ້ແອັດແມ່ແບບທັງໝົດ (ຂໍ້ຄວາມຕ້ອນຮັບ, ກຸ່ມເປົ້າໝາຍ, IG) ແລ້ວແອັດຈະເລີ່ມແລ່ນພາຍໃນ ~3 ນາທີ (ຢຸດໄດ້ທີ່ ຈັດການແຄມເປນ)`,
+    { okLabel:"🚀 ຍິງເລີຍ", danger:false }
+  );
+  if(!ok) return;
+  STATE.adsTestTicking = true; render();
+  try{
+    const ai = Object.assign({}, plan.ai||{}, { manual_go:true, manual_go_at:new Date().toISOString() });
+    const { error: upErr } = await sb.from("ad_test_plans").update({ status:"approved", attempts:0, fail_reason:null, last_checked_at:null, ai }).eq("id", planId);
+    if(upErr) throw upErr;
+    const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[plan.product_key] } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
+    if(data && data.busy) showToast("ລະບົບກຳລັງເຮັດວຽກຢູ່ — ກົດຍິງໄວ້ແລ້ວ ລະບົບຈະຍິງໃຫ້ໃນຮອບຕໍ່ໄປ");
+    else if(data && data.launched && data.launched.length) showToast("✅ ຍິງແອັດແລ້ວ — ເລີ່ມແລ່ນພາຍໃນ ~3 ນາທີ");
+    else if(data && data.warnings && data.warnings.length) showErrorToast("ຍິງບໍ່ສຳເລັດ: "+data.warnings[0]);
+    else showToast("ກຳລັງກຽມ (ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ) — ລະບົບຈະຍິງໃຫ້ເອງເມື່ອພ້ອມ");
+  }catch(e){ showErrorToast("ຍິງບໍ່ສຳເລັດ: "+(e.message||e)); }
+  STATE.adsTestTicking = false;
+  await loadAdsCoachData();
+}
 async function adsTestLaunch(planId){
   if(STATE.adsTestBusy) return;
+  if(Number((STATE.adsCoachSettings||{}).auto_test_enabled)===1) return adsTestLaunchViaServer(planId); // v8.39
   const plan = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
   const asset = plan && (STATE.adsTestAssets||[]).find(a=>a.id===plan.asset_id);
   const cfg = plan && (STATE.adsTestProducts||[]).find(p=>p.product_key===plan.product_key);
@@ -22821,6 +22855,7 @@ function renderAdsTestTab(){
       return `<div class="tst-note">⏳ ${t}</div>${retry}`;
     }
     const inWin = laosH>=Number(sel.launch_from_hour??8) && laosH<=Number(sel.launch_to_hour??14);
+    if(p.ai && p.ai.manual_go) return `<div class="tst-note">🚀 ເຈົ້າກົດຍິງແລ້ວ — ລະບົບກຳລັງສ້າງແອັດ (ພາຍໃນ ~10 ນາທີ)</div>${retry}`;
     return `<div class="tst-note">${inWin ? "🤖 ຈະຍິງໃນຮອບຕໍ່ໄປ (ທຸກ 10 ນາທີ)" : "🕗 ຈະຍິງເອງ "+win(sel)+" (ເວລາລາວ)"}</div>${retry}`;
   };
 
