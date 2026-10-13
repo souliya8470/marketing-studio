@@ -6,14 +6,14 @@ Question: how do we connect a Facebook (Meta Ads) MCP, what would it add beyond 
 
 ## Short answer
 
-1. **A Meta Ads MCP exists and is worth trying, as a supervised tool for Tar and Claude chats, not as part of the automated pipeline.** Official server: `https://mcp.facebook.com/ads` (Meta, open beta, enabled per ad account, most accounts not yet enabled). Fallback if the account is not enabled: Pipeboard's `meta-ads-mcp`, preferably self-hosted. See `01-options-and-setup.md`.
-2. **It does not replace anything in the pipeline.** The official tool list (third-party listing, to confirm with `tools/list`) has no media upload, no delete, no raw ad-level insights query and none of our template features. What it adds is Meta-side analysis: benchmarks, anomaly signal, opportunity score, pixel / Conversions API quality. See `02-graph-usage-and-gaps.md`.
+1. **A Meta Ads MCP exists and is worth trying, as a supervised tool for Tar and Claude chats, not as part of the automated pipeline.** Official server: `https://mcp.facebook.com/ads` (Meta, open beta, enabled per ad account by Meta). Fallback if the account is not enabled: Pipeboard's `meta-ads-mcp`, preferably self-hosted. See `01-options-and-setup.md`.
+2. **Tested and working (2026-10-13).** It connects from a Claude custom connector with no Meta app; 36 of 39 visible ad accounts are enabled, 3 are not, and reads worked. The live server has about 90 tools: ad-level metrics with breakdowns, creative and media upload, draft-mode create and publish, audiences, pixel / Conversions API, A/B and lift tests, plus Meta's benchmarks and opportunity score. That is much broader than third-party articles said. It is still bound to a person's login and gated per account, so the unattended pipeline stays on direct Graph calls for now. See `01-options-and-setup.md` and `02-graph-usage-and-gaps.md`.
 3. **Two dated problems in the existing Graph code.** On **2026-10-27** root `GET /?ids=` is removed for all API versions, and `sync-ad-creative-insights` uses it. On **2027-01-21** `v21.0`, which every function pins, is removed. See `04-api-deadlines.md`.
 4. **Token and access hygiene must come before any new write path.** Rules in `03-token-security.md`; project-specific findings were given to Tar privately because this repo is public.
 
 ## Decisions needed from Tar
 
-- Run the 15-minute read-only test in `01-options-and-setup.md` on one ad account and report enabled / not enabled.
+- Check in Business Settings (Integrations) which permission level the Claude connector was granted, and revoke write if it is not needed. Set an account spending limit in Meta before any write is allowed.
 - Confirm what kind of token `META_ACCESS_TOKEN` is (System User token or a user token) and set an account spending limit in Business Settings.
 - Approve a fix for `sync-ad-creative-insights` before 2026-10-27 (pipeline chat or any chat that is not editing `index.html`; no `index.html` change needed).
 - Decide when to act on the private security findings.
@@ -29,8 +29,8 @@ Question: how do we connect a Facebook (Meta Ads) MCP, what would it add beyond 
 
 ## Not done / limits of this research
 
-- The official MCP was not connected or tested (needs the owner's Facebook login). Whether Tar's ad accounts are enabled is unknown.
-- Meta's own page does not list the tools; the list comes from third-party articles.
+- Only read calls were tested, on 3 accounts. No write tool was called. The account that has live ads in the daily screenshots is not enabled for the MCP: use the database mirror or the browser for it.
+- Meta's own page does not list the tools; the list in `01` comes from the live connector. The Bearer-token path for edge functions is untested.
 - 11 of about 110 deployed functions were read.
 - Secret values and token contents were never read; only table and policy metadata and a row count.
 
