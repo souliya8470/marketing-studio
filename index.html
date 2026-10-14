@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັດ" = show each campaign's breakeven ROAS next to its real ROAS) -- ໜ້າ "ຄ່າໂຄສະນາລວມ": (1) NEW column "ROAS ຄຸ້ມທຶນ" (key beRoas, also in the "roas" preset) = breakeven ROAS of the product linked with the 🔗 button, computed by the same computeBreakevenRoas as the 💰 ຄິດໄລ່ກຳໄລ page; an ad set without its own link inherits its campaign's link (shown with ↑); ads show —; sortable on the campaign level. (2) The real ROAS cell is coloured against it: red = below breakeven, amber = above breakeven but inside the 15% safety margin (ADSPEND_BREAKEVEN_SAFETY, same default as ad_coach_settings.safety_margin), green = above; no colour when no product is linked or nothing was spent. (3) BUG FIX: buildAdSpendCampaignRows / buildAdSpendAdSetRows never copied linkedProductId into the merged rows (same kind of miss as v4.59 nickname), so the 🔗 button never showed the chosen product and nothing could be looked up. (4) The 🔗 product list now shows "name · price · breakeven ROAS" so same-named rows can be told apart, and is wider. No database change (ad_campaigns.linked_product_id / ad_sets.linked_product_id already existed; 0 of 723 campaigns were linked on 2026-10-14).
+const APP_VERSION = "8.42"; // v8.42 NEW (Tar 2026-10-14 23:11, "ເຮັດ" = make accounts that only a personal Facebook login can see — Souliya Rich1/Rich2 etc. — addable like Pancake does) -- ໜ້າ "ຈັດການບັນຊີ": (1) NEW card "🔵 Facebook ສ່ວນຕົວ" with status/expiry and a "ເຊື່ອມ Facebook" / "Login ໃໝ່" button (reuses the v5.34/v5.36 Facebook Login for Business flow + fb_user_tokens; after login the callback now returns to #adSpend/accounts and searches automatically). (2) "🔍 ຄົ້ນຫາບັນຊີຈາກ Facebook" now merges the System User list with every extra account the personal login can see (tagged 🔵, shows currency when not THB). (3) Accounts added that way are saved with ad_accounts.token_source="personal" (new column, default "system") and shown with a 🔵 tag; sync-ad-spend v31 and update-ad-entity v24 pick the personal token for them. (4) Adding a non-THB account asks for confirmation because the app still sums spend without currency conversion. Automatic campaign-control rules (run-campaign-control etc.) still use only the System User token.
+// (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັດ" = show each campaign's breakeven ROAS next to its real ROAS) -- ໜ້າ "ຄ່າໂຄສະນາລວມ": (1) NEW column "ROAS ຄຸ້ມທຶນ" (key beRoas, also in the "roas" preset) = breakeven ROAS of the product linked with the 🔗 button, computed by the same computeBreakevenRoas as the 💰 ຄິດໄລ່ກຳໄລ page; an ad set without its own link inherits its campaign's link (shown with ↑); ads show —; sortable on the campaign level. (2) The real ROAS cell is coloured against it: red = below breakeven, amber = above breakeven but inside the 15% safety margin (ADSPEND_BREAKEVEN_SAFETY, same default as ad_coach_settings.safety_margin), green = above; no colour when no product is linked or nothing was spent. (3) BUG FIX: buildAdSpendCampaignRows / buildAdSpendAdSetRows never copied linkedProductId into the merged rows (same kind of miss as v4.59 nickname), so the 🔗 button never showed the chosen product and nothing could be looked up. (4) The 🔗 product list now shows "name · price · breakeven ROAS" so same-named rows can be told apart, and is wider. No database change (ad_campaigns.linked_product_id / ad_sets.linked_product_id already existed; 0 of 723 campaigns were linked on 2026-10-14).
 // (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13 22:37, screen recording: after "ແກ້ກ່ອນຍິງ" the greeting-template dropdown showed "-- ພິມໃໝ່ --" and the greeting was empty) -- 🧪 tab: adsTestOpenInLaunch now fills the 💬 greeting section of the launch form from the product's TEMPLATE campaign. It calls ads-test-auto {action:"template"} (read-only), takes the template ad's welcome texts and selects the saved ad_message_templates row whose greeting_text is one of them (also copies its image + quick replies); if no saved row matches, it fills only greeting text + quick replies from the texts and says so in the toast. Before this the form only copied audience/page/goal, so an ad launched from that form had NO welcome message (the one-click server path 🚀 was already copying the template welcome message correctly).
 // (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິທີໃຊ້ງານເປັນແບບໃດ") -- 🧪 tab: the 🚀 "ຍິງທົດສອບ" button on a proposed plan now goes through the SERVER path (ads-test-auto v9 manual_go) when the auto switch is ON. The old client path (adsTestLaunch, v8.31) did not copy the template welcome message / full targeting / IG and could not launch imported old Facebook videos; the server path copies the whole template via launch-ad and reuses fb_video_id. Click = plan.ai.manual_go=true + status "approved" + ads-test-auto tick {force_launch:true, product_keys:[key]}; the server launches it even if the product has auto_launch=false (review-first products such as Velaris) and outside the 08:00-14:59 window. The ad is created ACTIVE (starts within ~3 min), unlike the legacy path which created PAUSED. With the auto switch OFF the legacy PAUSED path is kept. planNote shows "🚀 ເຈົ້າກົດຍິງແລ້ວ" for manual_go plans.
 // (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13, "ບາງສິນຄ້າ/ບາງຊ່ວງເວລາ ເຮົາໃຊ້ຄອນເທັນເກົ່າບໍ່ໄດ້ ... ໂປຣໃນວິດີໂອເດືອນແລ້ວບໍ່ກົງກັບເດືອນນີ້" = stale promo problem; then "ເລີ່ມ") -- 🧪 ທົດສອບ tab: PROMO RULES + REUSE OF OLD WINNERS (edge function ads-test-auto v6/v7 + new columns). (1) New card "🎁 ໂປຣປັດຈຸບັນ" per product: ad_test_products.current_promo (+ promo_until, promo_updated_at) is the ONLY promo the AI may mention in a caption; empty/expired = captions get no gift/discount wording (server checks it and retries). (2) New button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ" calls ads-test-auto {action:"import"}: best old ads of the product (cost per message, same ad account as the template) are copied into product_assets (source "facebook", fb_video_id/fb_ad_id/thumb_url, promo_guess by Claude from the thumbnail). Imported files are NOT used until the owner confirms the promo tag in the new list "ແອັດເກົ່າລໍຢືນຢັນໂປຣ": ✅ no promo / 🎁 has the current promo / ✖ has an old promo (retired). A file tagged with a promo is used only while its promo_text equals the current promo; when the promo changes the file is skipped (and an approved plan is rejected at launch, file back to "new"). (3) adsTestThumb shows imported videos as their thumbnail picture (the stored public_url is an image, not a video file); the "waiting" list no longer includes unconfirmed imports; blocked files show the reason; plan cards show which promo the caption was allowed to use (ai.promo_used); the drop zone says to shoot promo-free videos. Uploaded files are assumed promo-free unless tagged.
@@ -1583,7 +1584,9 @@ const APP_VERSION = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັ�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.40"; // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.40→8.41 now that 8.42 is current).
+// (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.39→8.40 now that 8.41 is current).
 // (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.38→8.39 now that 8.40 is current).
@@ -1645,7 +1648,9 @@ const APP_VERSION_PREV = "8.40"; // v8.40 FIX (Tar 2026-10-13) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.39"; // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.40"; // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.39→8.40 now that 8.41 is previous).
+// (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.38→8.39 now that 8.40 is previous).
 // (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.37→8.38 now that 8.39 is previous).
@@ -3947,7 +3952,7 @@ async function loadAllData(){
     } : {clockInTime:"", clockOutTime:"", weekendClockInTime:"", weekendClockOutTime:"", testingMode:true};
     const ssRow = (securitySettingsRes.data||[])[0];
     d.securitySettings = {autoLogoutMinutes: ssRow && ssRow.auto_logout_minutes!=null ? Number(ssRow.auto_logout_minutes) : 0};
-    d.adAccounts = (adAccountsRes.data||[]).map(r=>({id:r.id, name:r.name||"", businessManager:r.business_manager||"", active: r.active!==false, createdAt:r.created_at||"", createdBy:r.created_by||"", balance:Number(r.balance)||0, currency:r.currency||"", accountStatus: r.account_status ?? null, balanceUpdatedAt: r.balance_updated_at||"", billingThreshold: r.billing_threshold!=null?Number(r.billing_threshold):null}));
+    d.adAccounts = (adAccountsRes.data||[]).map(r=>({id:r.id, name:r.name||"", businessManager:r.business_manager||"", active: r.active!==false, createdAt:r.created_at||"", createdBy:r.created_by||"", tokenSource:r.token_source||"system", balance:Number(r.balance)||0, currency:r.currency||"", accountStatus: r.account_status ?? null, balanceUpdatedAt: r.balance_updated_at||"", billingThreshold: r.billing_threshold!=null?Number(r.billing_threshold):null}));
     d.adCampaigns = (adCampaignsRes.data||[]).map(r=>({id:r.id, adAccountId:r.ad_account_id||"", campaignName:r.campaign_name||"", nickname:r.nickname||"", status:r.status||"", effectiveStatus:r.effective_status||"", dailyBudget: r.daily_budget==null?null:Number(r.daily_budget), lifetimeBudget: r.lifetime_budget==null?null:Number(r.lifetime_budget), pausedBySystem: !!r.paused_by_system, closedForLowRoas: !!r.closed_for_low_roas, startTime: r.start_time||null, linkedProductId: r.linked_product_id||""}));
     d.adSets = (adSetsRes.data||[]).map(r=>({id:r.id, campaignId:r.campaign_id||"", name:r.name||"", nickname:r.nickname||"", status:r.status||"", effectiveStatus:r.effective_status||"", dailyBudget: r.daily_budget==null?null:Number(r.daily_budget), lifetimeBudget: r.lifetime_budget==null?null:Number(r.lifetime_budget), pausedBySystem: !!r.paused_by_system, closedForLowRoas: !!r.closed_for_low_roas, startTime: r.start_time||null, linkedProductId: r.linked_product_id||""}));
     d.ads = (adsRes.data||[]).map(r=>({id:r.id, adSetId:r.ad_set_id||"", name:r.name||"", status:r.status||"", effectiveStatus:r.effective_status||""}));
@@ -4842,7 +4847,7 @@ async function dbInsertCourier(c){ const {error} = await sb.from("couriers").ins
 async function dbDeleteCourier(id, label){ const {data, error} = await sb.from("couriers").delete().eq("id", id).select(); if(error) throw error; logDeletion("couriers", id, label, data&&data[0]); }
 
 /* ---------- Ad spend (Facebook Ads) — accounts Tar tracks; campaigns/spend are synced by the sync-ad-spend Edge Function ---------- */
-async function dbInsertAdAccount(a){ const {error} = await sb.from("ad_accounts").insert({id:a.id, name:a.name, business_manager:a.businessManager||"", active:true, created_by:a.createdBy||""}); if(error) throw error; }
+async function dbInsertAdAccount(a){ const {error} = await sb.from("ad_accounts").insert({id:a.id, name:a.name, business_manager:a.businessManager||"", active:true, created_by:a.createdBy||"", token_source:a.tokenSource||"system"}); if(error) throw error; }
 async function dbDeleteAdAccount(id, label){ const {data, error} = await sb.from("ad_accounts").delete().eq("id", id).select(); if(error) throw error; logDeletion("ad_accounts", id, label, data&&data[0]); }
 async function dbSetAdAccountActive(id, active){ const {error} = await sb.from("ad_accounts").update({active}).eq("id", id); if(error) throw error; }
 
@@ -8187,7 +8192,7 @@ const STATE = {
   adSpendSyncing: false, adSpendSyncMsg: "", adSpendSyncErrors: [], adSpendLastSyncAt: null,
   adSpendShowAddForm: false,
   newAdAccountId: "", newAdAccountName: "", newAdAccountBM: "",
-  fbAccountsLoading: false, fbAccountsList: null, fbAccountsError: "",
+  fbAccountsLoading: false, fbAccountsList: null, fbAccountsError: "", fbPersonalError: "", fbLoginStatusLoaded: false, fbAutoSearchPending: false,
   adSpendExpandedCampaigns: {}, adSpendExpandedAdSets: {},
   adSpendCampaignSelectedForDelete: {}, // v5.53 (Tar 2026-08-10): bulk-delete checkboxes
   adSpendToggleSelected: {}, // v5.78 (Tar 2026-08-11): {entityId: entityType} — Ad Set / Ad level checkboxes for bulk open/close
@@ -9040,7 +9045,37 @@ function attachAdsAnnaEvents(){
 // Function secret in Supabase (never in this file).
 const FB_LOGIN_APP_ID = "1917440505613794"; // "Sykhai Shop" app — same one marketingstudiosync (System User) already has full access to
 const FB_LOGIN_CONFIG_ID = "1974443876572912"; // "Sykhai Ads Login" configuration — a public value, safe to hardcode
-function startFacebookLogin(){
+// v8.42: "🔍 ຄົ້ນຫາບັນຊີຈາກ Facebook" on the accounts page — the System User's list plus, when a personal Facebook
+// login is active, every extra account that login can see (tagged source:"personal").
+async function runFbAccountSearch(){
+  STATE.fbAccountsLoading = true; STATE.fbAccountsError = ""; STATE.fbPersonalError = ""; render();
+  try{
+    const {data, error} = await sb.functions.invoke("list-ad-accounts");
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error || "ຄົ້ນຫາບໍ່ສຳເລັດ");
+    const list = ((data && data.accounts) || []).map(a=>({...a, source:"system"}));
+    const L = STATE.launchAdFbLogin;
+    const personalOk = !!(L && STATE.currentUser && !(L.expiresAt && new Date(L.expiresAt) < new Date()));
+    if(personalOk){
+      try{
+        const {data:pd, error:pe} = await sb.functions.invoke("fb-list-adaccounts-personal", {body:{appUserName: STATE.currentUser.name}});
+        if(pe) throw new Error(await extractFunctionErrorMessage(pe));
+        if(pd && pd.ok===false) throw new Error(pd.error || "ໂຫຼດບັນຊີ Facebook ສ່ວນຕົວບໍ່ສຳເລັດ");
+        (pd.accounts||[]).forEach(p=>{
+          if(!list.some(x=>x.id===p.id)) list.push({id:p.id, name:p.name||"", businessManager:p.businessManager||"", accountStatus:p.accountStatus, currency:p.currency||"", source:"personal"});
+        });
+      }catch(e){ STATE.fbPersonalError = String(e.message||e); }
+    }else if(L){
+      STATE.fbPersonalError = "token ໝົດອາຍຸແລ້ວ — ກົດ Login ໃໝ່";
+    }
+    STATE.fbAccountsList = list;
+  }catch(e){
+    STATE.fbAccountsError = "ຄົ້ນຫາບໍ່ສຳເລັດ: " + (e.message||e);
+    STATE.fbAccountsList = null;
+  }
+  STATE.fbAccountsLoading = false; render();
+}
+function startFacebookLogin(returnHash){
   if(!FB_LOGIN_APP_ID || !FB_LOGIN_CONFIG_ID){
     showErrorToast("ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ Facebook App ID / Config ID ໃນໂຄດ — ຕິດຕໍ່ຜູ້ພັດທະນາ");
     return;
@@ -9048,6 +9083,8 @@ function startFacebookLogin(){
   const redirectUri = location.origin + location.pathname;
   const state = STATE.currentUser ? STATE.currentUser.name : "";
   const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(FB_LOGIN_APP_ID)}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${encodeURIComponent(FB_LOGIN_CONFIG_ID)}&response_type=code&override_default_response_type=true&state=${encodeURIComponent(state)}`;
+  // v8.42: remember which page started the login so the callback can land back there (the event-listener call passes an Event, not a string).
+  try{ if(typeof returnHash==="string" && returnHash) sessionStorage.setItem("fbLoginReturnHash", returnHash); else sessionStorage.removeItem("fbLoginReturnHash"); }catch(_e){}
   location.href = authUrl;
 }
 // Called once at boot (see init()) — if the URL has ?code=... (Facebook just redirected back
@@ -9059,12 +9096,15 @@ async function handleFacebookLoginCallback(){
   const appUserName = params.get("state") || (STATE.currentUser ? STATE.currentUser.name : "");
   const redirectUri = location.origin + location.pathname;
   // Clean the URL immediately so a page refresh doesn't try to re-exchange an already-used code.
-  history.replaceState(null, "", location.pathname + "#launchAd");
+  let returnHash = "#launchAd";
+  try{ const rh = sessionStorage.getItem("fbLoginReturnHash"); if(rh){ returnHash = rh; sessionStorage.removeItem("fbLoginReturnHash"); } }catch(_e){}
+  history.replaceState(null, "", location.pathname + returnHash);
   try{
     const { data, error } = await sb.functions.invoke("fb-oauth-exchange", { body: { code, redirectUri, appUserName } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"Login Facebook ບໍ່ສຳເລັດ");
     showToast(`✅ ເຂົ້າສູ່ລະບົບ Facebook ສຳເລັດ: ${data.fbUserName}`);
+    if(returnHash==="#adSpend/accounts") STATE.fbAutoSearchPending = true;
   }catch(e){
     showErrorToast("Login Facebook ບໍ່ສຳເລັດ: "+e.message);
   }
@@ -24284,7 +24324,7 @@ function renderAdSpendAccountsSubPage(accounts){
           ${accounts.map(a=>`
             <tr>
               <td>${esc(a.id)}</td>
-              <td>${esc(a.name)}</td>
+              <td>${esc(a.name)}${a.tokenSource==="personal" ? ` <span class="small-muted" title="ໃຊ້ token Facebook ສ່ວນຕົວ">🔵 ສ່ວນຕົວ</span>` : ""}</td>
               <td>${esc(a.businessManager)}</td>
               <td>
                 <label style="display:flex; align-items:center; gap:6px; margin:0;">
@@ -24298,7 +24338,24 @@ function renderAdSpendAccountsSubPage(accounts){
           ${accounts.length===0 ? `<tr><td colspan="5" class="small-muted">ຍັງບໍ່ມີບັນຊີໂຄສະນາ — ເພີ່ມລຸ່ມນີ້ໄດ້ເລີຍ</td></tr>` : ""}
         </tbody>
       </table>
+      ${(()=>{
+        const L = STATE.launchAdFbLogin;
+        const exp = L && L.expiresAt ? new Date(L.expiresAt) : null;
+        const expired = !!(exp && exp < new Date());
+        return `<div style="margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--tint-highlight);">
+          <p style="margin:0 0 6px;"><b>🔵 Facebook ສ່ວນຕົວ</b> <span class="small-muted">— ເຫັນທຸກບັນຊີ ແລະ BM ທີ່ບັນຊີ Facebook ນີ້ມີສິດ (ບໍ່ຕ້ອງແບ່ງບັນຊີໃຫ້ System User)</span></p>
+          ${STATE.launchAdFbLoginChecking ? `<p class="small-muted" style="margin:0;">⏳ ກຳລັງກວດສະຖານະ...</p>` : (L ? `
+            <p style="margin:0 0 8px;">${expired ? "⚠️ ໝົດອາຍຸແລ້ວ" : "✅ ເຊື່ອມແລ້ວ"}: <b>${esc(L.fbUserName||"")}</b> ${exp ? `<span class="small-muted">(ໝົດອາຍຸ ${exp.toLocaleDateString("en-GB")})</span>` : ""}</p>
+            <button type="button" class="btn btn-sm ${expired?"":"btn-outline"}" id="btn-accounts-fb-login">🔄 Login ໃໝ່</button>
+          ` : `
+            <p style="margin:0 0 8px;">ຍັງບໍ່ໄດ້ເຊື່ອມ Facebook ສ່ວນຕົວ</p>
+            <button type="button" class="btn btn-sm" id="btn-accounts-fb-login">🔵 ເຊື່ອມ Facebook</button>
+          `)}
+          <p class="small-muted" style="margin:8px 0 0;">ບັນຊີທີ່ເພີ່ມຜ່ານ Facebook ສ່ວນຕົວ ເບິ່ງຂໍ້ມູນ ແລະ ເປີດ/ປິດ/ປ່ຽນງົບດ້ວຍມືໄດ້. ກົດເກນຄວບຄຸມອັດຕະໂນມັດຍັງໃຊ້ກັບສະເພາະບັນຊີ System User. token ອາຍຸປະມານ 60 ວັນ.</p>
+        </div>`;
+      })()}
       ${STATE.fbAccountsError ? `<div class="empty" style="margin-top:12px;">❌ ${esc(STATE.fbAccountsError)}</div>` : ""}
+      ${STATE.fbPersonalError ? `<div class="small-muted" style="margin-top:8px;">⚠️ Facebook ສ່ວນຕົວ: ${esc(STATE.fbPersonalError)}</div>` : ""}
       ${STATE.fbAccountsList ? `
         <div style="margin-top:12px;">
           <p class="small-muted" style="margin-bottom:8px;">ບັນຊີທີ່ token ເຂົ້າເຖິງໄດ້ (ຍັງບໍ່ໄດ້ເພີ່ມ):</p>
@@ -24307,7 +24364,7 @@ function renderAdSpendAccountsSubPage(accounts){
             <tbody>
               ${STATE.fbAccountsList.filter(f=>!accounts.some(a=>a.id===f.id)).map(f=>`
                 <tr>
-                  <td>${esc(f.name)}</td>
+                  <td>${esc(f.name)}${f.source==="personal" ? ` <span class="small-muted" title="ເຫັນຜ່ານ Facebook ສ່ວນຕົວ">🔵</span>` : ""}${f.currency && f.currency!=="THB" ? ` <span class="small-muted">(${esc(f.currency)})</span>` : ""}</td>
                   <td>${esc(f.id)}</td>
                   <td>${esc(f.businessManager)}</td>
                   <td><button type="button" class="btn btn-sm" data-add-fb-account="${esc(f.id)}">+ ເພີ່ມ</button></td>
@@ -25365,29 +25422,28 @@ function attachAdSpendEvents(){
   if(btnAdd) btnAdd.addEventListener("click", ()=>{ STATE.adSpendShowAddForm = true; render(); });
 
   const btnSearchFb = document.getElementById("btn-search-fb-accounts");
-  if(btnSearchFb) btnSearchFb.addEventListener("click", async ()=>{
-    STATE.fbAccountsLoading = true; STATE.fbAccountsError = ""; render();
-    try{
-      const {data, error} = await sb.functions.invoke("list-ad-accounts");
-      if(error) throw new Error(await extractFunctionErrorMessage(error));
-      if(data && data.ok===false) throw new Error(data.error || "ຄົ້ນຫາບໍ່ສຳເລັດ");
-      STATE.fbAccountsList = (data && data.accounts) || [];
-    }catch(e){
-      STATE.fbAccountsError = "ຄົ້ນຫາບໍ່ສຳເລັດ: " + (e.message||e);
-      STATE.fbAccountsList = null;
-    }
-    STATE.fbAccountsLoading = false; render();
-  });
+  if(btnSearchFb) btnSearchFb.addEventListener("click", ()=>runFbAccountSearch());
+  const btnAcctFbLogin = document.getElementById("btn-accounts-fb-login");
+  if(btnAcctFbLogin) btnAcctFbLogin.addEventListener("click", ()=>startFacebookLogin("#adSpend/accounts"));
+  // v8.42: accounts page just opened — load the personal-login status once; right after a Facebook login, also search automatically.
+  if(btnSearchFb){
+    if(STATE.fbAutoSearchPending){ STATE.fbAutoSearchPending = false; STATE.fbLoginStatusLoaded = true; loadLaunchAdFbLoginStatus().then(()=>runFbAccountSearch()); }
+    else if(!STATE.fbLoginStatusLoaded){ STATE.fbLoginStatusLoaded = true; loadLaunchAdFbLoginStatus(); }
+  }
 
   document.querySelectorAll("[data-add-fb-account]").forEach(el=>{
     el.addEventListener("click", async ()=>{
       const id = el.getAttribute("data-add-fb-account");
       const acc = (STATE.fbAccountsList||[]).find(f=>f.id===id);
       if(!acc) return;
+      // v8.42: the app sums spend across accounts without currency conversion — warn before adding a non-THB account.
+      if(acc.currency && acc.currency!=="THB"){
+        if(!(await customConfirm(`ບັນຊີ "${acc.name}" ເປັນສະກຸນ ${acc.currency}. ແອັບຍັງບໍ່ແປງສະກຸນເງິນ ຍອດລວມຄ່າໂຄສະນາຈະປົນກັບບາດ ແລະ ຜິດ. ຍັງຈະເພີ່ມບໍ?`, {okLabel:"ເພີ່ມ"}))) return;
+      }
       try{
-        await dbInsertAdAccount({id: acc.id, name: acc.name, businessManager: acc.businessManager, createdBy: STATE.currentUser?STATE.currentUser.name:""});
+        await dbInsertAdAccount({id: acc.id, name: acc.name, businessManager: acc.businessManager, createdBy: STATE.currentUser?STATE.currentUser.name:"", tokenSource: acc.source==="personal" ? "personal" : "system"});
         STATE.data = await loadAllData();
-        showToast(`ເພີ່ມ "${acc.name}" ແລ້ວ`);
+        showToast(`ເພີ່ມ "${acc.name}" ແລ້ວ${acc.source==="personal" ? " — ກົດ ດຶງຂໍ້ມູນລ່າສຸດ ເພື່ອໂຫຼດຂໍ້ມູນ" : ""}`);
         render();
       }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: " + (e.message||e)); }
     });
