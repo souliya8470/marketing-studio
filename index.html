@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.40"; // v8.40 FIX (Tar 2026-10-13 22:37, screen recording: after "ແກ້ກ່ອນຍິງ" the greeting-template dropdown showed "-- ພິມໃໝ່ --" and the greeting was empty) -- 🧪 tab: adsTestOpenInLaunch now fills the 💬 greeting section of the launch form from the product's TEMPLATE campaign. It calls ads-test-auto {action:"template"} (read-only), takes the template ad's welcome texts and selects the saved ad_message_templates row whose greeting_text is one of them (also copies its image + quick replies); if no saved row matches, it fills only greeting text + quick replies from the texts and says so in the toast. Before this the form only copied audience/page/goal, so an ad launched from that form had NO welcome message (the one-click server path 🚀 was already copying the template welcome message correctly).
+const APP_VERSION = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັດ" = show each campaign's breakeven ROAS next to its real ROAS) -- ໜ້າ "ຄ່າໂຄສະນາລວມ": (1) NEW column "ROAS ຄຸ້ມທຶນ" (key beRoas, also in the "roas" preset) = breakeven ROAS of the product linked with the 🔗 button, computed by the same computeBreakevenRoas as the 💰 ຄິດໄລ່ກຳໄລ page; an ad set without its own link inherits its campaign's link (shown with ↑); ads show —; sortable on the campaign level. (2) The real ROAS cell is coloured against it: red = below breakeven, amber = above breakeven but inside the 15% safety margin (ADSPEND_BREAKEVEN_SAFETY, same default as ad_coach_settings.safety_margin), green = above; no colour when no product is linked or nothing was spent. (3) BUG FIX: buildAdSpendCampaignRows / buildAdSpendAdSetRows never copied linkedProductId into the merged rows (same kind of miss as v4.59 nickname), so the 🔗 button never showed the chosen product and nothing could be looked up. (4) The 🔗 product list now shows "name · price · breakeven ROAS" so same-named rows can be told apart, and is wider. No database change (ad_campaigns.linked_product_id / ad_sets.linked_product_id already existed; 0 of 723 campaigns were linked on 2026-10-14).
+// (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13 22:37, screen recording: after "ແກ້ກ່ອນຍິງ" the greeting-template dropdown showed "-- ພິມໃໝ່ --" and the greeting was empty) -- 🧪 tab: adsTestOpenInLaunch now fills the 💬 greeting section of the launch form from the product's TEMPLATE campaign. It calls ads-test-auto {action:"template"} (read-only), takes the template ad's welcome texts and selects the saved ad_message_templates row whose greeting_text is one of them (also copies its image + quick replies); if no saved row matches, it fills only greeting text + quick replies from the texts and says so in the toast. Before this the form only copied audience/page/goal, so an ad launched from that form had NO welcome message (the one-click server path 🚀 was already copying the template welcome message correctly).
 // (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິທີໃຊ້ງານເປັນແບບໃດ") -- 🧪 tab: the 🚀 "ຍິງທົດສອບ" button on a proposed plan now goes through the SERVER path (ads-test-auto v9 manual_go) when the auto switch is ON. The old client path (adsTestLaunch, v8.31) did not copy the template welcome message / full targeting / IG and could not launch imported old Facebook videos; the server path copies the whole template via launch-ad and reuses fb_video_id. Click = plan.ai.manual_go=true + status "approved" + ads-test-auto tick {force_launch:true, product_keys:[key]}; the server launches it even if the product has auto_launch=false (review-first products such as Velaris) and outside the 08:00-14:59 window. The ad is created ACTIVE (starts within ~3 min), unlike the legacy path which created PAUSED. With the auto switch OFF the legacy PAUSED path is kept. planNote shows "🚀 ເຈົ້າກົດຍິງແລ້ວ" for manual_go plans.
 // (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13, "ບາງສິນຄ້າ/ບາງຊ່ວງເວລາ ເຮົາໃຊ້ຄອນເທັນເກົ່າບໍ່ໄດ້ ... ໂປຣໃນວິດີໂອເດືອນແລ້ວບໍ່ກົງກັບເດືອນນີ້" = stale promo problem; then "ເລີ່ມ") -- 🧪 ທົດສອບ tab: PROMO RULES + REUSE OF OLD WINNERS (edge function ads-test-auto v6/v7 + new columns). (1) New card "🎁 ໂປຣປັດຈຸບັນ" per product: ad_test_products.current_promo (+ promo_until, promo_updated_at) is the ONLY promo the AI may mention in a caption; empty/expired = captions get no gift/discount wording (server checks it and retries). (2) New button "📥 ດຶງແອັດເກົ່າທີ່ຂາຍດີ" calls ads-test-auto {action:"import"}: best old ads of the product (cost per message, same ad account as the template) are copied into product_assets (source "facebook", fb_video_id/fb_ad_id/thumb_url, promo_guess by Claude from the thumbnail). Imported files are NOT used until the owner confirms the promo tag in the new list "ແອັດເກົ່າລໍຢືນຢັນໂປຣ": ✅ no promo / 🎁 has the current promo / ✖ has an old promo (retired). A file tagged with a promo is used only while its promo_text equals the current promo; when the promo changes the file is skipped (and an approved plan is rejected at launch, file back to "new"). (3) adsTestThumb shows imported videos as their thumbnail picture (the stored public_url is an image, not a video file); the "waiting" list no longer includes unconfirmed imports; blocked files show the reason; plan cards show which promo the caption was allowed to use (ai.promo_used); the drop zone says to shoot promo-free videos. Uploaded files are assumed promo-free unless tagged.
 // (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13, "POS ຂາຍຕັດຕາມ LOT ແລະຄິດຕົ້ນທຶນຕາມ LOT") -- v8.37: confirmOnlineOrder (online order / Live CF -> real POS bill) now takes cost_at_sale and total_cost from the POS FIFO function pos_fifo_cost (weighted cost of the lots that will be consumed) instead of the single pos_products.avg_cost; falls back to avg_cost if the RPC fails. Stock is still decremented through adjust_product_stock, which now consumes the oldest lots first inside the database. No other behaviour changed.
@@ -1582,7 +1583,9 @@ const APP_VERSION = "8.40"; // v8.40 FIX (Tar 2026-10-13 22:37, screen recording
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.39"; // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.40"; // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.39→8.40 now that 8.41 is current).
+// (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.38→8.39 now that 8.40 is current).
 // (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.37→8.38 now that 8.39 is current).
@@ -1642,7 +1645,9 @@ const APP_VERSION_PREV = "8.39"; // v8.39 FIX (Tar 2026-10-13) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.38"; // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.39"; // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.38→8.39 now that 8.40 is previous).
+// (previous text of this slot, kept) // v8.38 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.37→8.38 now that 8.39 is previous).
 // (previous text of this slot, kept) // v8.37 NEW (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.36→8.37 now that 8.38 is previous).
@@ -4048,6 +4053,33 @@ function computeProfitAtAcos(p, acosPct){
   const fee = p.price * (p.feePct||0);
   const adCost = p.price * acos;
   return p.price - p.cost - p.hiddenCost - (p.shippingCost||0) - fee - adCost;
+}
+// v8.41: breakeven ROAS of the product linked (🔗) to a campaign / ad set, for the new
+// "ROAS ຄຸ້ມທຶນ" column and the green/amber/red colour of the real ROAS next to it. An ad set with
+// no link of its own inherits its campaign's link (inherited=true). Ads have none (returns null).
+// Uses the same computeBreakevenRoas as the 💰 page, so the numbers always match.
+const ADSPEND_BREAKEVEN_SAFETY = 1.15; // same default as ad_coach_settings.safety_margin
+function adSpendBreakevenFor(row, entityType){
+  if(!row || entityType==="ad") return null;
+  let pid = row.linkedProductId || "";
+  let inherited = false;
+  if(!pid && entityType==="adset"){
+    const camp = (STATE.data.adCampaigns||[]).find(x=>x.id===row.campaignId);
+    if(camp && camp.linkedProductId){ pid = camp.linkedProductId; inherited = true; }
+  }
+  if(!pid) return null;
+  const prod = (STATE.data.productEconomics||[]).find(p=>p.id===pid);
+  if(!prod) return null;
+  return {product:prod, roas:computeBreakevenRoas(prod), inherited};
+}
+// colour of the real ROAS: red = below breakeven (losing money), amber = above breakeven but
+// inside the safety margin, green = comfortably above. "" = cannot judge (no link / no spend).
+function adSpendRoasColor(row, entityType){
+  const b = adSpendBreakevenFor(row, entityType);
+  if(!b || b.roas==null || !(row.spend>0)) return "";
+  if(row.roas < b.roas) return "var(--danger)";
+  if(row.roas < b.roas*ADSPEND_BREAKEVEN_SAFETY) return "#c98a00";
+  return "var(--sage-dark,#3a7d44)";
 }
 function rowToAdmin(r){ return {id:r.id, name:r.name, role:r.role, status:r.status, visibleToAll: !!r.visible_to_all}; }
 function rowToInsight(r){ return {id:r.id, question:r.question, answer:r.answer, productRelated:r.productrelated, date:r.date, adminName:r.adminname||"", imageUrl:r.image_url||"", readByOwner: !!r.read_by_owner}; }
@@ -20328,6 +20360,7 @@ const ADSPEND_CAMPAIGN_COLS = [
   {key:"purchaseValue", label:"ຍອດຂາຍ", width:100},
   {key:"purchases", label:"ຈຳນວນຊື້", width:90},
   {key:"roas", label:"ROAS", width:70},
+  {key:"beRoas", label:"ROAS ຄຸ້ມທຶນ", width:100}, // v8.41
   {key:"costPerPurchase", label:"ຕົ້ນທຶນ/ຊື້", width:100},
   {key:"costPerMessage", label:"ຕົ້ນທຶນ/ທັກ", width:100},
   {key:"leads", label:"Lead", width:70},
@@ -20344,7 +20377,7 @@ function defaultAdSpendCampaignColConfig(){
 // every time. "roas" = the 5 numbers that matter for a scale/pause decision; "full" = every
 // column (same as defaultAdSpendCampaignColConfig). Order below is the display order.
 const ADSPEND_CAMPAIGN_PRESETS = {
-  roas: ["spend","purchaseValue","purchases","roas","costPerPurchase","costPerMessage"],
+  roas: ["spend","purchaseValue","purchases","roas","beRoas","costPerPurchase","costPerMessage"],
   full: ADSPEND_CAMPAIGN_COLS.map(c=>c.key)
 };
 function applyAdSpendCampaignPreset(presetKey){
@@ -20365,6 +20398,7 @@ function adSpendCampaignSortVal(c, key){
   if(key==="controlRule") return (ccRuleNameForEntity(c.id)||"").toLowerCase();
   if(key==="budget") return c.dailyBudget!=null ? c.dailyBudget : (c.lifetimeBudget!=null ? c.lifetimeBudget : -1);
   if(key==="remaining") return adSpendCampaignRemaining(c) ?? -Infinity;
+  if(key==="beRoas"){ const b = adSpendBreakevenFor(c, "campaign"); return b && b.roas!=null ? b.roas : -Infinity; } // v8.41
   return Number(c[key])||0; // spend, purchaseValue, purchases, roas, costPerPurchase, leads, messages, impressions, clicks, ctr
 }
 // "ຍັງເຫຼືອ" = the campaign's own budget (daily or lifetime, whichever it's set to) minus what
@@ -20396,9 +20430,13 @@ function adSpendCampaignCellHtml(c, key, entityType){
       ? (()=>{
           const opts = (STATE.data.productEconomics||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,"lo"));
           return `<span style="display:inline-flex; align-items:center; gap:3px;">
-            <select data-link-product-select="${esc(c.id)}" data-entity-type="${entityType}" style="font-size:11px; padding:1px 3px; margin:0; width:150px;">
+            <select data-link-product-select="${esc(c.id)}" data-entity-type="${entityType}" style="font-size:11px; padding:1px 3px; margin:0; width:260px;">
               <option value="">— ບໍ່ເຊື່ອມ —</option>
-              ${opts.map(p=>`<option value="${esc(p.id)}" ${c.linkedProductId===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}
+              ${opts.map(p=>{
+                // v8.41: show price + breakeven ROAS in the list so same-named rows (e.g. three "2ແຖມ2") can be told apart
+                const be = computeBreakevenRoas(p);
+                return `<option value="${esc(p.id)}" ${c.linkedProductId===p.id?"selected":""}>${esc(p.name)} · ${fmt(p.price)} · ${be==null?"ຂາດທຶນ":be.toFixed(2)+"x"}</option>`;
+              }).join("")}
             </select>
             <button type="button" class="btn btn-sm btn-outline" data-cancel-link-product="1" title="ຍົກເລີກ" style="padding:1px 5px; font-size:11px;">✕</button>
           </span>`;
@@ -20437,7 +20475,20 @@ function adSpendCampaignCellHtml(c, key, entityType){
   if(key==="spend") return `<td>${fmt(c.spend.toFixed(2))}</td>`;
   if(key==="purchaseValue") return `<td style="color:var(--sage-dark,#3a7d44);">${fmt(c.purchaseValue.toFixed(2))}</td>`;
   if(key==="purchases") return `<td>${fmt(c.purchases)}</td>`;
-  if(key==="roas") return `<td>${c.roas.toFixed(2)}x</td>`;
+  if(key==="roas"){
+    // v8.41: coloured against the linked product's breakeven ROAS (red below, amber inside the
+    // 15% safety margin, green above); no colour when no product is linked or nothing was spent.
+    const roasColor = adSpendRoasColor(c, entityType);
+    return `<td ${roasColor?`style="color:${roasColor}; font-weight:600;" title="${roasColor.includes('danger')?'ຕ່ຳກວ່າຈຸດຄຸ້ມທຶນ — ຂາດທຶນ':(roasColor.includes('#c98a00')?'ສູງກວ່າຈຸດຄຸ້ມທຶນ ແຕ່ຍັງບໍ່ເກີນຂອບປອດໄພ 15%':'ສູງກວ່າຈຸດຄຸ້ມທຶນ ພໍສົມຄວນ')}"`:""}>${c.roas.toFixed(2)}x</td>`;
+  }
+  if(key==="beRoas"){
+    // v8.41: breakeven ROAS of the linked product (ad sets inherit the campaign's link, marked ↑).
+    if(entityType==="ad") return `<td class="small-muted">—</td>`;
+    const b = adSpendBreakevenFor(c, entityType);
+    if(!b) return `<td class="small-muted" title="ຍັງບໍ່ໄດ້ເຊື່ອມສິນຄ້າ — ກົດປຸ່ມ 🔗 ໃນຖັນຊື່ຫຼິ້ນ">—</td>`;
+    if(b.roas==null) return `<td style="color:var(--danger);" title="${esc(b.product.name)}: ລາຄາຂາຍບໍ່ພໍຕົ້ນທຶນ">ຂາດທຶນ</td>`;
+    return `<td title="${esc(b.product.name)}${b.inherited?' (ຈາກແຄມເປນ)':''}">${b.roas.toFixed(2)}x${b.inherited?' <span class="small-muted">↑</span>':''}</td>`;
+  }
   if(key==="costPerPurchase") return `<td>${c.purchases>0?fmt(c.costPerPurchase.toFixed(2)):"—"}</td>`;
   if(key==="costPerMessage") return `<td>${c.messages>0?fmt(c.costPerMessage.toFixed(2)):"—"}</td>`;
   if(key==="leads") return `<td>${fmt(c.leads)}</td>`;
@@ -20476,6 +20527,7 @@ function buildAdSpendCampaignRows(){
       hasOwnBudget: !!(camp.dailyBudget!=null || camp.lifetimeBudget!=null),
       startTime: camp.startTime||null,
       createdAt: camp.createdAt||null,
+      linkedProductId: camp.linkedProductId||"", // v8.41: BUG FIX — same kind of miss as the v4.59 nickname: the merged row never carried the linked product, so the 🔗 button never showed the chosen product and no breakeven could be looked up
       ...metrics
     };
   });
@@ -20507,6 +20559,7 @@ function buildAdSpendAdSetRows(){
       hasOwnBudget: !!(adSet.dailyBudget!=null || adSet.lifetimeBudget!=null),
       startTime: adSet.startTime||null,
       bidStrategy: adSet.bidStrategy||"", bidAmount: adSet.bidAmount,
+      linkedProductId: adSet.linkedProductId||"", // v8.41: see buildAdSpendCampaignRows
       ...metrics
     };
   });
