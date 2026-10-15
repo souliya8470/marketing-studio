@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.42"; // v8.42 NEW (Tar 2026-10-14 23:11, "ເຮັດ" = make accounts that only a personal Facebook login can see — Souliya Rich1/Rich2 etc. — addable like Pancake does) -- ໜ້າ "ຈັດການບັນຊີ": (1) NEW card "🔵 Facebook ສ່ວນຕົວ" with status/expiry and a "ເຊື່ອມ Facebook" / "Login ໃໝ່" button (reuses the v5.34/v5.36 Facebook Login for Business flow + fb_user_tokens; after login the callback now returns to #adSpend/accounts and searches automatically). (2) "🔍 ຄົ້ນຫາບັນຊີຈາກ Facebook" now merges the System User list with every extra account the personal login can see (tagged 🔵, shows currency when not THB). (3) Accounts added that way are saved with ad_accounts.token_source="personal" (new column, default "system") and shown with a 🔵 tag; sync-ad-spend v31 and update-ad-entity v24 pick the personal token for them. (4) Adding a non-THB account asks for confirmation because the app still sums spend without currency conversion. Automatic campaign-control rules (run-campaign-control etc.) still use only the System User token.
+const APP_VERSION = "8.43"; // v8.43 NEW (Tar 2026-10-15 08:24, "ປ່ຽນສະກຸນ" = convert USD ad accounts in app totals; the USD account ຄວາມສຸກຂອງເຮົາ USD was just made visible to the System User) -- ad spend/purchase value of accounts whose ad_accounts.currency is USD is now converted to THB when ad_spend_daily is loaded (loadAllData and the profit-page refresh), so every total, per-account/campaign/day table, ROAS and the ຄ່າໂຄສະນາລວມ -> ກີບ profit figure is in one currency. Raw values are kept on each row (_rawSpend/_rawPV) so changing the rate re-computes without a reload. The rate is a manual number (1 USD = ? THB) in ໜ້າ "ຈັດການບັນຊີ", stored per browser in localStorage (adSpendUsdToThb), default 32 until Tar sets it. adSpendTotalForRange treats converted USD rows as THB. "ຍັງເຫຼືອ" (budget - spend) converts a USD campaign budget the same way. The v8.42 non-THB warning on "+ ເພີ່ມ" now says the app converts. Only USD is converted; any other non-THB currency still sums unconverted.
+// (previous text of this slot, kept) // v8.42 NEW (Tar 2026-10-14 23:11, "ເຮັດ" = make accounts that only a personal Facebook login can see — Souliya Rich1/Rich2 etc. — addable like Pancake does) -- ໜ້າ "ຈັດການບັນຊີ": (1) NEW card "🔵 Facebook ສ່ວນຕົວ" with status/expiry and a "ເຊື່ອມ Facebook" / "Login ໃໝ່" button (reuses the v5.34/v5.36 Facebook Login for Business flow + fb_user_tokens; after login the callback now returns to #adSpend/accounts and searches automatically). (2) "🔍 ຄົ້ນຫາບັນຊີຈາກ Facebook" now merges the System User list with every extra account the personal login can see (tagged 🔵, shows currency when not THB). (3) Accounts added that way are saved with ad_accounts.token_source="personal" (new column, default "system") and shown with a 🔵 tag; sync-ad-spend v31 and update-ad-entity v24 pick the personal token for them. (4) Adding a non-THB account asks for confirmation because the app still sums spend without currency conversion. Automatic campaign-control rules (run-campaign-control etc.) still use only the System User token.
 // (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັດ" = show each campaign's breakeven ROAS next to its real ROAS) -- ໜ້າ "ຄ່າໂຄສະນາລວມ": (1) NEW column "ROAS ຄຸ້ມທຶນ" (key beRoas, also in the "roas" preset) = breakeven ROAS of the product linked with the 🔗 button, computed by the same computeBreakevenRoas as the 💰 ຄິດໄລ່ກຳໄລ page; an ad set without its own link inherits its campaign's link (shown with ↑); ads show —; sortable on the campaign level. (2) The real ROAS cell is coloured against it: red = below breakeven, amber = above breakeven but inside the 15% safety margin (ADSPEND_BREAKEVEN_SAFETY, same default as ad_coach_settings.safety_margin), green = above; no colour when no product is linked or nothing was spent. (3) BUG FIX: buildAdSpendCampaignRows / buildAdSpendAdSetRows never copied linkedProductId into the merged rows (same kind of miss as v4.59 nickname), so the 🔗 button never showed the chosen product and nothing could be looked up. (4) The 🔗 product list now shows "name · price · breakeven ROAS" so same-named rows can be told apart, and is wider. No database change (ad_campaigns.linked_product_id / ad_sets.linked_product_id already existed; 0 of 723 campaigns were linked on 2026-10-14).
 // (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13 22:37, screen recording: after "ແກ້ກ່ອນຍິງ" the greeting-template dropdown showed "-- ພິມໃໝ່ --" and the greeting was empty) -- 🧪 tab: adsTestOpenInLaunch now fills the 💬 greeting section of the launch form from the product's TEMPLATE campaign. It calls ads-test-auto {action:"template"} (read-only), takes the template ad's welcome texts and selects the saved ad_message_templates row whose greeting_text is one of them (also copies its image + quick replies); if no saved row matches, it fills only greeting text + quick replies from the texts and says so in the toast. Before this the form only copied audience/page/goal, so an ad launched from that form had NO welcome message (the one-click server path 🚀 was already copying the template welcome message correctly).
 // (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13, Velaris queue: "ວິທີໃຊ້ງານເປັນແບບໃດ") -- 🧪 tab: the 🚀 "ຍິງທົດສອບ" button on a proposed plan now goes through the SERVER path (ads-test-auto v9 manual_go) when the auto switch is ON. The old client path (adsTestLaunch, v8.31) did not copy the template welcome message / full targeting / IG and could not launch imported old Facebook videos; the server path copies the whole template via launch-ad and reuses fb_video_id. Click = plan.ai.manual_go=true + status "approved" + ads-test-auto tick {force_launch:true, product_keys:[key]}; the server launches it even if the product has auto_launch=false (review-first products such as Velaris) and outside the 08:00-14:59 window. The ad is created ACTIVE (starts within ~3 min), unlike the legacy path which created PAUSED. With the auto switch OFF the legacy PAUSED path is kept. planNote shows "🚀 ເຈົ້າກົດຍິງແລ້ວ" for manual_go plans.
@@ -1584,7 +1585,9 @@ const APP_VERSION = "8.42"; // v8.42 NEW (Tar 2026-10-14 23:11, "ເຮັດ" =
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.42"; // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.41→8.42 now that 8.43 is current).
+// (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.40→8.41 now that 8.42 is current).
 // (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.39→8.40 now that 8.41 is current).
@@ -1648,7 +1651,9 @@ const APP_VERSION_PREV = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14) — full note
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.40"; // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.40→8.41 now that 8.42 is previous).
+// (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.39→8.40 now that 8.41 is previous).
 // (previous text of this slot, kept) // v8.39 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.38→8.39 now that 8.40 is previous).
@@ -3957,6 +3962,7 @@ async function loadAllData(){
     d.adSets = (adSetsRes.data||[]).map(r=>({id:r.id, campaignId:r.campaign_id||"", name:r.name||"", nickname:r.nickname||"", status:r.status||"", effectiveStatus:r.effective_status||"", dailyBudget: r.daily_budget==null?null:Number(r.daily_budget), lifetimeBudget: r.lifetime_budget==null?null:Number(r.lifetime_budget), pausedBySystem: !!r.paused_by_system, closedForLowRoas: !!r.closed_for_low_roas, startTime: r.start_time||null, linkedProductId: r.linked_product_id||""}));
     d.ads = (adsRes.data||[]).map(r=>({id:r.id, adSetId:r.ad_set_id||"", name:r.name||"", status:r.status||"", effectiveStatus:r.effective_status||""}));
     d.adSpendDaily = (adSpendDailyRes.data||[]).map(r=>({campaignId:r.campaign_id, adSetId:r.ad_set_id, adId:r.ad_id, date:r.date, spend:Number(r.spend)||0, impressions:Number(r.impressions)||0, clicks:Number(r.clicks)||0, ctr:Number(r.ctr)||0, purchases:Number(r.purchases)||0, purchaseValue:Number(r.purchase_value)||0, leads:Number(r.leads)||0, messages:Number(r.messages)||0}));
+    applyAdSpendFx(d.adSpendDaily, d.adCampaigns, d.adAccounts); // v8.43: USD -> THB
     // v3.78: multi-tag support — group the flat wa_conversation_tags rows by conversation_id
     // into an array, then attach as statusIds on each conversation object. The old single
     // r.status_id column (mapped to statusId) is left alone in mapWaConversationRow for
@@ -17243,6 +17249,35 @@ async function submitReturnReceiptScan(codeArg){
   }
 }
 
+// v8.43: USD ad accounts -> THB. Meta returns spend/purchase value in the account's own currency and
+// the app sums across accounts, so USD rows are converted once, when ad_spend_daily is loaded.
+const AD_FX_DEFAULT_USD_THB = 32;
+function adFxUsdToThb(){
+  if(STATE.adSpendUsdToThb===undefined){
+    let v = 0;
+    try{ v = Number(localStorage.getItem("adSpendUsdToThb")) || 0; }catch(e){}
+    STATE.adSpendUsdToThb = v>0 ? v : AD_FX_DEFAULT_USD_THB;
+  }
+  return Number(STATE.adSpendUsdToThb)>0 ? Number(STATE.adSpendUsdToThb) : AD_FX_DEFAULT_USD_THB;
+}
+function adFxFactorForCurrency(cur){ return String(cur||"").toUpperCase()==="USD" ? adFxUsdToThb() : 1; }
+function adFxFactorForAccountId(accId){
+  const a = (STATE.data.adAccounts||[]).find(x=>x.id===accId);
+  return adFxFactorForCurrency(a && a.currency);
+}
+function applyAdSpendFx(rows, campaigns, accounts){
+  const campById = {}; (campaigns||[]).forEach(c=>{ campById[c.id] = c; });
+  const accById = {}; (accounts||[]).forEach(a=>{ accById[a.id] = a; });
+  (rows||[]).forEach(r=>{
+    if(r._rawSpend===undefined){ r._rawSpend = r.spend; r._rawPV = r.purchaseValue; }
+    const camp = campById[r.campaignId];
+    const acc = camp ? accById[camp.adAccountId] : null;
+    const f = adFxFactorForCurrency(acc && acc.currency);
+    r.spend = r._rawSpend * f;
+    r.purchaseValue = r._rawPV * f;
+  });
+  return rows;
+}
 // Ad spend total for the given date range, converted to ກີບ (LAK). Reuses STATE.data.adSpendDaily
 // (already loaded once at app startup by the main refreshAll()) rather than firing a new Supabase
 // query. IMPORTANT: ad account spend from Meta comes back in whatever currency that ad account is
@@ -17265,7 +17300,7 @@ function adSpendTotalForRange(from, to){
       const camp = campaignById[r.campaignId];
       const acc = camp ? accountById[camp.adAccountId] : null;
       const currency = ((acc && acc.currency) || "").toUpperCase();
-      const spendLak = currency==="THB" ? (r.spend||0) * rate : (r.spend||0);
+      const spendLak = (currency==="THB" || currency==="USD") ? (r.spend||0) * rate : (r.spend||0); // v8.43: USD rows are already converted to THB at load
       return sum + spendLak;
     }, 0);
 }
@@ -17318,6 +17353,7 @@ async function refreshAdSpendDailyForProfitRange(from, to){
     const { data, error } = await fetchAllRows("ad_spend_daily", q=>q.gte("date", from).lte("date", to));
     if(error) throw error;
     const fresh = (data||[]).map(r=>({campaignId:r.campaign_id, adSetId:r.ad_set_id, adId:r.ad_id, date:r.date, spend:Number(r.spend)||0, impressions:Number(r.impressions)||0, clicks:Number(r.clicks)||0, ctr:Number(r.ctr)||0, purchases:Number(r.purchases)||0, purchaseValue:Number(r.purchase_value)||0, leads:Number(r.leads)||0, messages:Number(r.messages)||0}));
+    applyAdSpendFx(fresh, STATE.data.adCampaigns, STATE.data.adAccounts); // v8.43: USD -> THB
     const outsideRange = (STATE.data.adSpendDaily||[]).filter(r=> r.date<from || r.date>to);
     STATE.data.adSpendDaily = [...outsideRange, ...fresh];
   }catch(e){ console.error("refreshAdSpendDailyForProfitRange failed:", e); }
@@ -20445,8 +20481,11 @@ function adSpendCampaignSortVal(c, key){
 // it has spent in the currently-selected date range. null when the campaign has no budget of
 // its own (e.g. budget lives on the ad set instead — CBO vs ABO) so there's nothing to compare.
 function adSpendCampaignRemaining(c){
-  const budget = c.dailyBudget!=null ? c.dailyBudget : (c.lifetimeBudget!=null ? c.lifetimeBudget : null);
+  let budget = c.dailyBudget!=null ? c.dailyBudget : (c.lifetimeBudget!=null ? c.lifetimeBudget : null);
   if(budget==null) return null;
+  // v8.43: c.spend is already in THB; a USD campaign's budget is still USD, so convert it the same way.
+  const camp = (STATE.data.adCampaigns||[]).find(x=>x.id===c.id);
+  if(camp) budget = budget * adFxFactorForAccountId(camp.adAccountId);
   return budget - (c.spend||0);
 }
 // v4.100: which campaign-control rule (if any) is currently watching this entity — shown as the
@@ -24338,6 +24377,12 @@ function renderAdSpendAccountsSubPage(accounts){
           ${accounts.length===0 ? `<tr><td colspan="5" class="small-muted">ຍັງບໍ່ມີບັນຊີໂຄສະນາ — ເພີ່ມລຸ່ມນີ້ໄດ້ເລີຍ</td></tr>` : ""}
         </tbody>
       </table>
+      <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <label for="adspend-usd-rate" style="margin:0;">💱 ອັດຕາແລກປ່ຽນ 1 USD = </label>
+        <input type="number" id="adspend-usd-rate" value="${adFxUsdToThb()}" step="0.01" min="1" style="width:100px; margin:0;"/>
+        <span>ບາດ</span>
+        <span class="small-muted">ໃຊ້ແປງຄ່າໂຄສະນາຂອງບັນຊີ USD ເປັນບາດ ໃນທຸກໜ້າລວມ. ຕັ້ງໄວ້ໃນເຄື່ອງນີ້.</span>
+      </div>
       ${(()=>{
         const L = STATE.launchAdFbLogin;
         const exp = L && L.expiresAt ? new Date(L.expiresAt) : null;
@@ -25431,14 +25476,25 @@ function attachAdSpendEvents(){
     else if(!STATE.fbLoginStatusLoaded){ STATE.fbLoginStatusLoaded = true; loadLaunchAdFbLoginStatus(); }
   }
 
+  const usdRateEl = document.getElementById("adspend-usd-rate");
+  if(usdRateEl) usdRateEl.addEventListener("change", ()=>{
+    const v = Number(usdRateEl.value);
+    if(!(v>0)){ showErrorToast("ອັດຕາຕ້ອງຫຼາຍກວ່າ 0"); usdRateEl.value = adFxUsdToThb(); return; }
+    STATE.adSpendUsdToThb = v;
+    try{ localStorage.setItem("adSpendUsdToThb", String(v)); }catch(e){}
+    applyAdSpendFx(STATE.data.adSpendDaily, STATE.data.adCampaigns, STATE.data.adAccounts);
+    showToast("ບັນທຶກອັດຕາ 1 USD = " + v + " ບາດ ແລ້ວ");
+    render();
+  });
+
   document.querySelectorAll("[data-add-fb-account]").forEach(el=>{
     el.addEventListener("click", async ()=>{
       const id = el.getAttribute("data-add-fb-account");
       const acc = (STATE.fbAccountsList||[]).find(f=>f.id===id);
       if(!acc) return;
-      // v8.42: the app sums spend across accounts without currency conversion — warn before adding a non-THB account.
+      // v8.42: warn before adding a non-THB account. v8.43: USD is converted to THB (rate set on this page); other currencies are not.
       if(acc.currency && acc.currency!=="THB"){
-        if(!(await customConfirm(`ບັນຊີ "${acc.name}" ເປັນສະກຸນ ${acc.currency}. ແອັບຍັງບໍ່ແປງສະກຸນເງິນ ຍອດລວມຄ່າໂຄສະນາຈະປົນກັບບາດ ແລະ ຜິດ. ຍັງຈະເພີ່ມບໍ?`, {okLabel:"ເພີ່ມ"}))) return;
+        if(!(await customConfirm(`ບັນຊີ "${acc.name}" ເປັນສະກຸນ ${acc.currency}. ${acc.currency==="USD" ? `ແອັບຈະແປງເປັນບາດໃຫ້ ຕາມອັດຕາ 1 USD = ${adFxUsdToThb()} ບາດ (ປ່ຽນອັດຕາໄດ້ຢູ່ລຸ່ມຕາຕະລາງບັນຊີ). ຍັງຈະເພີ່ມບໍ?` : `ແອັບຍັງບໍ່ແປງສະກຸນນີ້ ຍອດລວມຄ່າໂຄສະນາຈະປົນກັບບາດ ແລະ ຜິດ. ຍັງຈະເພີ່ມບໍ?`}`, {okLabel:"ເພີ່ມ"}))) return;
       }
       try{
         await dbInsertAdAccount({id: acc.id, name: acc.name, businessManager: acc.businessManager, createdBy: STATE.currentUser?STATE.currentUser.name:"", tokenSource: acc.source==="personal" ? "personal" : "system"});
