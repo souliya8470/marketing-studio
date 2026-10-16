@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.43"; // v8.43 NEW (Tar 2026-10-15 08:24, "ປ່ຽນສະກຸນ" = convert USD ad accounts in app totals; the USD account ຄວາມສຸກຂອງເຮົາ USD was just made visible to the System User) -- ad spend/purchase value of accounts whose ad_accounts.currency is USD is now converted to THB when ad_spend_daily is loaded (loadAllData and the profit-page refresh), so every total, per-account/campaign/day table, ROAS and the ຄ່າໂຄສະນາລວມ -> ກີບ profit figure is in one currency. Raw values are kept on each row (_rawSpend/_rawPV) so changing the rate re-computes without a reload. The rate is a manual number (1 USD = ? THB) in ໜ້າ "ຈັດການບັນຊີ", stored per browser in localStorage (adSpendUsdToThb), default 32 until Tar sets it. adSpendTotalForRange treats converted USD rows as THB. "ຍັງເຫຼືອ" (budget - spend) converts a USD campaign budget the same way. The v8.42 non-THB warning on "+ ເພີ່ມ" now says the app converts. Only USD is converted; any other non-THB currency still sums unconverted.
+const APP_VERSION = "8.44"; // v8.44 NEW (Tar 2026-10-16, staff report: the print count on bills sometimes goes up before anyone pressed print; "keep a detailed print history with time and who pressed print so we can tell a system fault from a human mistake") -- every click of the 🖨️ ພິມ button now also writes one row per label to the new table label_print_log (print_click: who = logged-in user, when, batch id + size, count before/after, how long the browser print dialog stayed open in ms, page, app version, browser/device, per-tab session id), written BEFORE the print dialog opens and never blocking printing. A DB trigger on shipping_labels additionally logs EVERY change of print_count (db_change: old/new, DB role, request Origin, user agent), so a count that rises with no matching print_click row proves it was written by something other than the print button. New: on the ປະຫວັດ page the print-count pill is now a button that opens a popup "🖨️ ປະຫວັດການພິມ" listing both kinds of rows. The counting logic itself is UNCHANGED in this version (still +1 per print-button click after window.print() returns). Needs label_print_log.sql run once in Supabase; until then the logging calls just fail quietly in the console.
+// (previous text of this slot, kept) // v8.43 NEW (Tar 2026-10-15 08:24, "ປ່ຽນສະກຸນ" = convert USD ad accounts in app totals; the USD account ຄວາມສຸກຂອງເຮົາ USD was just made visible to the System User) -- ad spend/purchase value of accounts whose ad_accounts.currency is USD is now converted to THB when ad_spend_daily is loaded (loadAllData and the profit-page refresh), so every total, per-account/campaign/day table, ROAS and the ຄ່າໂຄສະນາລວມ -> ກີບ profit figure is in one currency. Raw values are kept on each row (_rawSpend/_rawPV) so changing the rate re-computes without a reload. The rate is a manual number (1 USD = ? THB) in ໜ້າ "ຈັດການບັນຊີ", stored per browser in localStorage (adSpendUsdToThb), default 32 until Tar sets it. adSpendTotalForRange treats converted USD rows as THB. "ຍັງເຫຼືອ" (budget - spend) converts a USD campaign budget the same way. The v8.42 non-THB warning on "+ ເພີ່ມ" now says the app converts. Only USD is converted; any other non-THB currency still sums unconverted.
 // (previous text of this slot, kept) // v8.42 NEW (Tar 2026-10-14 23:11, "ເຮັດ" = make accounts that only a personal Facebook login can see — Souliya Rich1/Rich2 etc. — addable like Pancake does) -- ໜ້າ "ຈັດການບັນຊີ": (1) NEW card "🔵 Facebook ສ່ວນຕົວ" with status/expiry and a "ເຊື່ອມ Facebook" / "Login ໃໝ່" button (reuses the v5.34/v5.36 Facebook Login for Business flow + fb_user_tokens; after login the callback now returns to #adSpend/accounts and searches automatically). (2) "🔍 ຄົ້ນຫາບັນຊີຈາກ Facebook" now merges the System User list with every extra account the personal login can see (tagged 🔵, shows currency when not THB). (3) Accounts added that way are saved with ad_accounts.token_source="personal" (new column, default "system") and shown with a 🔵 tag; sync-ad-spend v31 and update-ad-entity v24 pick the personal token for them. (4) Adding a non-THB account asks for confirmation because the app still sums spend without currency conversion. Automatic campaign-control rules (run-campaign-control etc.) still use only the System User token.
 // (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັດ" = show each campaign's breakeven ROAS next to its real ROAS) -- ໜ້າ "ຄ່າໂຄສະນາລວມ": (1) NEW column "ROAS ຄຸ້ມທຶນ" (key beRoas, also in the "roas" preset) = breakeven ROAS of the product linked with the 🔗 button, computed by the same computeBreakevenRoas as the 💰 ຄິດໄລ່ກຳໄລ page; an ad set without its own link inherits its campaign's link (shown with ↑); ads show —; sortable on the campaign level. (2) The real ROAS cell is coloured against it: red = below breakeven, amber = above breakeven but inside the 15% safety margin (ADSPEND_BREAKEVEN_SAFETY, same default as ad_coach_settings.safety_margin), green = above; no colour when no product is linked or nothing was spent. (3) BUG FIX: buildAdSpendCampaignRows / buildAdSpendAdSetRows never copied linkedProductId into the merged rows (same kind of miss as v4.59 nickname), so the 🔗 button never showed the chosen product and nothing could be looked up. (4) The 🔗 product list now shows "name · price · breakeven ROAS" so same-named rows can be told apart, and is wider. No database change (ad_campaigns.linked_product_id / ad_sets.linked_product_id already existed; 0 of 723 campaigns were linked on 2026-10-14).
 // (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13 22:37, screen recording: after "ແກ້ກ່ອນຍິງ" the greeting-template dropdown showed "-- ພິມໃໝ່ --" and the greeting was empty) -- 🧪 tab: adsTestOpenInLaunch now fills the 💬 greeting section of the launch form from the product's TEMPLATE campaign. It calls ads-test-auto {action:"template"} (read-only), takes the template ad's welcome texts and selects the saved ad_message_templates row whose greeting_text is one of them (also copies its image + quick replies); if no saved row matches, it fills only greeting text + quick replies from the texts and says so in the toast. Before this the form only copied audience/page/goal, so an ad launched from that form had NO welcome message (the one-click server path 🚀 was already copying the template welcome message correctly).
@@ -1585,7 +1586,9 @@ const APP_VERSION = "8.43"; // v8.43 NEW (Tar 2026-10-15 08:24, "ປ່ຽນສ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.42"; // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.43"; // v8.43 NEW (Tar 2026-10-15) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.42→8.43 now that 8.44 is current).
+// (previous text of this slot, kept) // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.41→8.42 now that 8.43 is current).
 // (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.40→8.41 now that 8.42 is current).
@@ -1651,7 +1654,9 @@ const APP_VERSION_PREV = "8.42"; // v8.42 NEW (Tar 2026-10-14) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.41"; // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.42"; // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.41→8.42 now that 8.43 is previous).
+// (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.40→8.41 now that 8.42 is previous).
 // (previous text of this slot, kept) // v8.40 FIX (Tar 2026-10-13) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.39→8.40 now that 8.41 is previous).
@@ -4781,6 +4786,47 @@ async function loadLabelStatusHistory(labelId){
     STATE.labelHistoryPopupRows = [];
   }
   STATE.labelHistoryPopupLoading = false;
+  render();
+}
+// v8.44: print history (see label_print_log.sql). One random id per browser tab load, so rows from two
+// tabs/devices printing the same labels can be told apart. Logging NEVER blocks or breaks printing.
+const PRINT_CLIENT_SESSION = "ps"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+async function dbLogLabelPrintClick(batchId, labels){
+  try{
+    const rows = labels.map(l=>{
+      const cur = (STATE.data.shippingLabels||[]).find(x=>x.id===l.id);
+      const before = cur ? (cur.printCount||0) : null;
+      return {
+        action:"print_click", label_id:l.id, label_number:String(l.labelNumber||""),
+        printed_by: STATE.currentUser ? (STATE.currentUser.name||"") : "",
+        printed_by_id: STATE.currentUser ? String(STATE.currentUser.id||"") : "",
+        batch_id:batchId, batch_size:labels.length,
+        count_before:before, count_after: before==null ? null : before+1,
+        page:String(STATE.page||""), app_version:APP_VERSION, client_session:PRINT_CLIENT_SESSION,
+        user_agent:(navigator.userAgent||"").slice(0,300)
+      };
+    });
+    if(rows.length===0) return;
+    const {error} = await sb.from("label_print_log").insert(rows);
+    if(error) console.error("label_print_log insert failed:", error);
+  }catch(e){ console.error("label_print_log insert failed:", e); }
+}
+async function dbLogLabelPrintDialogMs(batchId, ms){
+  try{ await sb.from("label_print_log").update({dialog_ms: ms}).eq("batch_id", batchId).eq("action","print_click"); }
+  catch(e){ console.error("label_print_log dialog_ms update failed:", e); }
+}
+async function loadLabelPrintLog(labelId){
+  STATE.labelPrintLogLoading = true;
+  render();
+  try{
+    const { data, error } = await sb.from("label_print_log").select("*").eq("label_id", labelId).order("printed_at", {ascending:false}).limit(200);
+    if(error) throw error;
+    STATE.labelPrintLogRows = data||[];
+  }catch(err){
+    console.error(err);
+    STATE.labelPrintLogRows = [];
+  }
+  STATE.labelPrintLogLoading = false;
   render();
 }
 async function dbSetLabelPrintCount(id, count){
@@ -8062,6 +8108,7 @@ const STATE = {
   labelHistoryPageSize: 100, pancakePageSize: 100, labelStatusPageSize: 100, scanHistoryPageSize: 100, scanRealtimeStatus: "",
   labelStatusPage: 1, labelHistoryPage: 1, pancakePage: 1, scanHistoryPage: 1,
   viewingLabelHistoryId: "", labelHistoryPopupRows: [], labelHistoryPopupLoading: false,
+  viewingLabelPrintId: "", labelPrintLogRows: [], labelPrintLogLoading: false, // v8.44
   crmFilterProduct: "", crmFilterDateMode: "all", crmFilterDateFrom: "", crmFilterDateTo: "", crmFilterMinAmount: "",
   crmFilterCourier: "", crmFilterSource: "",
   crmFilterCodStatus: "", crmFilterDeliveryStatus: "", // v4.75: split from the old single crmFilterStatus so COD status and delivery status can be combined (e.g. "COD ยังบ่ได้รับ" + "จัดส่งสำเร็จแล้ว" together)
@@ -27437,6 +27484,40 @@ function renderLabelHistoryPopup(labelId){
   `;
 }
 
+/* v8.44: popup with the print history of ONE label (from label_print_log): human clicks of the print
+   button and every DB-level change of print_count. A count change with no "ກົດພິມ" row near it was not
+   made by the print button of this version. */
+function renderLabelPrintPopup(labelId){
+  const label = STATE.data.shippingLabels.find(l=>l.id===labelId);
+  const rows = STATE.labelPrintLogRows||[];
+  const fmtT = (v)=> new Date(v).toLocaleString("en-GB", {timeZone: LAOS_TZ});
+  const shortUa = (ua)=>{ ua = String(ua||""); const m = /(Windows|Android|iPhone|iPad|Macintosh|Linux)/.exec(ua); const b = /(Edg|OPR|Chrome|Firefox|Safari)\//.exec(ua); return (m?m[1]:"?")+" / "+(b?b[1]:"?"); };
+  return `
+    <div class="label-overlay" id="label-print-popup-overlay" style="display:flex; align-items:center; justify-content:center;">
+      <div style="background:var(--white); border-radius:12px; padding:20px; max-width:520px; width:92%; max-height:80vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 style="margin:0;">🖨️ ປະຫວັດການພິມ #${esc((label||{}).labelNumber||"")} <span class="small-muted">(ຕອນນີ້ ${(label&&label.printCount)||0} ເທື່ອ)</span></h3>
+          <button class="btn btn-sm btn-outline" id="btn-close-label-print-popup">✖️</button>
+        </div>
+        ${STATE.labelPrintLogLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` : (
+          rows.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີປະຫວັດ (ເກັບເລີ່ມແຕ່ເວີຊັນ 8.44 ຂຶ້ນໄປ)</p>` : `
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              ${rows.map(r=> r.action==="print_click" ? `
+                <div style="border-left:3px solid var(--sage, #7a9a7e); padding-left:12px;">
+                  <div>🖱️ <b>ກົດພິມ</b> ໂດຍ <b>${esc(r.printed_by||"-")}</b> — ${r.count_before==null?"":esc(r.count_before)+" → "+esc(r.count_after)}</div>
+                  <div class="small-muted">${fmtT(r.printed_at)} · ${r.batch_size>1?`ພິມພ້ອມກັນ ${esc(r.batch_size)} ໃບ · `:""}ໜ້າຕ່າງພິມເປີດ ${r.dialog_ms==null?"?":Math.round(r.dialog_ms/100)/10+" ວິ"} · ${esc(shortUa(r.user_agent))} · v${esc(r.app_version||"?")} · ແຖບ ${esc(r.client_session||"?")}</div>
+                </div>` : `
+                <div style="border-left:3px solid var(--terracotta-dark, #b5651d); padding-left:12px;">
+                  <div>🗄️ ຕົວເລກໃນຖານຂໍ້ມູນປ່ຽນ ${esc(r.count_before)} → <b>${esc(r.count_after)}</b></div>
+                  <div class="small-muted">${fmtT(r.printed_at)} · ${esc(r.request_origin||"-")} · ${esc(shortUa(r.user_agent))}</div>
+                </div>`).join("")}
+            </div>`
+        )}
+      </div>
+    </div>
+  `;
+}
+
 function renderLabelStatusTracker(){
   const d = STATE.data;
   const studioLabels = d.shippingLabels.filter(l=>!isPancakeLabel(l));
@@ -32525,7 +32606,7 @@ function renderLabelHistory(d){
                   <td>${esc(l.itemText)}${(l.qty>1 && l.source!=="online_store")?` x${l.qty}`:""}</td>
                   <td>${fmt(l.codAmount)} ກີບ</td>
                 `}
-                <td>${pcHtml}</td>
+                <td><button type="button" data-view-label-print="${l.id}" title="ເບິ່ງປະຫວັດການພິມ" style="border:none; background:none; padding:0; cursor:pointer;">${pcHtml}</button></td>
                 <td class="small-muted">${esc(l.createdBy||"-")}</td>
                 <td>${(()=>{ const src = l.source||"normal"; const map = {quick:"⚡ ພິມດ່ວນ", normal:"📝 ພິມທົ່ວໄປ", whatsapp:"📱 WhatsApp", touk_pancake:"📦 Touk Pancake"}; const cls = src==="whatsapp" ? "pill-sage" : "pill-gray"; return `<span class="pill ${cls}">${map[src]||src}</span>`; })()}</td>
                 <td style="white-space:nowrap;">
@@ -32545,6 +32626,7 @@ function renderLabelHistory(d){
     </div>
     <div class="two-col-sidebar">${renderCourierCountCard(list)}</div>
     </div>
+    ${STATE.viewingLabelPrintId ? renderLabelPrintPopup(STATE.viewingLabelPrintId) : ""}
   `;
 }
 
@@ -36245,6 +36327,20 @@ function attachLabelsEvents(){
   // Whole row is clickable too — opens the same edit view, which also shows the actual
   // rendered label (barcode included) alongside the form. Clicks on the checkbox or any
   // button within the row must not also trigger this.
+  // v8.44: print-count pill -> print history popup
+  document.querySelectorAll("[data-view-label-print]").forEach(el=>{
+    el.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      STATE.viewingLabelPrintId = el.getAttribute("data-view-label-print");
+      STATE.labelPrintLogRows = [];
+      loadLabelPrintLog(STATE.viewingLabelPrintId);
+    });
+  });
+  const closePrintPopupBtn = document.getElementById("btn-close-label-print-popup");
+  if(closePrintPopupBtn) closePrintPopupBtn.addEventListener("click", ()=>{ STATE.viewingLabelPrintId = ""; render(); });
+  const printPopupOverlay = document.getElementById("label-print-popup-overlay");
+  if(printPopupOverlay) printPopupOverlay.addEventListener("click", (e)=>{ if(e.target.id==="label-print-popup-overlay"){ STATE.viewingLabelPrintId = ""; render(); } });
+
   document.querySelectorAll("[data-row-edit-label]").forEach(el=>{
     el.addEventListener("click", (e)=>{
       if(e.target.closest("button") || e.target.closest("input")) return;
@@ -36445,7 +36541,12 @@ function attachLabelsEvents(){
 function attachLabelPrintPreviewEvents(){
   const printBtn = document.getElementById("btn-do-print-label");
   if(printBtn) printBtn.addEventListener("click", ()=>{
+    // v8.44: record WHO pressed print and WHEN before the dialog opens (batch = this one click).
+    const _printBatchId = "pb"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const _printT0 = Date.now();
+    dbLogLabelPrintClick(_printBatchId, STATE.printingLabels.slice());
     window.print();
+    dbLogLabelPrintDialogMs(_printBatchId, Date.now()-_printT0);
     // v2.57: some browsers clear/reset dynamically-drawn SVG content (like our barcode,
     // painted in by JsBarcode rather than plain HTML) once the native print dialog has been
     // through its layout pass — this showed up as "print, then cancel/return, and the
