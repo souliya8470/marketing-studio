@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.48"; // v8.48 CHANGE (Tar 2026-10-28, photo of the ຄ່າໂຄສະນາລວມ date dropdown: "make it like this"): the day filter on 🛒 ອໍເດີອອນລາຍ now uses the shared renderDatePresetFilter/attachDatePresetFilter (same dropdown: ວັນນີ້, ເມື່ອວານນີ້, ວັນນີ້ ແລະ ເມື່ອວານນີ້, 7/14/28/30 ວັນ, ອາທິດ, ເດືອນ, ທັງໝົດ, ກຳນົດເອງ) instead of the v8.47 buttons. Default ທັງໝົດ. Range filter by Laos day on created_at.
+const APP_VERSION = "8.49"; // v8.49 NEW (Tar 2026-10-28, "ໃຫ້ລະບົບຢືນຢັນສະລິບແບບ CF, ຕົວທີ່ບໍ່ຜ່ານໃຫ້ແຈ້ງເຕືອນ"): 🛒 ອໍເດີອອນລາຍ now auto-checks each pending order's transfer slip with the new edge function online-slip-verify (BCEL OneProof, same method as Live CF cf-slip-qr; result stored in online_orders.slip_check jsonb). Badge on the card: ✅ ຜ່ານ / 🚨 ສົງໄສ (reasons: amount differs, other account, transfer before order, duplicate slip, BCEL has no such transfer) / ⚠️ ກວດບໍ່ໄດ້ (non-BCEL or no QR → staff checks by eye); 🔍 recheck button; red card border on 🚨; ✅ confirm button asks again when verdict is 🚨. Staff still press confirm — nothing is auto-confirmed.
+// (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28, photo of the ຄ່າໂຄສະນາລວມ date dropdown: "make it like this"): the day filter on 🛒 ອໍເດີອອນລາຍ now uses the shared renderDatePresetFilter/attachDatePresetFilter (same dropdown: ວັນນີ້, ເມື່ອວານນີ້, ວັນນີ້ ແລະ ເມື່ອວານນີ້, 7/14/28/30 ວັນ, ອາທິດ, ເດືອນ, ທັງໝົດ, ກຳນົດເອງ) instead of the v8.47 buttons. Default ທັງໝົດ. Range filter by Laos day on created_at.
 // (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28, voice request: filter on 🛒 ອໍເດີອອນລາຍ to see how many orders came on a chosen day, e.g. yesterday; the list was all days mixed): date filter (ທັງໝົດ / ມື້ນີ້ / ມື້ວານ / pick a date, Laos time) above the tabs; tab counts and the list follow the date; summary line shows orders + total kip of the chosen day. Display only. NOTE: request said "ບັນຊີ" (account) but context (yesterday/day) read as DATE filter — confirm with Tar.
 // (previous text of this slot, kept) // v8.46 NEW (Tar 2026-10-28, "ກົດເບິ່ງສະລິບແລ້ວຢ່າເປີດແທັບໃໝ່ ໃຫ້ເປັນປ໊ອບອັບ ກົດບ່ອນໃດກໍໄດ້ນອກຮູບເພື່ອປິດ"): transfer-slip thumbnails (🛒 ອໍເດີອອນລາຍ and Live CF) open an in-page popup (openSlipPopup); click outside the image, ✕ or Esc closes. Falls back to new tab only if the popup fails.
 // (previous text of this slot, kept) // v8.45 NEW (Tar 2026-10-28, "ເພີ່ມເວລາທີ່ລູກຄ້າກົດສ້າງຄຳສັ່ງຊື້ໃນໜ້າອໍເດີອອນລາຍ"): each order card on 🛒 ອໍເດີອອນລາຍ now shows date AND time (Laos time, dd/mm/yyyy hh:mm) from online_orders.created_at. Display only, no DB change.
@@ -1590,7 +1591,9 @@ const APP_VERSION = "8.48"; // v8.48 CHANGE (Tar 2026-10-28, photo of the ຄ່
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.47"; // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.48"; // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.47→8.48 now that 8.49 is current).
+// (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.46→8.47 now that 8.48 is current).
 // (previous text of this slot, kept) // v8.46 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.45→8.46 now that 8.47 is current).
@@ -1666,7 +1669,9 @@ const APP_VERSION_PREV = "8.47"; // v8.47 NEW (Tar 2026-10-28) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.46"; // v8.46 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.47"; // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.46→8.47 now that 8.49 is current).
+// (previous text of this slot, kept) // v8.46 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.45→8.46 now that 8.48 is current).
 // (previous text of this slot, kept) // v8.45 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.44→8.45 now that 8.47 is current).
@@ -4177,7 +4182,7 @@ function mapOnlineOrderRow(r){
     paymentSlipUrl:r.payment_slip_url||"", status:r.status||"pending_review", isTest: !!r.is_test,
     shippingLabelId:r.shipping_label_id||"", shippingLabelNumber:r.shipping_label_number||"",
     posTransactionId:r.pos_transaction_id||"", confirmedBy:r.confirmed_by||"", cancelReason:r.cancel_reason||"",
-    createdAt:r.created_at||"", confirmedAt:r.confirmed_at||""
+    createdAt:r.created_at||"", confirmedAt:r.confirmed_at||"", slipCheck:r.slip_check||null
   };
 }
 function mapOnlineOrderItemRow(r){
@@ -12754,6 +12759,49 @@ function openSlipPopup(url){
     return false;
   }catch(e){ return true; }
 }
+// v8.49: slip auto-check of online orders (edge function online-slip-verify -> online_orders.slip_check).
+function renderOnlineSlipBadge(o){
+  if(o.paymentMethod==="cod" || !o.paymentSlipUrl) return "";
+  const busy = (STATE.ooSlipBusy||{})[o.id];
+  const sc = o.slipCheck;
+  const btn = `<button type="button" class="btn btn-sm btn-outline" data-oo-recheck="${esc(o.id)}" ${busy?"disabled":""}>🔍 ກວດສະລິບໃໝ່</button>`;
+  if(busy) return `<div style="flex:1; min-width:220px;" class="small-muted">⏳ ກຳລັງກວດສະລິບກັບ BCEL...</div>`;
+  if(!sc) return `<div style="flex:1; min-width:220px;"><span class="small-muted">ຍັງບໍ່ໄດ້ກວດສະລິບ</span> ${btn}</div>`;
+  const reasons = (sc.reasons||[]).map(r=>`<div>${esc(r)}</div>`).join("");
+  const b = sc.bcel;
+  const who = b ? `<div class="small-muted" style="margin-top:2px;">ຜູ້ໂອນ ${esc(b.source_name||"")} → ${esc(b.destination_name||"")} · ${fmt(b.amount)} ${esc(b.ccy||"")}${b.txtime_iso?" · "+esc(fmtOnlineOrderDateTime(b.txtime_iso)):""}</div>` : "";
+  const style = sc.verdict==="pass" ? "background:#EAF3DE; color:#2f6a1c;" : sc.verdict==="fail" ? "background:#FCEBEB; color:#a32020; font-weight:700;" : "background:#FAEEDA; color:#854F0B;";
+  const head = sc.verdict==="pass" ? "✅ ສະລິບຜ່ານ — BCEL ຢືນຢັນແລ້ວ" : sc.verdict==="fail" ? "🚨 ສະລິບບໍ່ຜ່ານ — ກວດໃຫ້ລະອຽດກ່ອນຢືນຢັນ" : "⚠️ ກວດອັດຕະໂນມັດບໍ່ໄດ້ — ໃຫ້ກວດດ້ວຍຕາ";
+  return `<div style="flex:1; min-width:220px; padding:8px 10px; border-radius:8px; ${style}"><div style="font-weight:700;">${head}</div>${reasons}${who}<div style="margin-top:6px;">${btn}</div></div>`;
+}
+async function runOnlineSlipCheck(orderId){
+  STATE.ooSlipBusy = STATE.ooSlipBusy || {};
+  if(STATE.ooSlipBusy[orderId]) return;
+  STATE.ooSlipBusy[orderId] = true; render();
+  try{
+    const {data, error} = await sb.functions.invoke("online-slip-verify", {body:{order_id:orderId}});
+    if(error) throw error;
+    if(!data || !data.ok) throw new Error((data&&data.error)||"check failed");
+    const o = (STATE.data.onlineOrders||[]).find(x=>x.id===orderId);
+    if(o) o.slipCheck = data.slip_check;
+  }catch(e){
+    console.error("online-slip-verify failed:", e);
+    showToast("⚠️ ກວດສະລິບບໍ່ສຳເລັດ: "+(e.message||""), "error");
+  }finally{
+    STATE.ooSlipBusy[orderId] = false; render();
+  }
+}
+// Auto-check pending orders that have no result yet (once per order per page load, one at a time).
+function autoCheckOnlineSlips(){
+  STATE.ooSlipTried = STATE.ooSlipTried || {};
+  const todo = (STATE.data.onlineOrders||[]).filter(o=>o.status==="pending_review" && o.paymentMethod!=="cod" && o.paymentSlipUrl && !o.slipCheck && !STATE.ooSlipTried[o.id]);
+  if(!todo.length || STATE.ooSlipRunning) return;
+  STATE.ooSlipRunning = true;
+  (async()=>{
+    try{ for(const o of todo.slice(0,10)){ STATE.ooSlipTried[o.id]=true; await runOnlineSlipCheck(o.id); } }
+    finally{ STATE.ooSlipRunning=false; }
+  })();
+}
 // v8.47: calendar day (YYYY-MM-DD) in Laos time, for the day filter on 🛒 ອໍເດີອອນລາຍ.
 function onlineOrderLaosDay(v){
   try{ const d=new Date(v); return isNaN(d) ? "" : d.toLocaleDateString("en-CA",{timeZone:LAOS_TZ}); }catch(e){ return ""; }
@@ -12826,7 +12874,7 @@ function renderOnlineOrdersList(rows, tab){
     const items = onlineOrderItemsFor(o.id);
     const courier = (STATE.data.couriers||[]).find(c=>c.id===o.courierId);
     return `
-    <div class="card" style="margin-bottom:14px;">
+    <div class="card" style="margin-bottom:14px;${o.slipCheck&&o.slipCheck.verdict==='fail'&&o.status==='pending_review'?' border:2px solid #c0392b;':''}">
       <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; margin-bottom:10px;">
         <div>
           <div style="font-weight:700; font-size:15px;">${esc(o.orderNo)} ${o.isTest?'<span class="small-muted">🧪 ທົດລອງ</span>':''}</div>
@@ -12858,6 +12906,7 @@ function renderOnlineOrdersList(rows, tab){
         ${o.paymentMethod==="cod"
           ? `<span class="small-muted" style="font-weight:700;">💵 ເກັບເງິນປາຍທາງ (COD)</span>`
           : (o.paymentSlipUrl ? `<a href="${esc(o.paymentSlipUrl)}" target="_blank" rel="noopener" onclick="return openSlipPopup(this.href)"><img src="${esc(o.paymentSlipUrl)}" alt="ສະລິບ" style="height:70px; border-radius:6px; border:1px solid var(--border,#ddd);"></a>` : `<span class="small-muted">ບໍ່ມີຮູບສະລິບ</span>`)}
+        ${renderOnlineSlipBadge(o)}
         ${tab==="pending_review" ? `
           <button class="btn btn-sm" data-online-order-action="confirm" data-online-order-id="${esc(o.id)}" style="background:var(--sage-dark,#3a7d44);">✅ ຢືນຢັນ+ບັນທຶກເປັນຍອດຂາຍ</button>
           <button class="btn btn-sm btn-outline" data-online-order-action="reject" data-online-order-id="${esc(o.id)}" style="color:var(--danger); border-color:var(--danger);">❌ ປະຕິເສດ</button>
@@ -12871,16 +12920,23 @@ function attachOnlineOrdersEvents(){
   attachDatePresetFilter("oo-date", "onlineOrdersDateMode", "onlineOrdersDateFrom", "onlineOrdersDateTo");
   const reloadBtn = document.getElementById("btn-reload-online-orders");
   if(reloadBtn) reloadBtn.addEventListener("click", loadOnlineOrdersData);
+  document.querySelectorAll("[data-oo-recheck]").forEach(el=>{
+    el.addEventListener("click", ()=>runOnlineSlipCheck(el.getAttribute("data-oo-recheck")));
+  });
+  if(!STATE.onlineOrdersLoading) autoCheckOnlineSlips();
   document.querySelectorAll("[data-online-orders-tab]").forEach(el=>{
     el.addEventListener("click", ()=>{ STATE.onlineOrdersTab = el.getAttribute("data-online-orders-tab"); render(); });
   });
   document.querySelectorAll("[data-online-order-action]").forEach(el=>{
-    el.addEventListener("click", ()=>{
+    el.addEventListener("click", async ()=>{
       const id = el.getAttribute("data-online-order-id");
       const action = el.getAttribute("data-online-order-action");
       const order = (STATE.data.onlineOrders||[]).find(o=>o.id===id);
       if(!order) return;
-      if(action==="confirm") confirmOnlineOrder(order); else rejectOnlineOrder(order);
+      if(action==="confirm"){
+        if(order.slipCheck && order.slipCheck.verdict==="fail" && !(await customConfirm("🚨 ສະລິບຂອງອໍເດີນີ້ບໍ່ຜ່ານການກວດ:\n"+(order.slipCheck.reasons||[]).join("\n")+"\n\nແນ່ໃຈບໍ່ວ່າຈະຢືນຢັນ?", {danger:true}))) return;
+        confirmOnlineOrder(order);
+      } else rejectOnlineOrder(order);
     });
   });
   document.querySelectorAll("[data-online-order-print]").forEach(el=>{
