@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.49"; // v8.49 NEW (Tar 2026-10-28, "ໃຫ້ລະບົບຢືນຢັນສະລິບແບບ CF, ຕົວທີ່ບໍ່ຜ່ານໃຫ້ແຈ້ງເຕືອນ"): 🛒 ອໍເດີອອນລາຍ now auto-checks each pending order's transfer slip with the new edge function online-slip-verify (BCEL OneProof, same method as Live CF cf-slip-qr; result stored in online_orders.slip_check jsonb). Badge on the card: ✅ ຜ່ານ / 🚨 ສົງໄສ (reasons: amount differs, other account, transfer before order, duplicate slip, BCEL has no such transfer) / ⚠️ ກວດບໍ່ໄດ້ (non-BCEL or no QR → staff checks by eye); 🔍 recheck button; red card border on 🚨; ✅ confirm button asks again when verdict is 🚨. Staff still press confirm — nothing is auto-confirmed.
+const APP_VERSION = "8.50"; // v8.50 NEW (Tar 2026-10-28, "ເຮັດ" after asking for a list of bills left open after a return scan): ສະແກນຮັບເຄື່ອງຕີກັບ page has a new card "⚠️ ຕີກັບແລ້ວ ແຕ່ບິນ POS ຍັງບໍ່ຍົກເລີກ" listing POS bills that are still status completed although their label number was scanned as returned (DB view return_scan_pending_pos_bills), each with a 🗑️ ຍົກເລີກບິນ button (same confirm + cancel-pos-bill-by-label flow, never automatic). Old scan flow unchanged.
+// (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28, "ໃຫ້ລະບົບຢືນຢັນສະລິບແບບ CF, ຕົວທີ່ບໍ່ຜ່ານໃຫ້ແຈ້ງເຕືອນ"): 🛒 ອໍເດີອອນລາຍ now auto-checks each pending order's transfer slip with the new edge function online-slip-verify (BCEL OneProof, same method as Live CF cf-slip-qr; result stored in online_orders.slip_check jsonb). Badge on the card: ✅ ຜ່ານ / 🚨 ສົງໄສ (reasons: amount differs, other account, transfer before order, duplicate slip, BCEL has no such transfer) / ⚠️ ກວດບໍ່ໄດ້ (non-BCEL or no QR → staff checks by eye); 🔍 recheck button; red card border on 🚨; ✅ confirm button asks again when verdict is 🚨. Staff still press confirm — nothing is auto-confirmed.
 // (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28, photo of the ຄ່າໂຄສະນາລວມ date dropdown: "make it like this"): the day filter on 🛒 ອໍເດີອອນລາຍ now uses the shared renderDatePresetFilter/attachDatePresetFilter (same dropdown: ວັນນີ້, ເມື່ອວານນີ້, ວັນນີ້ ແລະ ເມື່ອວານນີ້, 7/14/28/30 ວັນ, ອາທິດ, ເດືອນ, ທັງໝົດ, ກຳນົດເອງ) instead of the v8.47 buttons. Default ທັງໝົດ. Range filter by Laos day on created_at.
 // (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28, voice request: filter on 🛒 ອໍເດີອອນລາຍ to see how many orders came on a chosen day, e.g. yesterday; the list was all days mixed): date filter (ທັງໝົດ / ມື້ນີ້ / ມື້ວານ / pick a date, Laos time) above the tabs; tab counts and the list follow the date; summary line shows orders + total kip of the chosen day. Display only. NOTE: request said "ບັນຊີ" (account) but context (yesterday/day) read as DATE filter — confirm with Tar.
 // (previous text of this slot, kept) // v8.46 NEW (Tar 2026-10-28, "ກົດເບິ່ງສະລິບແລ້ວຢ່າເປີດແທັບໃໝ່ ໃຫ້ເປັນປ໊ອບອັບ ກົດບ່ອນໃດກໍໄດ້ນອກຮູບເພື່ອປິດ"): transfer-slip thumbnails (🛒 ອໍເດີອອນລາຍ and Live CF) open an in-page popup (openSlipPopup); click outside the image, ✕ or Esc closes. Falls back to new tab only if the popup fails.
@@ -1591,7 +1592,9 @@ const APP_VERSION = "8.49"; // v8.49 NEW (Tar 2026-10-28, "ໃຫ້ລະບົ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.48"; // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.49"; // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.48→8.49 now that 8.50 is current).
+// (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.47→8.48 now that 8.49 is current).
 // (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.46→8.47 now that 8.48 is current).
@@ -1669,7 +1672,9 @@ const APP_VERSION_PREV = "8.48"; // v8.48 CHANGE (Tar 2026-10-28) — full note 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.47"; // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.48"; // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.47→8.48 now that 8.50 is current).
+// (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.46→8.47 now that 8.49 is current).
 // (previous text of this slot, kept) // v8.46 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.45→8.46 now that 8.48 is current).
@@ -16937,6 +16942,7 @@ function renderReturnReceipts(){
       <div id="rr-alert-region">${renderRRAlertHtml()}</div>
     </div>
 
+    <div id="rr-pending-pos-region">${renderRRPendingPosHtml()}</div>
     ${STATE.returnReceiptLoading ? `<div class="card"><p class="small-muted">ກຳລັງໂຫຼດ...</p></div>` : `
       <div class="card" id="rr-scan-history-region">${renderRRScanHistoryTableHtml({scanHistoryPageRows, scanHistoryFiltered, scanHistoryTotalFee, scanHistoryFeeCount, scanHistoryCouriers, scanHistoryPage, scanHistoryTotalPages})}</div>
     `}
@@ -17086,7 +17092,75 @@ let pendingRRCamScanCode = "", pendingRRCamScanAt = 0; // v2.99: 2-consecutive-f
 // targets (collect vs seal, resolved by STATE.packingInnerTab at the moment a frame is confirmed).
 let lastPackingCamScanCode = "", lastPackingCamScanAt = 0;
 let pendingPackingCamScanCode = "", pendingPackingCamScanAt = 0;
+// v8.50: POS bills still "completed" although their label number was scanned as a return (view return_scan_pending_pos_bills).
+function renderRRPendingPosHtml(){
+  const rows = STATE.rrPendingPos;
+  if(rows===undefined) return `<div class="card"><p class="small-muted">ກຳລັງກວດບິນ POS ທີ່ຄ້າງ...</p></div>`;
+  if(rows===null) return `<div class="card"><p class="small-muted">⚠️ ກວດບິນ POS ທີ່ຄ້າງບໍ່ສຳເລັດ <button type="button" class="btn btn-sm btn-outline" id="rr-pending-pos-reload">🔄 ລອງໃໝ່</button></p></div>`;
+  if(rows.length===0) return `<div class="card"><p class="small-muted" style="margin:0;">✅ ບໍ່ມີບິນ POS ຄ້າງ — ທຸກບິນທີ່ຕີກັບແລ້ວຖືກຈັດການແລ້ວ <button type="button" class="btn btn-sm btn-outline" id="rr-pending-pos-reload">🔄</button></p></div>`;
+  return `<div class="card" style="border:2px solid #c0392b;">
+    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px;">
+      <h3 style="margin:0;">⚠️ ຕີກັບແລ້ວ ແຕ່ບິນ POS ຍັງບໍ່ຍົກເລີກ (${fmt(rows.length)})</h3>
+      <button type="button" class="btn btn-sm btn-outline" id="rr-pending-pos-reload">🔄 ໂຫຼດຄືນ</button>
+    </div>
+    <p class="small-muted" style="margin:0 0 10px;">ເຄື່ອງກັບມາແລ້ວ ແຕ່ບິນນີ້ຍັງຖືກນັບເປັນຍອດຂາຍ ແລະ ສະຕ໊ອກຍັງບໍ່ຄືນ. ກົດຍົກເລີກເມື່ອແນ່ໃຈວ່າຕີກັບແທ້.</p>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr><th>ບິນ POS</th><th>ລູກຄ້າ</th><th>ຍອດ</th><th>ເລກໃບບິນ</th><th>ສະແກນເມື່ອ</th><th></th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td>${esc(r.transaction_no)}</td>
+        <td>${esc(r.customer_name||"ລູກຄ້າທົ່ວໄປ")}</td>
+        <td>${fmt(Number(r.total_amount_kip)||0)} ກີບ${Number(r.total_amount_baht)>0?` + ฿${fmt(Number(r.total_amount_baht))}`:""}</td>
+        <td>${esc(r.shipping_label_ref)}</td>
+        <td>${esc(fmtOnlineOrderDateTime(r.scanned_at))}${r.scanned_by?" · "+esc(r.scanned_by):""}</td>
+        <td><button type="button" class="btn btn-sm" style="background:var(--danger,#c0392b);" data-rr-pending-cancel="${esc(r.transaction_id)}">🗑️ ຍົກເລີກບິນນີ້</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+async function loadRRPendingPos(){
+  try{
+    const {data, error} = await sb.from("return_scan_pending_pos_bills").select("*").order("scanned_at",{ascending:false});
+    if(error) throw error;
+    STATE.rrPendingPos = data||[];
+  }catch(e){ console.error("loadRRPendingPos failed:", e); STATE.rrPendingPos = null; }
+  refreshRRPendingPosRegion();
+}
+function refreshRRPendingPosRegion(){
+  const el = document.getElementById("rr-pending-pos-region");
+  if(!el) return;
+  el.innerHTML = renderRRPendingPosHtml();
+  attachRRPendingPosEvents();
+}
+function attachRRPendingPosEvents(){
+  const rl = document.getElementById("rr-pending-pos-reload");
+  if(rl) rl.addEventListener("click", ()=>{ STATE.rrPendingPos = undefined; refreshRRPendingPosRegion(); loadRRPendingPos(); });
+  document.querySelectorAll("[data-rr-pending-cancel]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const id = btn.getAttribute("data-rr-pending-cancel");
+      const r = (STATE.rrPendingPos||[]).find(x=>x.transaction_id===id);
+      if(!r) return;
+      if(!(await customConfirm(`ຍົກເລີກບິນ POS ເລກທີ ${r.transaction_no} (${r.customer_name||"ລູກຄ້າທົ່ວໄປ"}) ລວມ ${fmt(Number(r.total_amount_kip)||0)} ກີບ?\n\nຈະຄືນສະຕ໊ອກ ແລະ ຕັດອອກຈາກລາຍງານກຳໄລ ຍ້ອນເຄື່ອງຕີກັບ.`, {okLabel:"✅ ແມ່ນ, ຍົກເລີກບິນນີ້", cancelLabel:"✕ ບໍ່, ໄວ້ກ່ອນ", danger:true}))) return;
+      btn.disabled = true;
+      try{
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/cancel-pos-bill-by-label`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json", "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY },
+          body: JSON.stringify({ action:"confirm_cancel", shopId:POS_SHOP_ID, transactionId:r.transaction_id, labelRef:r.shipping_label_ref,
+            reason:"ເຄື່ອງຕີກັບ - ລູກຄ້າບໍ່ຮັບເຄື່ອງ (ຍົກເລີກຈາກລາຍການບິນຄ້າງ ໃນ Marketing Studio)",
+            cancelledBy: STATE.currentUser ? STATE.currentUser.name : null })
+        });
+        const d = await res.json().catch(()=>({}));
+        if(d && d.ok){ showToast(`✅ ຍົກເລີກບິນ ${d.transactionNo} ແລ້ວ — ຄືນສະຕ໊ອກ ແລະ ຕັດອອກຈາກລາຍງານກຳໄລແລ້ວ`); }
+        else if(d && d.alreadyDone){ showToast("ບິນນີ້ຖືກຍົກເລີກໄປແລ້ວ"); }
+        else { showErrorToast("ຍົກເລີກບໍ່ສຳເລັດ: "+((d&&d.message)||"ບໍ່ຮູ້ສາເຫດ")); }
+      }catch(e){ console.error(e); showErrorToast("ຍົກເລີກບໍ່ສຳເລັດ: "+(e.message||"")); }
+      loadRRPendingPos();
+    });
+  });
+}
 function attachReturnReceiptsEvents(){
+  attachRRPendingPosEvents();
+  if(STATE.rrPendingPos===undefined && !STATE.rrPendingPosLoading){ STATE.rrPendingPosLoading=true; loadRRPendingPos().finally(()=>{ STATE.rrPendingPosLoading=false; }); }
   document.querySelectorAll("[data-return-tab]").forEach(el=>{
     el.addEventListener("click", ()=>{
       STATE.returnPageTab = el.getAttribute("data-return-tab");
@@ -17405,6 +17479,7 @@ async function submitReturnReceiptScan(codeArg){
     // ແລ້ວກ່ອນໜ້ານີ້ (optimistic update + refocus ໄດ້ເຮັດໄປແລ້ວ), ຈຶ່ງບໍ່ກະທົບຄວາມໄວການສະແກນຄັ້ງຕໍ່ໄປ
     // ນອກຈາກກໍລະນີພົບບິນທີ່ຕ້ອງຢືນຢັນ.
     await checkAndOfferCancelPosBill(raw);
+    loadRRPendingPos(); // v8.50: refresh the "still open" list (region-only update, camera stays open)
   }catch(err){
     console.error(err);
     STATE.returnReceiptScans = STATE.returnReceiptScans.filter(s=>s.id!==newScan.id);
