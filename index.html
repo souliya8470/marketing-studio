@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.50"; // v8.50 NEW (Tar 2026-10-28, "ເຮັດ" after asking for a list of bills left open after a return scan): ສະແກນຮັບເຄື່ອງຕີກັບ page has a new card "⚠️ ຕີກັບແລ້ວ ແຕ່ບິນ POS ຍັງບໍ່ຍົກເລີກ" listing POS bills that are still status completed although their label number was scanned as returned (DB view return_scan_pending_pos_bills), each with a 🗑️ ຍົກເລີກບິນ button (same confirm + cancel-pos-bill-by-label flow, never automatic). Old scan flow unchanged.
+const APP_VERSION = "8.51"; // v8.51 NEW (Tar 2026-10-28, "ເຮັດ 1 ແລ້ວມາເຮັດ 2 ຕໍ": step 1 of matching real money received to online orders): new table onepay_transactions (+ onepay_sync_status) holds the BCEL OnePay Shop transaction list; 🛒 ອໍເດີອອນລາຍ has a button "📥 ອັບໂຫຼດ Excel OnePay Shop" (sheet "All Transactions", upsert by reference so re-uploads are safe). Each pending order shows a payment line: ✅ exact match (reference = BCEL slip ticket), 🟡 matched by amount+time (LDB/other banks, check by eye), ⚠️ no money seen yet (or "no OnePay data after the order time" when the list is older than the order). Display only — staff still press confirm. Step 2 (automatic feed from the PC) will write into the same table.
+// (previous text of this slot, kept) // v8.50 NEW (Tar 2026-10-28, "ເຮັດ" after asking for a list of bills left open after a return scan): ສະແກນຮັບເຄື່ອງຕີກັບ page has a new card "⚠️ ຕີກັບແລ້ວ ແຕ່ບິນ POS ຍັງບໍ່ຍົກເລີກ" listing POS bills that are still status completed although their label number was scanned as returned (DB view return_scan_pending_pos_bills), each with a 🗑️ ຍົກເລີກບິນ button (same confirm + cancel-pos-bill-by-label flow, never automatic). Old scan flow unchanged.
 // (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28, "ໃຫ້ລະບົບຢືນຢັນສະລິບແບບ CF, ຕົວທີ່ບໍ່ຜ່ານໃຫ້ແຈ້ງເຕືອນ"): 🛒 ອໍເດີອອນລາຍ now auto-checks each pending order's transfer slip with the new edge function online-slip-verify (BCEL OneProof, same method as Live CF cf-slip-qr; result stored in online_orders.slip_check jsonb). Badge on the card: ✅ ຜ່ານ / 🚨 ສົງໄສ (reasons: amount differs, other account, transfer before order, duplicate slip, BCEL has no such transfer) / ⚠️ ກວດບໍ່ໄດ້ (non-BCEL or no QR → staff checks by eye); 🔍 recheck button; red card border on 🚨; ✅ confirm button asks again when verdict is 🚨. Staff still press confirm — nothing is auto-confirmed.
 // (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28, photo of the ຄ່າໂຄສະນາລວມ date dropdown: "make it like this"): the day filter on 🛒 ອໍເດີອອນລາຍ now uses the shared renderDatePresetFilter/attachDatePresetFilter (same dropdown: ວັນນີ້, ເມື່ອວານນີ້, ວັນນີ້ ແລະ ເມື່ອວານນີ້, 7/14/28/30 ວັນ, ອາທິດ, ເດືອນ, ທັງໝົດ, ກຳນົດເອງ) instead of the v8.47 buttons. Default ທັງໝົດ. Range filter by Laos day on created_at.
 // (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28, voice request: filter on 🛒 ອໍເດີອອນລາຍ to see how many orders came on a chosen day, e.g. yesterday; the list was all days mixed): date filter (ທັງໝົດ / ມື້ນີ້ / ມື້ວານ / pick a date, Laos time) above the tabs; tab counts and the list follow the date; summary line shows orders + total kip of the chosen day. Display only. NOTE: request said "ບັນຊີ" (account) but context (yesterday/day) read as DATE filter — confirm with Tar.
@@ -1592,7 +1593,9 @@ const APP_VERSION = "8.50"; // v8.50 NEW (Tar 2026-10-28, "ເຮັດ" after a
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.49"; // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.50"; // v8.50 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.49→8.50 now that 8.51 is current).
+// (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.48→8.49 now that 8.50 is current).
 // (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.47→8.48 now that 8.49 is current).
@@ -1672,7 +1675,9 @@ const APP_VERSION_PREV = "8.49"; // v8.49 NEW (Tar 2026-10-28) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.48"; // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.49"; // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.48→8.49 now that 8.51 is current).
+// (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.47→8.48 now that 8.50 is current).
 // (previous text of this slot, kept) // v8.47 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.46→8.47 now that 8.49 is current).
@@ -12807,6 +12812,87 @@ function autoCheckOnlineSlips(){
     finally{ STATE.ooSlipRunning=false; }
   })();
 }
+// v8.51: BCEL OnePay Shop money-received list (table onepay_transactions) matched to online orders.
+function computeOnlinePaymentMatches(orders, txns){
+  const out = {}; const claimed = {};
+  const byRef = {}; (txns||[]).forEach(t=>{ byRef[t.ref]=t; });
+  const list = (orders||[]).filter(o=>o.paymentMethod!=="cod" && o.status!=="cancelled");
+  // 1) exact: reference equals the BCEL slip ticket checked by online-slip-verify
+  list.forEach(o=>{
+    const tk = o.slipCheck && (o.slipCheck.ticket || (o.slipCheck.bcel && o.slipCheck.bcel.ticket));
+    if(tk && byRef[tk] && !claimed[tk]){ out[o.id] = {level:"exact", tx:byRef[tk]}; claimed[tk]=o.id; }
+  });
+  // 2) amount + time (oldest orders first, closest unclaimed transaction after the order time)
+  list.slice().sort((x,y)=>String(x.createdAt).localeCompare(String(y.createdAt))).forEach(o=>{
+    if(out[o.id]) return;
+    const c = new Date(o.createdAt).getTime(); const amt = Math.round(Number(o.totalKip)||0);
+    const cands = (txns||[]).filter(t=>!claimed[t.ref] && Number(t.amount_kip)===amt && new Date(t.paid_at).getTime()>=c-10*60000 && new Date(t.paid_at).getTime()<=c+24*3600000)
+      .sort((x,y)=>new Date(x.paid_at)-new Date(y.paid_at));
+    if(cands.length){ out[o.id] = {level:"amount", tx:cands[0], count:cands.length}; claimed[cands[0].ref]=o.id; }
+  });
+  return out;
+}
+function renderOnlinePaymentLine(o){
+  if(o.paymentMethod==="cod" || o.status==="cancelled") return "";
+  const m = (STATE.onlinePayMatches||{})[o.id];
+  const when = (iso)=>esc(fmtOnlineOrderDateTime(iso));
+  if(m && m.level==="exact") return `<div style="flex-basis:100%; padding:6px 10px; border-radius:8px; background:#EAF3DE; color:#2f6a1c; font-weight:700;">💰 ເງິນເຂົ້າບັນຊີຮ້ານແລ້ວ (OnePay Shop) <span style="font-weight:400;">— ${fmt(m.tx.amount_kip)} ກີບ · ${when(m.tx.paid_at)} · ອ້າງອີງ ${esc(m.tx.ref)}</span></div>`;
+  if(m && m.level==="amount") return `<div style="flex-basis:100%; padding:6px 10px; border-radius:8px; background:#FAEEDA; color:#854F0B;">🟡 ພົບເງິນເຂົ້າຍອດຕົງກັນ (ຈັບຄູ່ຈາກຍອດ+ເວລາ ບໍ່ແມ່ນເລກອ້າງອີງ) — ${fmt(m.tx.amount_kip)} ກີບ · ${when(m.tx.paid_at)} · ${esc(m.tx.payment_type||"")} ${esc(m.tx.customer_masked||"")}${m.count>1?` · ມີ ${m.count} ລາຍການຍອດເທົ່ານີ້ ກວດດ້ວຍຕາ`:""}</div>`;
+  const last = STATE.onlinePayLastDataAt;
+  if(!last) return `<div style="flex-basis:100%;" class="small-muted">💰 ຍັງບໍ່ມີຂໍ້ມູນ OnePay Shop — ກົດ "📥 ອັບໂຫຼດ Excel OnePay Shop"</div>`;
+  if(new Date(last).getTime() < new Date(o.createdAt).getTime()) return `<div style="flex-basis:100%;" class="small-muted">💰 ຂໍ້ມູນ OnePay ລ່າສຸດ ${when(last)} ເກົ່າກວ່າເວລາສັ່ງ — ອັບໂຫຼດໃໝ່ເພື່ອກວດເງິນເຂົ້າ</div>`;
+  return `<div style="flex-basis:100%; padding:6px 10px; border-radius:8px; background:#FCEBEB; color:#a32020; font-weight:700;">⚠️ ຍັງບໍ່ເຫັນເງິນເຂົ້າ OnePay Shop <span style="font-weight:400;">(ຂໍ້ມູນລ່າສຸດ ${when(last)})</span></div>`;
+}
+async function loadOnlinePayments(){
+  try{
+    const since = new Date(Date.now()-21*86400000).toISOString();
+    const [tx, st] = await Promise.all([
+      sb.from("onepay_transactions").select("*").gte("paid_at", since).order("paid_at",{ascending:false}).limit(5000),
+      sb.from("onepay_sync_status").select("*").eq("id","main").maybeSingle()
+    ]);
+    if(tx.error) throw tx.error;
+    STATE.onlinePayTxns = tx.data||[];
+    STATE.onlinePayLastDataAt = (STATE.onlinePayTxns[0] && STATE.onlinePayTxns[0].paid_at) || null;
+    STATE.onlinePaySync = st.data||null;
+    STATE.onlinePayMatches = computeOnlinePaymentMatches(STATE.data.onlineOrders||[], STATE.onlinePayTxns);
+  }catch(e){ console.error("loadOnlinePayments failed:", e); }
+  render();
+}
+async function importOnePayExcel(file){
+  try{
+    const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
+    const ws = wb.Sheets["All Transactions"] || wb.Sheets[wb.SheetNames[0]];
+    const grid = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:""});
+    const hi = grid.findIndex(r=>r.some(c=>String(c).trim()==="ເລກອ້າງອີງ"));
+    if(hi<0) throw new Error("ບໍ່ພົບຫົວຕາຕະລາງ (ເລກອ້າງອີງ) — ກວດວ່າເປັນໄຟລ໌ຈາກ OnePay Shop");
+    const H = grid[hi].map(c=>String(c).trim());
+    const col = (n)=>H.indexOf(n);
+    const cDate=col("ວັນທີ"), cRef=col("ເລກອ້າງອີງ"), cAmt=col("ຈຳນວນເງິນ"), cType=col("ປະເພດການຊຳລະເງິນ"), cSt=col("ສະຖານະ"), cCus=col("ລູກຄ້າ");
+    if(cDate<0||cRef<0||cAmt<0) throw new Error("ໄຟລ໌ຂາດຖັນ ວັນທີ/ເລກອ້າງອີງ/ຈຳນວນເງິນ");
+    const rows = []; let skipped = 0;
+    for(const r of grid.slice(hi+1)){
+      const ref = String(r[cRef]||"").trim(); const d = String(r[cDate]||"").trim();
+      const amt = parseInt(String(r[cAmt]||"").replace(/[^0-9]/g,""),10);
+      const st = cSt>=0 ? String(r[cSt]||"") : "ສຳເລັດ";
+      if(!ref || !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(d) || !(amt>0)) continue;
+      if(cSt>=0 && !st.includes("ສຳເລັດ")){ skipped++; continue; }
+      rows.push({ref, paid_at: d.replace(" ","T").slice(0,19)+"+07:00", customer_masked: cCus>=0?String(r[cCus]||""):"", payment_type: cType>=0?String(r[cType]||""):"",
+        amount_kip: amt, status:"completed", source:"manual_upload", imported_by: STATE.currentUser?STATE.currentUser.name:""});
+    }
+    if(!rows.length) throw new Error("ບໍ່ພົບລາຍການທີ່ສຳເລັດໃນໄຟລ໌");
+    for(let i=0;i<rows.length;i+=500){
+      const {error} = await sb.from("onepay_transactions").upsert(rows.slice(i,i+500), {onConflict:"ref"});
+      if(error) throw error;
+    }
+    const newest = rows.map(r=>r.paid_at).sort().pop();
+    await sb.from("onepay_sync_status").upsert({id:"main", last_ok_at:new Date().toISOString(), last_data_at:newest, last_error:null, updated_at:new Date().toISOString()},{onConflict:"id"});
+    showToast(`✅ ນຳເຂົ້າ ${rows.length} ລາຍການຈາກ OnePay Shop ແລ້ວ${skipped?` (ຂ້າມ ${skipped} ລາຍການທີ່ບໍ່ສຳເລັດ)`:""}`);
+    await loadOnlinePayments();
+  }catch(e){
+    console.error("importOnePayExcel failed:", e);
+    showErrorToast("ນຳເຂົ້າ Excel ບໍ່ສຳເລັດ: "+(e.message||e));
+  }
+}
 // v8.47: calendar day (YYYY-MM-DD) in Laos time, for the day filter on 🛒 ອໍເດີອອນລາຍ.
 function onlineOrderLaosDay(v){
   try{ const d=new Date(v); return isNaN(d) ? "" : d.toLocaleDateString("en-CA",{timeZone:LAOS_TZ}); }catch(e){ return ""; }
@@ -12829,6 +12915,7 @@ async function loadOnlineOrdersData(){
     if(ordersRes.error) throw ordersRes.error;
     if(itemsRes.error) throw itemsRes.error;
     STATE.data.onlineOrders = (ordersRes.data||[]).map(mapOnlineOrderRow);
+    STATE.onlinePayLoaded = false; // v8.51: reload OnePay list together with the orders
     STATE.data.onlineOrderItems = (itemsRes.data||[]).map(mapOnlineOrderItemRow);
   }catch(err){
     console.error("loadOnlineOrdersData failed:", err);
@@ -12843,6 +12930,7 @@ const ONLINE_ORDER_STATUS_LABELS = {pending_review:"⏳ ລໍກວດສະລ
 function renderOnlineOrders(){
   const tab = STATE.onlineOrdersTab || "pending_review";
   const allDays = STATE.data.onlineOrders||[];
+  STATE.onlinePayMatches = computeOnlinePaymentMatches(allDays, STATE.onlinePayTxns||[]);
   const ooMode = STATE.onlineOrdersDateMode || "all";
   const ooRange = resolvePresetDateRange(ooMode, STATE.onlineOrdersDateFrom, STATE.onlineOrdersDateTo);
   const dayF = (ooRange.from || ooRange.to) ? "range" : "";
@@ -12864,7 +12952,11 @@ function renderOnlineOrders(){
         ${renderDatePresetFilter("oo-date", ooMode, STATE.onlineOrdersDateFrom, STATE.onlineOrdersDateTo)}
         ${dayF ? `<span style="font-weight:600;">${fmt(all.length)} ອໍເດີ · ${fmt(all.reduce((a,o)=>a+(Number(o.totalKip)||0),0))} ກີບ</span>` : ""}
       </div>
-      <button type="button" class="btn btn-sm btn-outline" id="btn-reload-online-orders">🔄 ໂຫຼດຄືນ</button>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label class="btn btn-sm btn-outline" style="cursor:pointer; margin:0;" title="ສົ່ງອອກລາຍການຈາກແອັບ OnePay Shop (Excel) ແລ້ວອັບໂຫຼດບ່ອນນີ້ ເພື່ອກວດວ່າເງິນເຂົ້າບັນຊີຮ້ານແທ້">📥 ອັບໂຫຼດ Excel OnePay Shop
+          <input type="file" id="onepay-excel-input" accept=".xlsx,.xls" style="display:none;"></label>
+        <button type="button" class="btn btn-sm btn-outline" id="btn-reload-online-orders">🔄 ໂຫຼດຄືນ</button>
+      </div>
     </div>
     <div class="tabs" style="margin-bottom:14px;">
       ${TABS.map(t=>`<div class="tab ${tab===t.key?'active':''}" data-online-orders-tab="${t.key}">${t.label} (${fmt(t.count)})</div>`).join("")}
@@ -12912,6 +13004,7 @@ function renderOnlineOrdersList(rows, tab){
           ? `<span class="small-muted" style="font-weight:700;">💵 ເກັບເງິນປາຍທາງ (COD)</span>`
           : (o.paymentSlipUrl ? `<a href="${esc(o.paymentSlipUrl)}" target="_blank" rel="noopener" onclick="return openSlipPopup(this.href)"><img src="${esc(o.paymentSlipUrl)}" alt="ສະລິບ" style="height:70px; border-radius:6px; border:1px solid var(--border,#ddd);"></a>` : `<span class="small-muted">ບໍ່ມີຮູບສະລິບ</span>`)}
         ${renderOnlineSlipBadge(o)}
+        ${renderOnlinePaymentLine(o)}
         ${tab==="pending_review" ? `
           <button class="btn btn-sm" data-online-order-action="confirm" data-online-order-id="${esc(o.id)}" style="background:var(--sage-dark,#3a7d44);">✅ ຢືນຢັນ+ບັນທຶກເປັນຍອດຂາຍ</button>
           <button class="btn btn-sm btn-outline" data-online-order-action="reject" data-online-order-id="${esc(o.id)}" style="color:var(--danger); border-color:var(--danger);">❌ ປະຕິເສດ</button>
@@ -12925,6 +13018,9 @@ function attachOnlineOrdersEvents(){
   attachDatePresetFilter("oo-date", "onlineOrdersDateMode", "onlineOrdersDateFrom", "onlineOrdersDateTo");
   const reloadBtn = document.getElementById("btn-reload-online-orders");
   if(reloadBtn) reloadBtn.addEventListener("click", loadOnlineOrdersData);
+  const onePayInput = document.getElementById("onepay-excel-input");
+  if(onePayInput) onePayInput.addEventListener("change", async ()=>{ const f=onePayInput.files&&onePayInput.files[0]; onePayInput.value=""; if(f) await importOnePayExcel(f); });
+  if(!STATE.onlinePayLoaded && !STATE.onlineOrdersLoading){ STATE.onlinePayLoaded = true; loadOnlinePayments(); }
   document.querySelectorAll("[data-oo-recheck]").forEach(el=>{
     el.addEventListener("click", ()=>runOnlineSlipCheck(el.getAttribute("data-oo-recheck")));
   });
