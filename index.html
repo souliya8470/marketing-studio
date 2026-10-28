@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.44"; // v8.44 NEW (Tar 2026-10-16, staff report: the print count on bills sometimes goes up before anyone pressed print; "keep a detailed print history with time and who pressed print so we can tell a system fault from a human mistake") -- every click of the 🖨️ ພິມ button now also writes one row per label to the new table label_print_log (print_click: who = logged-in user, when, batch id + size, count before/after, how long the browser print dialog stayed open in ms, page, app version, browser/device, per-tab session id), written BEFORE the print dialog opens and never blocking printing. A DB trigger on shipping_labels additionally logs EVERY change of print_count (db_change: old/new, DB role, request Origin, user agent), so a count that rises with no matching print_click row proves it was written by something other than the print button. New: on the ປະຫວັດ page the print-count pill is now a button that opens a popup "🖨️ ປະຫວັດການພິມ" listing both kinds of rows. The counting logic itself is UNCHANGED in this version (still +1 per print-button click after window.print() returns). Needs label_print_log.sql run once in Supabase; until then the logging calls just fail quietly in the console.
+const APP_VERSION = "8.45"; // v8.45 NEW (Tar 2026-10-28, "ເພີ່ມເວລາທີ່ລູກຄ້າກົດສ້າງຄຳສັ່ງຊື້ໃນໜ້າອໍເດີອອນລາຍ"): each order card on 🛒 ອໍເດີອອນລາຍ now shows date AND time (Laos time, dd/mm/yyyy hh:mm) from online_orders.created_at. Display only, no DB change.
+// (previous text of this slot, kept) // v8.44 NEW (Tar 2026-10-16, staff report: the print count on bills sometimes goes up before anyone pressed print; "keep a detailed print history with time and who pressed print so we can tell a system fault from a human mistake") -- every click of the 🖨️ ພິມ button now also writes one row per label to the new table label_print_log (print_click: who = logged-in user, when, batch id + size, count before/after, how long the browser print dialog stayed open in ms, page, app version, browser/device, per-tab session id), written BEFORE the print dialog opens and never blocking printing. A DB trigger on shipping_labels additionally logs EVERY change of print_count (db_change: old/new, DB role, request Origin, user agent), so a count that rises with no matching print_click row proves it was written by something other than the print button. New: on the ປະຫວັດ page the print-count pill is now a button that opens a popup "🖨️ ປະຫວັດການພິມ" listing both kinds of rows. The counting logic itself is UNCHANGED in this version (still +1 per print-button click after window.print() returns). Needs label_print_log.sql run once in Supabase; until then the logging calls just fail quietly in the console.
 // (previous text of this slot, kept) // v8.43 NEW (Tar 2026-10-15 08:24, "ປ່ຽນສະກຸນ" = convert USD ad accounts in app totals; the USD account ຄວາມສຸກຂອງເຮົາ USD was just made visible to the System User) -- ad spend/purchase value of accounts whose ad_accounts.currency is USD is now converted to THB when ad_spend_daily is loaded (loadAllData and the profit-page refresh), so every total, per-account/campaign/day table, ROAS and the ຄ່າໂຄສະນາລວມ -> ກີບ profit figure is in one currency. Raw values are kept on each row (_rawSpend/_rawPV) so changing the rate re-computes without a reload. The rate is a manual number (1 USD = ? THB) in ໜ້າ "ຈັດການບັນຊີ", stored per browser in localStorage (adSpendUsdToThb), default 32 until Tar sets it. adSpendTotalForRange treats converted USD rows as THB. "ຍັງເຫຼືອ" (budget - spend) converts a USD campaign budget the same way. The v8.42 non-THB warning on "+ ເພີ່ມ" now says the app converts. Only USD is converted; any other non-THB currency still sums unconverted.
 // (previous text of this slot, kept) // v8.42 NEW (Tar 2026-10-14 23:11, "ເຮັດ" = make accounts that only a personal Facebook login can see — Souliya Rich1/Rich2 etc. — addable like Pancake does) -- ໜ້າ "ຈັດການບັນຊີ": (1) NEW card "🔵 Facebook ສ່ວນຕົວ" with status/expiry and a "ເຊື່ອມ Facebook" / "Login ໃໝ່" button (reuses the v5.34/v5.36 Facebook Login for Business flow + fb_user_tokens; after login the callback now returns to #adSpend/accounts and searches automatically). (2) "🔍 ຄົ້ນຫາບັນຊີຈາກ Facebook" now merges the System User list with every extra account the personal login can see (tagged 🔵, shows currency when not THB). (3) Accounts added that way are saved with ad_accounts.token_source="personal" (new column, default "system") and shown with a 🔵 tag; sync-ad-spend v31 and update-ad-entity v24 pick the personal token for them. (4) Adding a non-THB account asks for confirmation because the app still sums spend without currency conversion. Automatic campaign-control rules (run-campaign-control etc.) still use only the System User token.
 // (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14 13:47, "ເຮັດ" = show each campaign's breakeven ROAS next to its real ROAS) -- ໜ້າ "ຄ່າໂຄສະນາລວມ": (1) NEW column "ROAS ຄຸ້ມທຶນ" (key beRoas, also in the "roas" preset) = breakeven ROAS of the product linked with the 🔗 button, computed by the same computeBreakevenRoas as the 💰 ຄິດໄລ່ກຳໄລ page; an ad set without its own link inherits its campaign's link (shown with ↑); ads show —; sortable on the campaign level. (2) The real ROAS cell is coloured against it: red = below breakeven, amber = above breakeven but inside the 15% safety margin (ADSPEND_BREAKEVEN_SAFETY, same default as ad_coach_settings.safety_margin), green = above; no colour when no product is linked or nothing was spent. (3) BUG FIX: buildAdSpendCampaignRows / buildAdSpendAdSetRows never copied linkedProductId into the merged rows (same kind of miss as v4.59 nickname), so the 🔗 button never showed the chosen product and nothing could be looked up. (4) The 🔗 product list now shows "name · price · breakeven ROAS" so same-named rows can be told apart, and is wider. No database change (ad_campaigns.linked_product_id / ad_sets.linked_product_id already existed; 0 of 723 campaigns were linked on 2026-10-14).
@@ -1586,7 +1587,9 @@ const APP_VERSION = "8.44"; // v8.44 NEW (Tar 2026-10-16, staff report: the prin
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.43"; // v8.43 NEW (Tar 2026-10-15) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.44"; // v8.44 NEW (Tar 2026-10-16) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.43→8.44 now that 8.45 is current).
+// (previous text of this slot, kept) // v8.43 NEW (Tar 2026-10-15) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.42→8.43 now that 8.44 is current).
 // (previous text of this slot, kept) // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.41→8.42 now that 8.43 is current).
@@ -1654,7 +1657,9 @@ const APP_VERSION_PREV = "8.43"; // v8.43 NEW (Tar 2026-10-15) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.42"; // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.43"; // v8.43 NEW (Tar 2026-10-15) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.42→8.43 now that 8.45 is current).
+// (previous text of this slot, kept) // v8.42 NEW (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.41→8.42 now that 8.43 is previous).
 // (previous text of this slot, kept) // v8.41 NEW+FIX (Tar 2026-10-14) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.40→8.41 now that 8.42 is previous).
@@ -12715,6 +12720,14 @@ function attachWaCrmEvents(){
    review that turns a pending order into a real POS sale for cost/profit reporting. See the
    APP_VERSION comment for the full design rationale (mirrors POS's own "held bill" convention:
    nothing counts as a sale and no stock moves until a human confirms money actually arrived). */
+// v8.45: date + time (Laos time) of when the customer pressed "create order" on checkout.html.
+function fmtOnlineOrderDateTime(s){
+  if(!s) return "-";
+  try{
+    const d=new Date(s); if(isNaN(d)) return esc(String(s));
+    return d.toLocaleDateString("en-GB",{timeZone:LAOS_TZ})+" "+d.toLocaleTimeString("en-GB",{timeZone:LAOS_TZ,hour:"2-digit",minute:"2-digit",hour12:false});
+  }catch(e){ return esc(String(s).slice(0,16)); }
+}
 async function loadOnlineOrdersData(){
   STATE.onlineOrdersLoading = true; render();
   try{
@@ -12770,7 +12783,7 @@ function renderOnlineOrdersList(rows, tab){
       <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; margin-bottom:10px;">
         <div>
           <div style="font-weight:700; font-size:15px;">${esc(o.orderNo)} ${o.isTest?'<span class="small-muted">🧪 ທົດລອງ</span>':''}</div>
-          <div class="small-muted">${fmtCodDate ? fmtCodDate(o.createdAt) : esc(o.createdAt)}</div>
+          <div class="small-muted">${fmtOnlineOrderDateTime(o.createdAt)}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-weight:700; color:var(--sage-dark,#3a7d44);">${fmt(o.totalKip)} ກີບ</div>

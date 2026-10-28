@@ -78,3 +78,6 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - DONE 2026-10-16 (v8.44): print button writes one `print_click` row per label BEFORE window.print() (user, time, batch, count before/after, dialog_ms, page, version, browser, per-tab session id); ປະຫວັດ page: the print-count pill opens a "🖨️ ປະຫວັດການພິມ" popup. Counting logic itself UNCHANGED.
 - How to read it: a print_count rise with no print_click row within seconds = written by something other than the v8.44 print button (old cached app version, another writer). dialog_ms ~0 = the print dialog did not block.
 - Open: history only exists from 2026-10-16 on. Idea not done: make the count atomic on the server (count +1 in SQL instead of local count +1) and do not count when the dialog is cancelled.
+
+## Online orders time chat (2026-10-28) — state
+- DONE 2026-10-28 (v8.45, index.html): order cards on 🛒 ອໍເດີອອນລາຍ show date + time (Laos time, dd/mm/yyyy hh:mm) from `online_orders.created_at` via new `fmtOnlineOrderDateTime`. Display only, no DB change. Syntax-checked all script blocks; formatting tested with node (07:35Z → 14:35). Not loaded in a browser (Supabase CDN blocked in sandbox).
