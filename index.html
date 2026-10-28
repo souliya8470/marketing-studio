@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.46"; // v8.46 NEW (Tar 2026-10-28, "ກົດເບິ່ງສະລິບແລ້ວຢ່າເປີດແທັບໃໝ່ ໃຫ້ເປັນປ໊ອບອັບ ກົດບ່ອນໃດກໍໄດ້ນອກຮູບເພື່ອປິດ"): transfer-slip thumbnails (🛒 ອໍເດີອອນລາຍ and Live CF) open an in-page popup (openSlipPopup); click outside the image, ✕ or Esc closes. Falls back to new tab only if the popup fails.
+const APP_VERSION = "8.47"; // v8.47 NEW (Tar 2026-10-28, voice request: filter on 🛒 ອໍເດີອອນລາຍ to see how many orders came on a chosen day, e.g. yesterday; the list was all days mixed): date filter (ທັງໝົດ / ມື້ນີ້ / ມື້ວານ / pick a date, Laos time) above the tabs; tab counts and the list follow the date; summary line shows orders + total kip of the chosen day. Display only. NOTE: request said "ບັນຊີ" (account) but context (yesterday/day) read as DATE filter — confirm with Tar.
+// (previous text of this slot, kept) // v8.46 NEW (Tar 2026-10-28, "ກົດເບິ່ງສະລິບແລ້ວຢ່າເປີດແທັບໃໝ່ ໃຫ້ເປັນປ໊ອບອັບ ກົດບ່ອນໃດກໍໄດ້ນອກຮູບເພື່ອປິດ"): transfer-slip thumbnails (🛒 ອໍເດີອອນລາຍ and Live CF) open an in-page popup (openSlipPopup); click outside the image, ✕ or Esc closes. Falls back to new tab only if the popup fails.
 // (previous text of this slot, kept) // v8.45 NEW (Tar 2026-10-28, "ເພີ່ມເວລາທີ່ລູກຄ້າກົດສ້າງຄຳສັ່ງຊື້ໃນໜ້າອໍເດີອອນລາຍ"): each order card on 🛒 ອໍເດີອອນລາຍ now shows date AND time (Laos time, dd/mm/yyyy hh:mm) from online_orders.created_at. Display only, no DB change.
 // (previous text of this slot, kept) // v8.44 NEW (Tar 2026-10-16, staff report: the print count on bills sometimes goes up before anyone pressed print; "keep a detailed print history with time and who pressed print so we can tell a system fault from a human mistake") -- every click of the 🖨️ ພິມ button now also writes one row per label to the new table label_print_log (print_click: who = logged-in user, when, batch id + size, count before/after, how long the browser print dialog stayed open in ms, page, app version, browser/device, per-tab session id), written BEFORE the print dialog opens and never blocking printing. A DB trigger on shipping_labels additionally logs EVERY change of print_count (db_change: old/new, DB role, request Origin, user agent), so a count that rises with no matching print_click row proves it was written by something other than the print button. New: on the ປະຫວັດ page the print-count pill is now a button that opens a popup "🖨️ ປະຫວັດການພິມ" listing both kinds of rows. The counting logic itself is UNCHANGED in this version (still +1 per print-button click after window.print() returns). Needs label_print_log.sql run once in Supabase; until then the logging calls just fail quietly in the console.
 // (previous text of this slot, kept) // v8.43 NEW (Tar 2026-10-15 08:24, "ປ່ຽນສະກຸນ" = convert USD ad accounts in app totals; the USD account ຄວາມສຸກຂອງເຮົາ USD was just made visible to the System User) -- ad spend/purchase value of accounts whose ad_accounts.currency is USD is now converted to THB when ad_spend_daily is loaded (loadAllData and the profit-page refresh), so every total, per-account/campaign/day table, ROAS and the ຄ່າໂຄສະນາລວມ -> ກີບ profit figure is in one currency. Raw values are kept on each row (_rawSpend/_rawPV) so changing the rate re-computes without a reload. The rate is a manual number (1 USD = ? THB) in ໜ້າ "ຈັດການບັນຊີ", stored per browser in localStorage (adSpendUsdToThb), default 32 until Tar sets it. adSpendTotalForRange treats converted USD rows as THB. "ຍັງເຫຼືອ" (budget - spend) converts a USD campaign budget the same way. The v8.42 non-THB warning on "+ ເພີ່ມ" now says the app converts. Only USD is converted; any other non-THB currency still sums unconverted.
@@ -1588,7 +1589,9 @@ const APP_VERSION = "8.46"; // v8.46 NEW (Tar 2026-10-28, "ກົດເບິ່
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.45"; // v8.45 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.46"; // v8.46 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.45→8.46 now that 8.47 is current).
+// (previous text of this slot, kept) // v8.45 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.44→8.45 now that 8.46 is current).
 // (previous text of this slot, kept) // v8.44 NEW (Tar 2026-10-16) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.43→8.44 now that 8.45 is current).
@@ -1660,7 +1663,9 @@ const APP_VERSION_PREV = "8.45"; // v8.45 NEW (Tar 2026-10-28) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.44"; // v8.44 NEW (Tar 2026-10-16) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.45"; // v8.45 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.44→8.45 now that 8.47 is current).
+// (previous text of this slot, kept) // v8.44 NEW (Tar 2026-10-16) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.43→8.44 now that 8.46 is current).
 // (previous text of this slot, kept) // v8.43 NEW (Tar 2026-10-15) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.42→8.43 now that 8.45 is current).
@@ -12744,6 +12749,10 @@ function openSlipPopup(url){
     return false;
   }catch(e){ return true; }
 }
+// v8.47: calendar day (YYYY-MM-DD) in Laos time, for the day filter on 🛒 ອໍເດີອອນລາຍ.
+function onlineOrderLaosDay(v){
+  try{ const d=new Date(v); return isNaN(d) ? "" : d.toLocaleDateString("en-CA",{timeZone:LAOS_TZ}); }catch(e){ return ""; }
+}
 // v8.45: date + time (Laos time) of when the customer pressed "create order" on checkout.html.
 function fmtOnlineOrderDateTime(s){
   if(!s) return "-";
@@ -12775,7 +12784,9 @@ function onlineOrderItemsFor(orderId){
 const ONLINE_ORDER_STATUS_LABELS = {pending_review:"⏳ ລໍກວດສະລິບ", confirmed:"✅ ຢືນຢັນແລ້ວ", cancelled:"❌ ປະຕິເສດແລ້ວ"};
 function renderOnlineOrders(){
   const tab = STATE.onlineOrdersTab || "pending_review";
-  const all = STATE.data.onlineOrders||[];
+  const allDays = STATE.data.onlineOrders||[];
+  const dayF = STATE.onlineOrdersDate || "";
+  const all = dayF ? allDays.filter(o=>onlineOrderLaosDay(o.createdAt)===dayF) : allDays;
   const rows = all.filter(o=>o.status===tab);
   const TABS = [
     {key:"pending_review", label:"⏳ ລໍກວດສະລິບ", count: all.filter(o=>o.status==="pending_review").length},
@@ -12787,7 +12798,15 @@ function renderOnlineOrders(){
       <h1>🛒 ອໍເດີອອນລາຍ</h1>
       <p>ອອເດີຈາກໜ້າຮ້ານອອນລາຍ (checkout.html) — ກວດຮູບສະລິບແລ້ວກົດຢືນຢັນ ຈຶ່ງຈະນັບເປັນຍອດຂາຍ+ຫັກສະຕັອກຈິງ</p>
     </div>
-    <div style="margin-bottom:14px; display:flex; justify-content:flex-end;">
+    <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;">
+      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+        <span class="small-muted">📅 ວັນທີ</span>
+        <button type="button" class="btn btn-sm ${!dayF?'btn-primary':'btn-outline'}" data-oo-day="">ທັງໝົດ</button>
+        <button type="button" class="btn btn-sm ${dayF===onlineOrderLaosDay(Date.now())?'btn-primary':'btn-outline'}" data-oo-day="today">ມື້ນີ້</button>
+        <button type="button" class="btn btn-sm ${dayF===onlineOrderLaosDay(Date.now()-86400000)?'btn-primary':'btn-outline'}" data-oo-day="yesterday">ມື້ວານ</button>
+        <input type="date" id="oo-day-input" value="${esc(dayF)}">
+        ${dayF ? `<span style="font-weight:600;">${fmt(all.length)} ອໍເດີ · ${fmt(all.reduce((a,o)=>a+(Number(o.totalKip)||0),0))} ກີບ</span>` : ""}
+      </div>
       <button type="button" class="btn btn-sm btn-outline" id="btn-reload-online-orders">🔄 ໂຫຼດຄືນ</button>
     </div>
     <div class="tabs" style="margin-bottom:14px;">
@@ -12845,6 +12864,15 @@ function renderOnlineOrdersList(rows, tab){
   }).join("");
 }
 function attachOnlineOrdersEvents(){
+  document.querySelectorAll("[data-oo-day]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const k = el.getAttribute("data-oo-day");
+      STATE.onlineOrdersDate = k==="today" ? onlineOrderLaosDay(Date.now()) : k==="yesterday" ? onlineOrderLaosDay(Date.now()-86400000) : "";
+      render();
+    });
+  });
+  const ooDayInput = document.getElementById("oo-day-input");
+  if(ooDayInput) ooDayInput.addEventListener("change", ()=>{ STATE.onlineOrdersDate = ooDayInput.value||""; render(); });
   const reloadBtn = document.getElementById("btn-reload-online-orders");
   if(reloadBtn) reloadBtn.addEventListener("click", loadOnlineOrdersData);
   document.querySelectorAll("[data-online-orders-tab]").forEach(el=>{

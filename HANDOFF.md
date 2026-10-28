@@ -82,3 +82,4 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## Online orders time chat (2026-10-28) — state
 - DONE 2026-10-28 (v8.45, index.html): order cards on 🛒 ອໍເດີອອນລາຍ show date + time (Laos time, dd/mm/yyyy hh:mm) from `online_orders.created_at` via new `fmtOnlineOrderDateTime`. Display only, no DB change. Syntax-checked all script blocks; formatting tested with node (07:35Z → 14:35). Not loaded in a browser (Supabase CDN blocked in sandbox).
 - DONE 2026-10-28 (v8.46): slip thumbnails (online orders ~line 12813, Live CF ~13262) open in-page popup `openSlipPopup` instead of a new tab; outside click / ✕ / Esc closes. Syntax-checked only, not loaded in a browser.
+- DONE 2026-10-28 (v8.47): 🛒 ອໍເດີອອນລາຍ date filter (ທັງໝົດ/ມື້ນີ້/ມື້ວານ/date picker, Laos day) → tab counts, list and a "N ອໍເດີ · total ກີບ" line follow it. Read "ບັນຊີ" in Tar's voice request as DATE; not confirmed. Syntax-checked only.
