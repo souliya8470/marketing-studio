@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.51"; // v8.51 NEW (Tar 2026-10-28, "ເຮັດ 1 ແລ້ວມາເຮັດ 2 ຕໍ": step 1 of matching real money received to online orders): new table onepay_transactions (+ onepay_sync_status) holds the BCEL OnePay Shop transaction list; 🛒 ອໍເດີອອນລາຍ has a button "📥 ອັບໂຫຼດ Excel OnePay Shop" (sheet "All Transactions", upsert by reference so re-uploads are safe). Each pending order shows a payment line: ✅ exact match (reference = BCEL slip ticket), 🟡 matched by amount+time (LDB/other banks, check by eye), ⚠️ no money seen yet (or "no OnePay data after the order time" when the list is older than the order). Display only — staff still press confirm. Step 2 (automatic feed from the PC) will write into the same table.
+const APP_VERSION = "8.52"; // v8.52 NEW (Tar 2026-10-29, "ອັບຮູບສິນຄ້າທີ່ແຕ່ງແລ້ວຂຶ້ນ Marketing Studio ໃຫ້ແອັດມິນດຶງໄປໃຊ້ໄດ້ງ່າຍ ບໍ່ຕ້ອງເຂົ້າຄອມເຊີບເວີ"): new sidebar page "🖼️ ຮູບສິນຄ້າ" (id editedImages, staff-visible by default) = library of finished product images (e.g. ChatGPT ads whose Thai text Claude converted to Lao in Canva). New table edited_product_images (product_id, product_name, title, file_name, storage_path, public_url, width, height, size_bytes, uploaded_by, is_deleted soft-delete, created_at); files go to the existing public bucket product-assets under edited/<product_id>/ (separate table on purpose so the ad-test pipeline that reads product_assets is not affected). Page: filter by product (with counts), images grouped per product, per-image ⬇️ download (Supabase ?download= so the original file name is kept) / 🔗 copy link / 🗑️ soft delete (owner or uploader, via customConfirm), ⬇️ download all for the current filter, 📤 multi-file upload with product picker. Loads once when the page is opened and again only on 🔄 refreshAll() if already opened — no polling.
+// (previous text of this slot, kept) // v8.51 NEW (Tar 2026-10-28, "ເຮັດ 1 ແລ້ວມາເຮັດ 2 ຕໍ": step 1 of matching real money received to online orders): new table onepay_transactions (+ onepay_sync_status) holds the BCEL OnePay Shop transaction list; 🛒 ອໍເດີອອນລາຍ has a button "📥 ອັບໂຫຼດ Excel OnePay Shop" (sheet "All Transactions", upsert by reference so re-uploads are safe). Each pending order shows a payment line: ✅ exact match (reference = BCEL slip ticket), 🟡 matched by amount+time (LDB/other banks, check by eye), ⚠️ no money seen yet (or "no OnePay data after the order time" when the list is older than the order). Display only — staff still press confirm. Step 2 (automatic feed from the PC) will write into the same table.
 // (previous text of this slot, kept) // v8.50 NEW (Tar 2026-10-28, "ເຮັດ" after asking for a list of bills left open after a return scan): ສະແກນຮັບເຄື່ອງຕີກັບ page has a new card "⚠️ ຕີກັບແລ້ວ ແຕ່ບິນ POS ຍັງບໍ່ຍົກເລີກ" listing POS bills that are still status completed although their label number was scanned as returned (DB view return_scan_pending_pos_bills), each with a 🗑️ ຍົກເລີກບິນ button (same confirm + cancel-pos-bill-by-label flow, never automatic). Old scan flow unchanged.
 // (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28, "ໃຫ້ລະບົບຢືນຢັນສະລິບແບບ CF, ຕົວທີ່ບໍ່ຜ່ານໃຫ້ແຈ້ງເຕືອນ"): 🛒 ອໍເດີອອນລາຍ now auto-checks each pending order's transfer slip with the new edge function online-slip-verify (BCEL OneProof, same method as Live CF cf-slip-qr; result stored in online_orders.slip_check jsonb). Badge on the card: ✅ ຜ່ານ / 🚨 ສົງໄສ (reasons: amount differs, other account, transfer before order, duplicate slip, BCEL has no such transfer) / ⚠️ ກວດບໍ່ໄດ້ (non-BCEL or no QR → staff checks by eye); 🔍 recheck button; red card border on 🚨; ✅ confirm button asks again when verdict is 🚨. Staff still press confirm — nothing is auto-confirmed.
 // (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28, photo of the ຄ່າໂຄສະນາລວມ date dropdown: "make it like this"): the day filter on 🛒 ອໍເດີອອນລາຍ now uses the shared renderDatePresetFilter/attachDatePresetFilter (same dropdown: ວັນນີ້, ເມື່ອວານນີ້, ວັນນີ້ ແລະ ເມື່ອວານນີ້, 7/14/28/30 ວັນ, ອາທິດ, ເດືອນ, ທັງໝົດ, ກຳນົດເອງ) instead of the v8.47 buttons. Default ທັງໝົດ. Range filter by Laos day on created_at.
@@ -1593,7 +1594,9 @@ const APP_VERSION = "8.51"; // v8.51 NEW (Tar 2026-10-28, "ເຮັດ 1 ແລ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.50"; // v8.50 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV = "8.51"; // v8.51 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.50→8.51 now that 8.52 is current).
+// (previous text of this slot, kept) // v8.50 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.49→8.50 now that 8.51 is current).
 // (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.48→8.49 now that 8.50 is current).
@@ -1675,7 +1678,9 @@ const APP_VERSION_PREV = "8.50"; // v8.50 NEW (Tar 2026-10-28) — full note is 
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.49"; // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+const APP_VERSION_PREV_OLDER = "8.50"; // v8.50 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
+// comment block above (this slot shifted from 8.49→8.50 now that 8.52 is current).
+// (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.48→8.49 now that 8.51 is current).
 // (previous text of this slot, kept) // v8.48 CHANGE (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.47→8.48 now that 8.50 is current).
@@ -7812,6 +7817,9 @@ async function refreshAll(){
     if(STATE.currentUser){
       try{ STATE.approvedUserNames = await dbListApprovedUserNames(); }catch(e){}
     }
+
+    // 5) v8.52: 🖼️ ຮູບສິນຄ້າ library — only if it was already opened this session.
+    if(STATE.editedImagesLoaded){ try{ await loadEditedImages(true); }catch(e){} }
   }catch(e){}
   STATE.refreshing = false;
   render();
@@ -28453,6 +28461,7 @@ async function dbUpdateShippingLabelParsedFields(id, fields){
 const BASE_NAV = [
   {id:"dashboard", label:"ພາບລວມ", icon:"&#9633;"},
   {id:"products", label:"ສິນຄ້າ", icon:"&#9638;"},
+  {id:"editedImages", label:"🖼️ ຮູບສິນຄ້າ", icon:"&#128444;"}, // v8.52: library of finished (Lao-text) product images for staff to download (see APP_VERSION comment)
   {id:"content", label:"Marketing Studio", icon:"&#9998;"},
   {id:"productChat", label:"ຖາມ AI ກ່ຽວກັບສິນຄ້າ", icon:"&#129302;"},
   {id:"costs", label:"ຕົ້ນທຶນ & ກຳໄລ", icon:"&#3647;"},
@@ -28834,6 +28843,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="deletionLog") loadDeletionLog();
   if(STATE.page==="barcodeScanLog") loadBarcodeScanLog();
   if(STATE.page==="arrivalTagReport") loadArrivalTagReport();
+  if(STATE.page==="editedImages") loadEditedImages(); // v8.52: one load per page open (no polling)
   if(STATE.page==="codReviewHistory") loadCodReviewHistory();
   if(STATE.page==="editLog") loadEditLog();
   if(STATE.page==="pancakeCrm"){ loadCrmCount(); loadCrmResults(true); loadCodReceivedMap(); loadSyncStatus(); }
@@ -29107,6 +29117,7 @@ function renderPage(){
     case "deletionLog": return renderDeletionLog();
     case "barcodeScanLog": return renderBarcodeScanLog();
     case "arrivalTagReport": return renderArrivalTagReport();
+    case "editedImages": return renderEditedImages(); // v8.52
     case "codReviewHistory": return renderCodReviewHistory();
     case "editLog": return renderEditLog();
     case "pagePermissions": return isOwner() ? renderPagePermissions() : renderDashboard();
@@ -35619,6 +35630,210 @@ function dedupeArrivalTagLatest(list){
   }
   return out;
 }
+/* ====================== EDITED PRODUCT IMAGES (🖼️ ຮູບສິນຄ້າ) — v8.52 ======================
+   Library of finished product images (e.g. ChatGPT images whose Thai text was converted to Lao
+   in Canva). Files live in the public storage bucket "product-assets" under edited/<product_id>/,
+   one row per file in table edited_product_images (soft delete via is_deleted). Data loads when
+   the page is opened and on the global 🔄 refreshAll() only — no polling (standing rule). */
+const EDITED_IMG_BUCKET = "product-assets";
+function editedImgTime(iso){
+  if(!iso) return "";
+  try{ return new Date(iso).toLocaleString("en-GB",{timeZone:"Asia/Vientiane",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+  catch(e){ return String(iso); }
+}
+function editedImgSafeName(name){
+  const dot = name.lastIndexOf(".");
+  const base = (dot>0 ? name.slice(0,dot) : name).replace(/[^A-Za-z0-9_\-]+/g,"_").replace(/^_+|_+$/g,"") || "image";
+  const ext = (dot>0 ? name.slice(dot+1) : "png").toLowerCase().replace(/[^a-z0-9]/g,"") || "png";
+  return base.slice(0,80) + "." + ext;
+}
+function editedImgDims(file){
+  return new Promise(resolve=>{
+    try{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = ()=>{ resolve({w:img.naturalWidth, h:img.naturalHeight}); URL.revokeObjectURL(url); };
+      img.onerror = ()=>{ resolve({w:null, h:null}); URL.revokeObjectURL(url); };
+      img.src = url;
+    }catch(e){ resolve({w:null, h:null}); }
+  });
+}
+async function loadEditedImages(quiet){
+  if(!quiet){ STATE.editedImagesLoading = true; render(); }
+  try{
+    const {data, error} = await sb.from("edited_product_images").select("*")
+      .eq("is_deleted", false).order("created_at", {ascending:false}).limit(2000);
+    if(error) throw error;
+    STATE.editedImagesList = data||[];
+    STATE.editedImagesLoaded = true;
+  }catch(err){
+    console.error("loadEditedImages failed:", err);
+    if(!quiet) showToast("⚠️ ໂຫຼດຮູບບໍ່ສຳເລັດ: " + (err.message||""), "error");
+  }
+  STATE.editedImagesLoading = false;
+  if(!quiet) render();
+}
+function editedImagesFiltered(){
+  const pid = STATE.editedImagesProduct || "";
+  return (STATE.editedImagesList||[]).filter(r=> !pid || (pid==="__none" ? !r.product_id : r.product_id===pid));
+}
+function renderEditedImages(){
+  const all = STATE.editedImagesList || [];
+  const products = STATE.data.products || [];
+  const pid = STATE.editedImagesProduct || "";
+  const uploadPid = STATE.editedImagesUploadProduct || pid || "";
+  const list = editedImagesFiltered();
+  const counts = {};
+  all.forEach(r=>{ const k = r.product_id || "__none"; counts[k] = (counts[k]||0)+1; });
+  const productsWithImages = products.filter(p=>counts[p.id]);
+  const groups = [];
+  const byKey = {};
+  list.forEach(r=>{
+    const k = r.product_id || "__none";
+    if(!byKey[k]){ byKey[k] = {key:k, name: r.product_name || (products.find(p=>p.id===r.product_id)||{}).name || "ບໍ່ລະບຸສິນຄ້າ", items:[]}; groups.push(byKey[k]); }
+    byKey[k].items.push(r);
+  });
+  const canDelete = (r)=> isOwner() || (STATE.currentUser && r.uploaded_by===STATE.currentUser.name);
+  const card = (r)=>`
+    <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column;">
+      <a href="${esc(r.public_url)}" target="_blank" rel="noopener" style="display:block; background:#f3f4f6;">
+        <img src="${esc(r.public_url)}" alt="${esc(r.title||r.file_name)}" loading="lazy" style="width:100%; aspect-ratio:1/1; object-fit:contain; display:block;"/>
+      </a>
+      <div style="padding:8px 10px; display:flex; flex-direction:column; gap:6px; flex:1;">
+        <div style="font-weight:600; font-size:13px; word-break:break-all;">${esc(r.title||r.file_name)}</div>
+        <div class="small-muted" style="font-size:11px;">${r.width&&r.height?`${r.width}×${r.height} · `:""}ອັບໂດຍ ${esc(r.uploaded_by||"-")} · ${esc(editedImgTime(r.created_at))}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:auto;">
+          <button class="btn btn-primary btn-sm" data-edited-dl="${esc(r.id)}">⬇️ ດາວໂຫຼດ</button>
+          <button class="btn btn-outline btn-sm" data-edited-copy="${esc(r.id)}">🔗 ສຳເນົາລິ້ງ</button>
+          ${canDelete(r) ? `<button class="btn btn-outline btn-sm" data-edited-del="${esc(r.id)}">🗑️ ລຶບ</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+  return `
+    <div class="page-head">
+      <h1>🖼️ ຮູບສິນຄ້າທີ່ແຕ່ງແລ້ວ</h1>
+      <p>ຮູບສິນຄ້າທີ່ແປງເປັນພາສາລາວແລ້ວ — ເລືອກສິນຄ້າ ແລ້ວກົດດາວໂຫຼດໄປໃຊ້ໄດ້ເລີຍ</p>
+    </div>
+    <div class="card">
+      <div class="flex-between" style="flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="edited-img-filter" style="margin-bottom:0;">
+            <option value="" ${pid===""?"selected":""}>ທຸກສິນຄ້າ (${all.length})</option>
+            ${productsWithImages.map(p=>`<option value="${esc(p.id)}" ${pid===p.id?"selected":""}>${esc(p.name)} (${counts[p.id]})</option>`).join("")}
+            ${counts.__none ? `<option value="__none" ${pid==="__none"?"selected":""}>ບໍ່ລະບຸສິນຄ້າ (${counts.__none})</option>` : ""}
+          </select>
+          <button class="btn btn-outline btn-sm" id="btn-edited-img-reload">🔄 ໂຫຼດຄືນໃໝ່</button>
+        </div>
+        ${list.length ? `<button class="btn btn-primary btn-sm" id="btn-edited-img-dl-all">⬇️ ດາວໂຫຼດທັງໝົດ (${list.length} ຮູບ)</button>` : ""}
+      </div>
+      ${STATE.editedImagesLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` :
+        (list.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີຮູບ</p>` :
+          groups.map(g=>`
+            <h3 style="margin:14px 0 8px;">${esc(g.name)} <span class="small-muted" style="font-weight:400;">(${g.items.length} ຮູບ)</span></h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px;">
+              ${g.items.map(card).join("")}
+            </div>`).join(""))}
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">📤 ອັບໂຫຼດຮູບໃໝ່</h3>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <select id="edited-img-upload-product" style="margin-bottom:0; max-width:320px;">
+          <option value="">-- ເລືອກສິນຄ້າ --</option>
+          ${products.map(p=>`<option value="${esc(p.id)}" ${uploadPid===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}
+        </select>
+        <input type="file" id="edited-img-files" accept="image/png,image/jpeg,image/webp" multiple style="margin-bottom:0;"/>
+        <button class="btn btn-primary btn-sm" id="btn-edited-img-upload" ${STATE.editedImagesUploading?"disabled":""}>📤 ອັບໂຫຼດ</button>
+      </div>
+      <p class="small-muted" id="edited-img-upload-status" style="margin:8px 0 0;">${esc(STATE.editedImagesUploadStatus||"ເລືອກໄຟລ໌ຮູບໄດ້ຫຼາຍຮູບພ້ອມກັນ (PNG, JPG)")}</p>
+    </div>`;
+}
+async function uploadEditedImages(){
+  const productId = (document.getElementById("edited-img-upload-product")||{}).value || "";
+  const input = document.getElementById("edited-img-files");
+  const files = input && input.files ? [...input.files] : [];
+  if(!productId){ showToast("ກະລຸນາເລືອກສິນຄ້າກ່ອນ", "error"); return; }
+  if(files.length===0){ showToast("ກະລຸນາເລືອກໄຟລ໌ຮູບ", "error"); return; }
+  const product = (STATE.data.products||[]).find(p=>p.id===productId) || {};
+  STATE.editedImagesUploadProduct = productId;
+  STATE.editedImagesUploading = true;
+  const statusEl = ()=>document.getElementById("edited-img-upload-status");
+  let ok = 0; const failed = [];
+  for(let i=0; i<files.length; i++){
+    const f = files[i];
+    const s = statusEl(); if(s) s.textContent = `ກຳລັງອັບໂຫຼດ ${i+1}/${files.length}: ${f.name}`;
+    try{
+      const dims = await editedImgDims(f);
+      const path = `edited/${productId}/${Date.now()}_${i}_${editedImgSafeName(f.name)}`;
+      const up = await sb.storage.from(EDITED_IMG_BUCKET).upload(path, f, {contentType: f.type||"image/png", upsert:false});
+      if(up.error) throw up.error;
+      const publicUrl = sb.storage.from(EDITED_IMG_BUCKET).getPublicUrl(path).data.publicUrl;
+      const dot = f.name.lastIndexOf(".");
+      const {error} = await sb.from("edited_product_images").insert({
+        product_id: productId, product_name: product.name || null,
+        title: dot>0 ? f.name.slice(0,dot) : f.name, file_name: f.name,
+        storage_path: path, public_url: publicUrl,
+        width: dims.w, height: dims.h, size_bytes: f.size,
+        uploaded_by: (STATE.currentUser && STATE.currentUser.name) || null
+      });
+      if(error) throw error;
+      ok++;
+    }catch(err){
+      console.error("uploadEditedImages failed for", f.name, err);
+      failed.push(f.name + " (" + (err.message||err) + ")");
+    }
+  }
+  STATE.editedImagesUploading = false;
+  STATE.editedImagesUploadStatus = failed.length ? ("⚠️ ອັບໂຫຼດບໍ່ສຳເລັດ: " + failed.join(", ")) : ("✅ ອັບໂຫຼດແລ້ວ " + ok + " ຮູບ");
+  if(ok) showToast("✅ ອັບໂຫຼດແລ້ວ " + ok + " ຮູບ");
+  if(failed.length) showToast("⚠️ ອັບໂຫຼດບໍ່ສຳເລັດ " + failed.length + " ຮູບ", "error");
+  STATE.editedImagesProduct = productId;
+  await loadEditedImages();
+}
+function editedImgDownload(r){
+  const a = document.createElement("a");
+  a.href = r.public_url + (r.public_url.includes("?")?"&":"?") + "download=" + encodeURIComponent(r.file_name||"image.png");
+  a.download = r.file_name || "image.png";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function editedImgDownloadAll(){
+  const list = editedImagesFiltered();
+  for(let i=0; i<list.length; i++){
+    editedImgDownload(list[i]);
+    await new Promise(res=>setTimeout(res, 500));
+  }
+}
+async function deleteEditedImage(id){
+  const r = (STATE.editedImagesList||[]).find(x=>x.id===id);
+  if(!r) return;
+  const okDel = await customConfirm("ລຶບຮູບ \"" + (r.title||r.file_name) + "\" ອອກຈາກລາຍການບໍ?", {okLabel:"ລຶບ", danger:true});
+  if(!okDel) return;
+  const {error} = await sb.from("edited_product_images").update({is_deleted:true}).eq("id", id);
+  if(error){ showToast("⚠️ ລຶບບໍ່ສຳເລັດ: " + (error.message||""), "error"); return; }
+  showToast("✅ ລຶບແລ້ວ");
+  STATE.editedImagesList = (STATE.editedImagesList||[]).filter(x=>x.id!==id);
+  render();
+}
+function attachEditedImagesEvents(){
+  const filterEl = document.getElementById("edited-img-filter");
+  if(filterEl) filterEl.addEventListener("change", ()=>{ STATE.editedImagesProduct = filterEl.value; render(); });
+  const upProdEl = document.getElementById("edited-img-upload-product");
+  if(upProdEl) upProdEl.addEventListener("change", ()=>{ STATE.editedImagesUploadProduct = upProdEl.value; });
+  const reloadBtn = document.getElementById("btn-edited-img-reload");
+  if(reloadBtn) reloadBtn.addEventListener("click", ()=>loadEditedImages());
+  const upBtn = document.getElementById("btn-edited-img-upload");
+  if(upBtn) upBtn.addEventListener("click", uploadEditedImages);
+  const dlAll = document.getElementById("btn-edited-img-dl-all");
+  if(dlAll) dlAll.addEventListener("click", editedImgDownloadAll);
+  const find = (id)=>(STATE.editedImagesList||[]).find(x=>x.id===id);
+  document.querySelectorAll("[data-edited-dl]").forEach(b=>b.addEventListener("click", ()=>{ const r = find(b.dataset.editedDl); if(r) editedImgDownload(r); }));
+  document.querySelectorAll("[data-edited-copy]").forEach(b=>b.addEventListener("click", async ()=>{
+    const r = find(b.dataset.editedCopy); if(!r) return;
+    try{ await navigator.clipboard.writeText(r.public_url); showToast("✅ ສຳເນົາລິ້ງແລ້ວ"); }
+    catch(e){ showToast("⚠️ ສຳເນົາບໍ່ໄດ້", "error"); }
+  }));
+  document.querySelectorAll("[data-edited-del]").forEach(b=>b.addEventListener("click", ()=>deleteEditedImage(b.dataset.editedDel)));
+}
+
 function renderArrivalTagReport(){
   const q = (STATE.arrivalTagLogSearch||"").trim().toLowerCase();
   const statusFilter = STATE.arrivalTagLogStatusFilter||"unsent"; // "unsent" (default), "all", or an exact status value
@@ -39129,6 +39344,7 @@ function attachPageEvents(){
   if(STATE.page==="deletionLog") attachDeletionLogEvents();
   if(STATE.page==="barcodeScanLog") attachBarcodeScanLogEvents();
   if(STATE.page==="arrivalTagReport") attachArrivalTagReportEvents();
+  if(STATE.page==="editedImages") attachEditedImagesEvents(); // v8.52
   if(STATE.page==="codReviewHistory") attachCodReviewHistoryEvents();
   if(STATE.page==="editLog") attachEditLogEvents();
   if(STATE.page==="pagePermissions") attachPagePermissionsEvents();
