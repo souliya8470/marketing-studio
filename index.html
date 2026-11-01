@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.54"; // v8.54 CHANGE (Tar 2026-11-01): schedule modal — off time is optional and empty by default, on time defaults 00:00, each time has a "ລ້າງ" (clear) button, so "turn ON Monday 00:00 only" works.
+const APP_VERSION = "8.55"; // v8.55 CHANGE (Tar 2026-11-01): ຮູບສິນຄ້າ page — clicking an image opens the in-page popup (openSlipPopup) instead of a new tab; click outside, ✕ or Esc closes.
+// (previous text of this slot, kept) v8.54 CHANGE (Tar 2026-11-01): schedule modal — off time is optional and empty by default, on time defaults 00:00, each time has a "ລ້າງ" (clear) button, so "turn ON Monday 00:00 only" works.
 // (previous text of this slot, kept) v8.53 NEW (Tar 2026-11-01, "ຕິ໊ກເລືອກແຄມເປນແລ້ວຕັ້ງເວລາເປີດປິດໄດ້ເລີຍ"): ຄ່າໂຄສະນາລວມ → ຈັດການແຄມເປນ has a new button "⏰ ຕັ້ງເວລາເປີດ/ປິດ" (opens a modal: ticked campaigns, days, on time, off time, list/enable/delete of saved schedules). Rows in new table campaign_schedules; edge function run-campaign-schedules (pg_cron every 5 min, Laos time, catch-up window 60 min) calls update-ad-entity toggle_status.
 // (previous text of this slot, kept) v8.52 NEW (Tar 2026-10-29, "ອັບຮູບສິນຄ້າທີ່ແຕ່ງແລ້ວຂຶ້ນ Marketing Studio ໃຫ້ແອັດມິນດຶງໄປໃຊ້ໄດ້ງ່າຍ ບໍ່ຕ້ອງເຂົ້າຄອມເຊີບເວີ"): new sidebar page "🖼️ ຮູບສິນຄ້າ" (id editedImages, staff-visible by default) = library of finished product images (e.g. ChatGPT ads whose Thai text Claude converted to Lao in Canva). New table edited_product_images (product_id, product_name, title, file_name, storage_path, public_url, width, height, size_bytes, uploaded_by, is_deleted soft-delete, created_at); files go to the existing public bucket product-assets under edited/<product_id>/ (separate table on purpose so the ad-test pipeline that reads product_assets is not affected). Page: filter by product (with counts), images grouped per product, per-image ⬇️ download (Supabase ?download= so the original file name is kept) / 🔗 copy link / 🗑️ soft delete (owner or uploader, via customConfirm), ⬇️ download all for the current filter, 📤 multi-file upload with product picker. Loads once when the page is opened and again only on 🔄 refreshAll() if already opened — no polling.
 // (previous text of this slot, kept) // v8.51 NEW (Tar 2026-10-28, "ເຮັດ 1 ແລ້ວມາເຮັດ 2 ຕໍ": step 1 of matching real money received to online orders): new table onepay_transactions (+ onepay_sync_status) holds the BCEL OnePay Shop transaction list; 🛒 ອໍເດີອອນລາຍ has a button "📥 ອັບໂຫຼດ Excel OnePay Shop" (sheet "All Transactions", upsert by reference so re-uploads are safe). Each pending order shows a payment line: ✅ exact match (reference = BCEL slip ticket), 🟡 matched by amount+time (LDB/other banks, check by eye), ⚠️ no money seen yet (or "no OnePay data after the order time" when the list is older than the order). Display only — staff still press confirm. Step 2 (automatic feed from the PC) will write into the same table.
@@ -1596,7 +1597,8 @@ const APP_VERSION = "8.54"; // v8.54 CHANGE (Tar 2026-11-01): schedule modal —
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.53"; // (v8.53 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.54"; // (v8.54 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) (v8.53 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.52 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) v8.51 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.50→8.51 now that 8.52 is current).
@@ -35776,7 +35778,7 @@ function renderEditedImages(){
   const canDelete = (r)=> isOwner() || (STATE.currentUser && r.uploaded_by===STATE.currentUser.name);
   const card = (r)=>`
     <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column;">
-      <a href="${esc(r.public_url)}" target="_blank" rel="noopener" style="display:block; background:#f3f4f6;">
+      <a href="${esc(r.public_url)}" target="_blank" rel="noopener" onclick="return openSlipPopup(this.href)" style="display:block; background:#f3f4f6;">
         <img src="${esc(r.public_url)}" alt="${esc(r.title||r.file_name)}" loading="lazy" style="width:100%; aspect-ratio:1/1; object-fit:contain; display:block;"/>
       </a>
       <div style="padding:8px 10px; display:flex; flex-direction:column; gap:6px; flex:1;">
