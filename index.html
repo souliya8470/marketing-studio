@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.55"; // v8.55 CHANGE (Tar 2026-11-01): ຮູບສິນຄ້າ page — clicking an image opens the in-page popup (openSlipPopup) instead of a new tab; click outside, ✕ or Esc closes.
+const APP_VERSION = "8.56"; // v8.56 NEW (Tar 2026-11-04): new sidebar page "🕒 ໂມງ" (id clockPage) — big red 7-segment digital clock (hour / minute / second) plus weekday, date, month and year (ພ.ສ. + ຄ.ສ.), with ລາວ / ไทย / English buttons and a 24h/12h switch. Time is the browser clock shown in Laos time (Asia/Vientiane); no network, no DB. It ticks with ONE self-rescheduling setTimeout that only touches the clock's own DOM (never render()) and stops when the page is left — no setInterval, no polling. Visible to staff by default (owner can hide it in 🔒 ຕັ້ງຄ່າສິດ).
+// (previous text of this slot, kept) v8.55 CHANGE (Tar 2026-11-01): ຮູບສິນຄ້າ page — clicking an image opens the in-page popup (openSlipPopup) instead of a new tab; click outside, ✕ or Esc closes.
 // (previous text of this slot, kept) v8.54 CHANGE (Tar 2026-11-01): schedule modal — off time is optional and empty by default, on time defaults 00:00, each time has a "ລ້າງ" (clear) button, so "turn ON Monday 00:00 only" works.
 // (previous text of this slot, kept) v8.53 NEW (Tar 2026-11-01, "ຕິ໊ກເລືອກແຄມເປນແລ້ວຕັ້ງເວລາເປີດປິດໄດ້ເລີຍ"): ຄ່າໂຄສະນາລວມ → ຈັດການແຄມເປນ has a new button "⏰ ຕັ້ງເວລາເປີດ/ປິດ" (opens a modal: ticked campaigns, days, on time, off time, list/enable/delete of saved schedules). Rows in new table campaign_schedules; edge function run-campaign-schedules (pg_cron every 5 min, Laos time, catch-up window 60 min) calls update-ad-entity toggle_status.
 // (previous text of this slot, kept) v8.52 NEW (Tar 2026-10-29, "ອັບຮູບສິນຄ້າທີ່ແຕ່ງແລ້ວຂຶ້ນ Marketing Studio ໃຫ້ແອັດມິນດຶງໄປໃຊ້ໄດ້ງ່າຍ ບໍ່ຕ້ອງເຂົ້າຄອມເຊີບເວີ"): new sidebar page "🖼️ ຮູບສິນຄ້າ" (id editedImages, staff-visible by default) = library of finished product images (e.g. ChatGPT ads whose Thai text Claude converted to Lao in Canva). New table edited_product_images (product_id, product_name, title, file_name, storage_path, public_url, width, height, size_bytes, uploaded_by, is_deleted soft-delete, created_at); files go to the existing public bucket product-assets under edited/<product_id>/ (separate table on purpose so the ad-test pipeline that reads product_assets is not affected). Page: filter by product (with counts), images grouped per product, per-image ⬇️ download (Supabase ?download= so the original file name is kept) / 🔗 copy link / 🗑️ soft delete (owner or uploader, via customConfirm), ⬇️ download all for the current filter, 📤 multi-file upload with product picker. Loads once when the page is opened and again only on 🔄 refreshAll() if already opened — no polling.
@@ -1597,7 +1598,8 @@ const APP_VERSION = "8.55"; // v8.55 CHANGE (Tar 2026-11-01): ຮູບສິນ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.54"; // (v8.54 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.55"; // (v8.55 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) (v8.54 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.53 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.52 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) v8.51 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
@@ -1684,7 +1686,8 @@ const APP_VERSION_PREV = "8.54"; // (v8.54 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.51"; // (v8.51 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.54"; // (v8.54 text kept in the history comment lines above)
+// (previous text of this slot, kept) (v8.51 text kept in the history comment lines above)
 // (previous text of this slot, kept) v8.50 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.49→8.50 now that 8.52 is current).
 // (previous text of this slot, kept) // v8.49 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
@@ -28552,6 +28555,7 @@ const BASE_NAV = [
   {id:"reports", label:"ລາຍງານຂໍ້ຜິດພາດ", icon:"&#9888;"},
   {id:"feedback", label:"Feedback ລະບົບ", icon:"&#128172;"},
   {id:"attendance", label:"ລົງໂມງ", icon:"&#128336;"},
+  {id:"clockPage", label:"🕒 ໂມງ", icon:"&#128339;"}, // v8.56: big red digital clock (hour/minute/second + date) — see APP_VERSION comment
   {id:"gate", label:"ປະຕູຮົ້ວ", icon:"&#128274;"}, // v5.133 (Tar 2026-08-19): Tuya-based gate open/close + status + schedule
   {id:"labels", label:"ພິມໃບບິນ", icon:"&#127991;"},
   {id:"scanOut", label:"ສະແກນສິນຄ້າອອກ", icon:"&#128269;"},
@@ -29200,6 +29204,7 @@ function renderPage(){
     case "barcodeScanLog": return renderBarcodeScanLog();
     case "arrivalTagReport": return renderArrivalTagReport();
     case "editedImages": return renderEditedImages(); // v8.52
+    case "clockPage": return renderClockPage(); // v8.56
     case "codReviewHistory": return renderCodReviewHistory();
     case "editLog": return renderEditLog();
     case "pagePermissions": return isOwner() ? renderPagePermissions() : renderDashboard();
@@ -35712,6 +35717,159 @@ function dedupeArrivalTagLatest(list){
   }
   return out;
 }
+/* ====================== CLOCK PAGE (🕒 ໂມງ) — v8.56 ======================
+   Big red 7-segment digital clock: hour/minute/second + weekday, date, month, year (ພ.ສ. and ຄ.ສ.).
+   Time comes from the browser clock, shown in Laos time (Asia/Vientiane). No network, no DB.
+   Ticking uses ONE self-rescheduling setTimeout that only touches the clock's own DOM (never
+   render()) and stops as soon as the page is left or re-rendered — no setInterval, no polling
+   (standing rule). */
+const CLOCK_SEGS = {
+  a:"8,5 13,0 47,0 52,5 47,10 13,10", b:"55,8 60,13 60,45 55,50 50,45 50,13",
+  c:"55,54 60,59 60,91 55,96 50,91 50,59", d:"8,99 13,94 47,94 52,99 47,104 13,104",
+  e:"5,54 10,59 10,91 5,96 0,91 0,59", f:"5,8 10,13 10,45 5,50 0,45 0,13",
+  g:"8,52 13,47 47,47 52,52 47,57 13,57"
+};
+const CLOCK_MAP = ["abcdef","bc","abdeg","abcdg","bcfg","acdfg","acdefg","abc","abcdefg","abcdfg"];
+const CLOCK_TXT = {
+  lo:{ hour:"ຊົ່ວໂມງ", minute:"ນາທີ", second:"ວິນາທີ",
+       days:["ວັນອາທິດ","ວັນຈັນ","ວັນອັງຄານ","ວັນພຸດ","ວັນພະຫັດ","ວັນສຸກ","ວັນເສົາ"],
+       months:["ມັງກອນ","ກຸມພາ","ມີນາ","ເມສາ","ພຶດສະພາ","ມິຖຸນາ","ກໍລະກົດ","ສິງຫາ","ກັນຍາ","ຕຸລາ","ພະຈິກ","ທັນວາ"],
+       be:true, beLabel:"ພ.ສ.", ceLabel:"ຄ.ສ.", f24:"24 ຊມ.", f12:"12 ຊມ.", name:"ລາວ" },
+  th:{ hour:"ชั่วโมง", minute:"นาที", second:"วินาที",
+       days:["วันอาทิตย์","วันจันทร์","วันอังคาร","วันพุธ","วันพฤหัสบดี","วันศุกร์","วันเสาร์"],
+       months:["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"],
+       be:true, beLabel:"พ.ศ.", ceLabel:"ค.ศ.", f24:"24 ชม.", f12:"12 ชม.", name:"ไทย" },
+  en:{ hour:"Hours", minute:"Minutes", second:"Seconds",
+       days:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+       months:["January","February","March","April","May","June","July","August","September","October","November","December"],
+       be:false, f24:"24 h", f12:"12 h", name:"English" }
+};
+const CLOCK_WEEKDAY_IDX = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+let CLOCK_TOKEN = 0;
+let CLOCK_FMT = null;
+function clockLang(){ return CLOCK_TXT[STATE.clockLang] ? STATE.clockLang : "lo"; }
+function clockIs24(){ return STATE.clock24!==false; }
+function clockNowParts(){
+  if(!CLOCK_FMT){
+    CLOCK_FMT = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Vientiane", weekday:"short", year:"numeric", month:"numeric", day:"numeric", hour:"numeric", minute:"numeric", second:"numeric", hourCycle:"h23"});
+  }
+  const o = {};
+  CLOCK_FMT.formatToParts(new Date()).forEach(p=>{ o[p.type]=p.value; });
+  return { wd:CLOCK_WEEKDAY_IDX[o.weekday]||0, y:+o.year, m:+o.month, d:+o.day, h:(+o.hour)%24, mi:+o.minute, s:+o.second };
+}
+function renderClockPage(){
+  const t = CLOCK_TXT[clockLang()];
+  const langBtns = Object.keys(CLOCK_TXT).map(k=>`<button class="ck-btn${clockLang()===k?" on":""}" data-ck-lang="${k}">${esc(CLOCK_TXT[k].name)}</button>`).join("");
+  return `
+    <div class="page-head">
+      <h1>🕒 ໂມງ</h1>
+      <p>ເວລາປັດຈຸບັນ (ເວລາລາວ)</p>
+    </div>
+    <style>
+      .ck-panel{--ckw:clamp(24px,7.5vw,90px);--ck-on:#ff2a2a;--ck-glow:rgba(255,42,42,.7);max-width:980px;margin:0 auto;color:#fff;background:linear-gradient(#232326,#1b1b1d);border:3px solid #3a3a3e;border-radius:26px;box-shadow:0 14px 40px rgba(0,0,0,.45),inset 0 0 0 6px #0f0f10,inset 0 0 0 7px #2d2d30;padding:clamp(16px,3.5vw,34px) clamp(10px,2.5vw,30px) clamp(14px,2.5vw,26px)}
+      .ck-clock{display:flex;align-items:flex-start;justify-content:center;gap:calc(var(--ckw)*.1)}
+      .ck-group{display:flex;flex-direction:column;align-items:center;gap:calc(var(--ckw)*.15)}
+      .ck-digits{display:flex;gap:calc(var(--ckw)*.08)}
+      .ck-digit{width:var(--ckw);height:auto;display:block;overflow:visible}
+      .ck-seg{fill:rgba(255,255,255,.06);transition:fill .08s}
+      .ck-seg.on{fill:var(--ck-on);filter:drop-shadow(0 0 4px var(--ck-glow))}
+      .ck-colon{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--ckw)*.45);height:calc(var(--ckw)*1.733)}
+      .ck-colon i{display:block;width:calc(var(--ckw)*.12);height:calc(var(--ckw)*.12);background:var(--ck-on);box-shadow:0 0 8px var(--ck-glow);animation:ckblink 1s steps(1) infinite}
+      @keyframes ckblink{50%{opacity:.15}}
+      .ck-label{font-weight:700;letter-spacing:.04em;font-size:clamp(11px,2vw,20px)}
+      .ck-ampm{align-self:center;font-weight:700;color:var(--ck-on);text-shadow:0 0 8px var(--ck-glow);font-size:clamp(14px,2.6vw,26px)}
+      .ck-date{text-align:center;line-height:1.35;margin-top:clamp(14px,2.5vw,26px)}
+      .ck-day{font-size:clamp(15px,2.8vw,24px);color:#ffb3b3}
+      .ck-full{font-size:clamp(24px,5vw,48px);font-weight:700;color:var(--ck-on);text-shadow:0 0 14px var(--ck-glow)}
+      .ck-sub{font-size:clamp(12px,2vw,17px);color:#9aa0a8;margin-top:2px}
+      .ck-ctl{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:clamp(12px,2vw,20px)}
+      .ck-btn{font:inherit;font-size:14px;color:#d6dbe2;background:#17191d;border:1px solid #3a3f47;border-radius:999px;padding:6px 16px;cursor:pointer}
+      .ck-btn:hover{border-color:var(--ck-on)}
+      .ck-btn.on{color:#2a0000;background:var(--ck-on);border-color:var(--ck-on);font-weight:600}
+    </style>
+    <div class="ck-panel" id="ck-root">
+      <div class="ck-clock">
+        <div class="ck-group"><div class="ck-digits" id="ck-hh"></div><div class="ck-label">${esc(t.hour)}</div></div>
+        <div class="ck-colon"><i></i><i></i></div>
+        <div class="ck-group"><div class="ck-digits" id="ck-mm"></div><div class="ck-label">${esc(t.minute)}</div></div>
+        <div class="ck-colon"><i></i><i></i></div>
+        <div class="ck-group"><div class="ck-digits" id="ck-ss"></div><div class="ck-label">${esc(t.second)}</div></div>
+      </div>
+      <div class="ck-date">
+        <div class="ck-day" id="ck-day"></div>
+        <div class="ck-full" id="ck-full"></div>
+        <div class="ck-sub" id="ck-sub"></div>
+      </div>
+      <div class="ck-ctl">
+        ${langBtns}
+        <button class="ck-btn${clockIs24()?"":" on"}" id="ck-fmt">${esc(clockIs24()?t.f24:t.f12)}</button>
+      </div>
+    </div>`;
+}
+function clockMakeDigit(){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox","0 0 60 104");
+  svg.setAttribute("class","ck-digit");
+  svg._segs = {}; svg._val = null;
+  Object.keys(CLOCK_SEGS).forEach(k=>{
+    const p = document.createElementNS(NS,"polygon");
+    p.setAttribute("points", CLOCK_SEGS[k]);
+    p.setAttribute("class","ck-seg");
+    svg.appendChild(p); svg._segs[k] = p;
+  });
+  return svg;
+}
+function clockSetDigit(svg, n){
+  if(svg._val===n) return;
+  svg._val = n;
+  const on = CLOCK_MAP[n];
+  for(const k in svg._segs) svg._segs[k].classList.toggle("on", on.indexOf(k)>-1);
+}
+function clockPageTick(token, cells){
+  if(token!==CLOCK_TOKEN) return;                       // a newer render took over
+  if(STATE.page!=="clockPage" || !document.getElementById("ck-root")) return; // page left → stop
+  const t = CLOCK_TXT[clockLang()];
+  const n = clockNowParts();
+  const is24 = clockIs24();
+  const h = is24 ? n.h : (n.h%12===0 ? 12 : n.h%12);
+  const set = (id,v)=>{ clockSetDigit(cells[id][0], Math.floor(v/10)); clockSetDigit(cells[id][1], v%10); };
+  set("hh",h); set("mm",n.mi); set("ss",n.s);
+  let ap = document.getElementById("ck-ampm");
+  if(!is24){
+    if(!ap){ ap = document.createElement("div"); ap.id = "ck-ampm"; ap.className = "ck-ampm"; const g = document.getElementById("ck-hh").parentNode; g.insertBefore(ap, g.firstChild); }
+    ap.textContent = n.h<12 ? "AM" : "PM";
+  } else if(ap){ ap.remove(); }
+  const dayEl = document.getElementById("ck-day"), fullEl = document.getElementById("ck-full"), subEl = document.getElementById("ck-sub");
+  const key = n.y+"-"+n.m+"-"+n.d+clockLang();
+  if(dayEl && dayEl.dataset.k!==key){
+    dayEl.dataset.k = key;
+    const p2 = (x)=> x<10 ? "0"+x : ""+x;
+    dayEl.textContent = t.days[n.wd];
+    fullEl.textContent = n.d+" "+t.months[n.m-1]+" "+(t.be ? n.y+543 : n.y);
+    subEl.textContent = t.be
+      ? t.beLabel+" "+(n.y+543)+"  ·  "+t.ceLabel+" "+n.y+"  ·  "+p2(n.d)+"/"+p2(n.m)+"/"+n.y
+      : p2(n.m)+"/"+p2(n.d)+"/"+n.y;
+  }
+  setTimeout(()=>clockPageTick(token, cells), 1000 - (Date.now()%1000) + 5);
+}
+function attachClockPageEvents(){
+  const token = ++CLOCK_TOKEN;
+  const cells = {};
+  ["hh","mm","ss"].forEach(id=>{
+    const box = document.getElementById("ck-"+id);
+    if(!box) return;
+    cells[id] = [clockMakeDigit(), clockMakeDigit()];
+    cells[id].forEach(s=>box.appendChild(s));
+  });
+  document.querySelectorAll("[data-ck-lang]").forEach(b=>{
+    b.addEventListener("click", ()=>{ STATE.clockLang = b.dataset.ckLang; render(); });
+  });
+  const f = document.getElementById("ck-fmt");
+  if(f) f.addEventListener("click", ()=>{ STATE.clock24 = !clockIs24(); render(); });
+  if(cells.hh) clockPageTick(token, cells);
+}
+
 /* ====================== EDITED PRODUCT IMAGES (🖼️ ຮູບສິນຄ້າ) — v8.52 ======================
    Library of finished product images (e.g. ChatGPT images whose Thai text was converted to Lao
    in Canva). Files live in the public storage bucket "product-assets" under edited/<product_id>/,
@@ -39427,6 +39585,7 @@ function attachPageEvents(){
   if(STATE.page==="barcodeScanLog") attachBarcodeScanLogEvents();
   if(STATE.page==="arrivalTagReport") attachArrivalTagReportEvents();
   if(STATE.page==="editedImages") attachEditedImagesEvents(); // v8.52
+  if(STATE.page==="clockPage") attachClockPageEvents(); // v8.56
   if(STATE.page==="codReviewHistory") attachCodReviewHistoryEvents();
   if(STATE.page==="editLog") attachEditLogEvents();
   if(STATE.page==="pagePermissions") attachPagePermissionsEvents();
