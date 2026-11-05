@@ -93,3 +93,9 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 
 ## Clock page (🕒 ໂມງ) — v8.56 (2026-11-04)
 - Sidebar page `clockPage`: red 7-segment clock + date (ພ.ສ./ຄ.ສ.), ລາວ/ไทย/English, 24h/12h. Code block "CLOCK PAGE" before "EDITED PRODUCT IMAGES" in `index.html`. Browser time in Asia/Vientiane, no DB. Ticks with one self-rescheduling setTimeout on its own DOM only (no setInterval, no render() per second).
+
+## Security incident 2026-11-05 (Claude, session 01GD55sr...)
+- Evidence (Supabase edge_logs, 24h window only): 05/11 06:02-06:44 Laos, `curl/8.7.1` read users, orders, pos_transactions, pos_shifts, payment_banks, pos_users with the public anon key; 41 write attempts (POST) all 400/404, none succeeded. RLS scanner hit 00:12. POS user `jucie` (Owner, pw 1234) created 06:23 from Mac Safari, now is_active=false (NOT deleted).
+- Root cause: anon key is public and RLS is off with anon grants on almost all tables; passwords are plaintext (`password_hash` column holds raw text); 58 functions had verify_jwt=false.
+- Done: 20 diag-*/tmp-* edge functions replaced with a 410 stub (kept: diag-pancake-test-send, test-send-bill-message, test-send-whatsapp-via-pancake, because index.html calls them).
+- TODO (stage 2, needs plan): server-side/Supabase-Auth login for index.html, POS, Smart Home; hash passwords; RLS per table; auth on gate/cancel-bill/launch-ad/clone-ad-campaign functions; move n8n/bridge/cron from anon key to service key/secret header; then rotate all staff passwords (rotating before RLS is pointless, they stay readable).
