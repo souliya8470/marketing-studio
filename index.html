@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.58"; // v8.58 SECURITY (Tar 2026-11-05): a browser that still holds an old saved session but has NO ms_token_v1 (logged in before v8.57) is now logged out at startup instead of being restored, so nobody keeps working with a session the database would reject once row-level security is on. Everyone logs in again once.
+const APP_VERSION = "8.59"; // v8.59 FIX (Tar 2026-11-05 16:26, "ເມນູແທັບປ່ຽນຕຳແໜ່ງໝົດ"): since the tables were locked (RLS), the data the page loads BEFORE login (menu order, page permissions, settings) came back empty, so a fresh login showed the default menu order until F5. completeLogin() now reloads all data right after a successful login (loadAllData) and re-renders, so the saved menu order / permissions / settings are shown immediately. Nothing in the saved settings was changed or lost.
+// (previous text of this slot, kept) // v8.58 SECURITY (Tar 2026-11-05): a browser that still holds an old saved session but has NO ms_token_v1 (logged in before v8.57) is now logged out at startup instead of being restored, so nobody keeps working with a session the database would reject once row-level security is on. Everyone logs in again once.
 // (previous text of this slot, kept) // v8.57 SECURITY (Tar 2026-11-05, POS/DB was probed with the public anon key): login is now server-side. dbLogin()/dbRegister() call the DB functions ms_login / ms_register (bcrypt hash, 8 wrong tries per 10 min lock) instead of reading the users table; ms_login returns a random session token (30 days) kept in localStorage "ms_token_v1" and sent as header x-ms-token on every /rest/v1/ request through a fetch wrapper installed BEFORE createClient. DB policies call ms_ok() to accept only requests that carry a valid token. dbChangeOwnPassword uses RPC ms_change_own_password. doLogout calls ms_logout. Plaintext passwords are no longer shown or read by the app. After this deploy everybody (and every n8n Chrome profile) must log in once again.
 // (previous text of this slot, kept) // v8.56 NEW (Tar 2026-11-04): new sidebar page "🕒 ໂມງ" (id clockPage) — big red 7-segment digital clock (hour / minute / second) plus weekday, date, month and year (ພ.ສ. + ຄ.ສ.), with ລາວ / ไทย / English buttons and a 24h/12h switch. Time is the browser clock shown in Laos time (Asia/Vientiane); no network, no DB. It ticks with ONE self-rescheduling setTimeout that only touches the clock's own DOM (never render()) and stops when the page is left — no setInterval, no polling. Visible to staff by default (owner can hide it in 🔒 ຕັ້ງຄ່າສິດ).
 // (previous text of this slot, kept) v8.55 CHANGE (Tar 2026-11-01): ຮູບສິນຄ້າ page — clicking an image opens the in-page popup (openSlipPopup) instead of a new tab; click outside, ✕ or Esc closes.
@@ -1600,7 +1601,8 @@ const APP_VERSION = "8.58"; // v8.58 SECURITY (Tar 2026-11-05): a browser that s
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.57"; // (v8.57 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.58"; // (v8.58 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) // (v8.57 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.56 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.55 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.54 text kept in the history comment lines of APP_VERSION above)
@@ -1690,7 +1692,8 @@ const APP_VERSION_PREV = "8.57"; // (v8.57 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.56"; // (v8.56 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.57"; // (v8.57 text kept in the history comment lines above)
+// (previous text of this slot, kept) // (v8.56 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.55 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.54 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.51 text kept in the history comment lines above)
@@ -39549,6 +39552,8 @@ async function completeLogin(user, loc){
   STATE.loginGpsBypassReady = null;
   STATE.loginSubmitting = false;
   render();
+  // v8.59: data loaded before login came back empty for locked tables (menu order, page permissions, settings) — reload now that the session token exists.
+  try{ STATE.data = await loadAllData(); render(); }catch(e){}
   // v4.54: re-links any push subscription already present on this browser/device to whoever
   // just logged in — matters most on a shared device where a previous person already enabled
   // notifications here (see the checkPushSubscriptionStatus fix note for the full reasoning).
