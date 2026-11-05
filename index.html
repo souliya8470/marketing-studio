@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.56"; // v8.56 NEW (Tar 2026-11-04): new sidebar page "🕒 ໂມງ" (id clockPage) — big red 7-segment digital clock (hour / minute / second) plus weekday, date, month and year (ພ.ສ. + ຄ.ສ.), with ລາວ / ไทย / English buttons and a 24h/12h switch. Time is the browser clock shown in Laos time (Asia/Vientiane); no network, no DB. It ticks with ONE self-rescheduling setTimeout that only touches the clock's own DOM (never render()) and stops when the page is left — no setInterval, no polling. Visible to staff by default (owner can hide it in 🔒 ຕັ້ງຄ່າສິດ).
+const APP_VERSION = "8.57"; // v8.57 SECURITY (Tar 2026-11-05, POS/DB was probed with the public anon key): login is now server-side. dbLogin()/dbRegister() call the DB functions ms_login / ms_register (bcrypt hash, 8 wrong tries per 10 min lock) instead of reading the users table; ms_login returns a random session token (30 days) kept in localStorage "ms_token_v1" and sent as header x-ms-token on every /rest/v1/ request through a fetch wrapper installed BEFORE createClient. DB policies call ms_ok() to accept only requests that carry a valid token. dbChangeOwnPassword uses RPC ms_change_own_password. doLogout calls ms_logout. Plaintext passwords are no longer shown or read by the app. After this deploy everybody (and every n8n Chrome profile) must log in once again.
+// (previous text of this slot, kept) // v8.56 NEW (Tar 2026-11-04): new sidebar page "🕒 ໂມງ" (id clockPage) — big red 7-segment digital clock (hour / minute / second) plus weekday, date, month and year (ພ.ສ. + ຄ.ສ.), with ລາວ / ไทย / English buttons and a 24h/12h switch. Time is the browser clock shown in Laos time (Asia/Vientiane); no network, no DB. It ticks with ONE self-rescheduling setTimeout that only touches the clock's own DOM (never render()) and stops when the page is left — no setInterval, no polling. Visible to staff by default (owner can hide it in 🔒 ຕັ້ງຄ່າສິດ).
 // (previous text of this slot, kept) v8.55 CHANGE (Tar 2026-11-01): ຮູບສິນຄ້າ page — clicking an image opens the in-page popup (openSlipPopup) instead of a new tab; click outside, ✕ or Esc closes.
 // (previous text of this slot, kept) v8.54 CHANGE (Tar 2026-11-01): schedule modal — off time is optional and empty by default, on time defaults 00:00, each time has a "ລ້າງ" (clear) button, so "turn ON Monday 00:00 only" works.
 // (previous text of this slot, kept) v8.53 NEW (Tar 2026-11-01, "ຕິ໊ກເລືອກແຄມເປນແລ້ວຕັ້ງເວລາເປີດປິດໄດ້ເລີຍ"): ຄ່າໂຄສະນາລວມ → ຈັດການແຄມເປນ has a new button "⏰ ຕັ້ງເວລາເປີດ/ປິດ" (opens a modal: ticked campaigns, days, on time, off time, list/enable/delete of saved schedules). Rows in new table campaign_schedules; edge function run-campaign-schedules (pg_cron every 5 min, Laos time, catch-up window 60 min) calls update-ad-entity toggle_status.
@@ -1598,7 +1599,8 @@ const APP_VERSION = "8.56"; // v8.56 NEW (Tar 2026-11-04): new sidebar page "�
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.55"; // (v8.55 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.56"; // (v8.56 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) // (v8.55 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.54 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.53 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.52 text kept in the history comment lines of APP_VERSION above)
@@ -1686,7 +1688,8 @@ const APP_VERSION_PREV = "8.55"; // (v8.55 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.54"; // (v8.54 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.55"; // (v8.55 text kept in the history comment lines above)
+// (previous text of this slot, kept) // (v8.54 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.51 text kept in the history comment lines above)
 // (previous text of this slot, kept) v8.50 NEW (Tar 2026-10-28) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.49→8.50 now that 8.52 is current).
@@ -3704,6 +3707,29 @@ const APP_VERSION_PREV_OLDER = "8.54"; // (v8.54 text kept in the history commen
 
 const SUPABASE_URL = "https://swrijpkkufarddsyqhrh.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3cmlqcGtrdWZhcmRkc3lxaHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDQ4ODYsImV4cCI6MjA5ODQ4MDg4Nn0.GoGsR4Z4u4UiCJ03-jZkJAgjJtjD8J4MosiBh4cpths";
+// v8.57: session token header. Every REST/RPC call to our Supabase project carries the staff session
+// token (from ms_login) so the DB policy ms_ok() can tell staff from anyone who only has the public key.
+// Only /rest/v1/ is touched: Edge Functions answer CORS preflights with a fixed header list.
+const MS_TOKEN_KEY = "ms_token_v1";
+function msGetToken(){ try{ return localStorage.getItem(MS_TOKEN_KEY)||""; }catch(e){ return ""; } }
+(function(){
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    try{
+      const url = typeof input==="string" ? input : ((input && input.url) || "");
+      if(url.indexOf(SUPABASE_URL+"/rest/v1/")===0){
+        const t = msGetToken();
+        if(t){
+          init = Object.assign({}, init||{});
+          const h = new Headers(init.headers || (typeof input!=="string" && input.headers) || undefined);
+          h.set("x-ms-token", t);
+          init.headers = h;
+        }
+      }
+    }catch(e){}
+    return origFetch(input, init);
+  };
+})();
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window.sb = sb; // v7.93 — exposes the app's initialized Supabase client on window so n8n's
 // Playwright automation scripts can call window.sb.from(...) directly. `const sb = ...` at
@@ -6658,21 +6684,25 @@ async function dbInsertInsightsBulk(rows){
 
 /* ---------- USER AUTH functions ---------- */
 async function dbRegister(name, password){
-  const {data} = await sb.from("users").select("id").eq("name", name).limit(1);
-  if(data && data.length>0) throw new Error("ຊື່ນີ້ຖືກໃຊ້ແລ້ວ ກະລຸນາເລືອກຊື່ໃໝ່");
-  const id = "u"+Date.now();
-  const {error} = await sb.from("users").insert({id, name, password, role:"admin", approved:false, created_at:new Date().toISOString()});
-  if(error) throw error;
-  return {id, name, role:"admin", approved:false};
+  const {data, error} = await sb.rpc("ms_register", {p_name:name, p_password:password});
+  if(error){
+    if((error.message||"").includes("NAME_TAKEN")) throw new Error("ຊື່ນີ້ຖືກໃຊ້ແລ້ວ ກະລຸນາເລືອກຊື່ໃໝ່");
+    throw new Error("ສະໝັກບໍ່ສຳເລັດ");
+  }
+  return {id:data.id, name:data.name, role:"admin", approved:false};
 }
 // Shown anywhere a user's identity appears in the UI (sidebar, account lists) — falls back
 // to the login name for accounts that haven't set a display name yet, so this is always safe
 // to call even on old accounts from before this feature existed.
 function userDisplayName(u){ return (u && (u.display_name||"").trim()) || (u && u.name) || ""; }
 async function dbLogin(name, password){
-  const {data} = await sb.from("users").select("*").eq("name", name).eq("password", password).limit(1);
-  if(!data || data.length===0) throw new Error("ຊື່ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
-  const u = data[0];
+  const {data, error} = await sb.rpc("ms_login", {p_name:name, p_password:password});
+  if(error){
+    if((error.message||"").includes("TOO_MANY")) throw new Error("ລອງຜິດຫຼາຍເກີນໄປ ກະລຸນາລໍຖ້າ 10 ນາທີ ແລ້ວລອງໃໝ່");
+    throw new Error("ຊື່ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
+  }
+  try{ localStorage.setItem(MS_TOKEN_KEY, data.token); }catch(e){}
+  const u = data.user;
   return {id:u.id, name:u.name, display_name:u.display_name||"", role:u.role, approved: !!u.approved};
 }
 async function dbListUsers(){
@@ -6704,11 +6734,11 @@ async function dbDeleteUser(id, label){ const {data, error} = await sb.from("use
 // Self-service password change ("ຕັ້ງຄ່າບັນຊີ" page, everyone) — verifies the old password
 // against the DB directly (not just STATE, in case it's stale) before writing the new one.
 async function dbChangeOwnPassword(id, oldPassword, newPassword){
-  const {data} = await sb.from("users").select("password").eq("id", id).limit(1);
-  if(!data || data.length===0) throw new Error("ບໍ່ພົບບັນຊີນີ້");
-  if(data[0].password !== oldPassword) throw new Error("ລະຫັດຜ່ານເກົ່າບໍ່ຖືກຕ້ອງ");
-  const {error} = await sb.from("users").update({password:newPassword}).eq("id", id);
-  if(error) throw error;
+  const {error} = await sb.rpc("ms_change_own_password", {p_id:id, p_old:oldPassword, p_new:newPassword});
+  if(error){
+    if((error.message||"").includes("BAD_OLD")) throw new Error("ລະຫັດຜ່ານເກົ່າບໍ່ຖືກຕ້ອງ");
+    throw new Error("ປ່ຽນລະຫັດຜ່ານບໍ່ສຳເລັດ");
+  }
 }
 // Owner sets a user's password directly ("ຈັດການບັນຊີ" page) — no old-password check needed.
 async function dbSetUserPassword(id, newPassword){
@@ -29097,6 +29127,7 @@ function doLogout(reason){
   // v6.86 (same fix as navigateToPage): logout is another "leave the current page" path that
   // bypassed camera cleanup entirely.
   if(STATE.cameraActive) stopCamera();
+  try{ sb.rpc("ms_logout").then(()=>{}, ()=>{}); }catch(e){} // v8.57: end the server-side session (header is read before clearSession removes the token)
   STATE.currentUser = null;
   clearSession();
   STATE.page = "dashboard";
@@ -39222,7 +39253,7 @@ function renderUsers(){
                 <td>${esc(u.display_name||"")||'<span class="small-muted">-</span>'} <button type="button" class="btn btn-sm btn-outline" data-edit-display-name="${u.id}" data-edit-display-name-val="${esc(u.display_name||"")}" style="padding:2px 6px;" title="ແກ້ໄຂຊື່ສະແດງ">✏️</button></td>
                 <td><span class="pill ${u.role==='owner'?'pill-terra':'pill-sage'}">${u.role==='owner'?'ຫົວໜ້າ':'ແອັດມິນ'}</span></td>
                 <td>
-                  <span style="font-family:monospace;">${visible ? esc(u.password||"") : "••••••"}</span>
+                  <span style="font-family:monospace;">${visible ? "(ເຂົ້າລະຫັດແລ້ວ ເບິ່ງບໍ່ໄດ້)" : "••••••"}</span>
                   <button type="button" class="btn btn-sm btn-outline" data-toggle-pw="${u.id}" style="padding:2px 8px; margin-left:6px;" title="ເບິ່ງ/ເຊື່ອງລະຫັດຜ່ານ">👁</button>
                 </td>
                 <td class="small-muted">${u.created_at ? new Date(u.created_at).toLocaleDateString("en-GB", {timeZone: LAOS_TZ}) : ""}</td>
@@ -41139,6 +41170,7 @@ function saveSession(user){
 }
 function clearSession(){
   try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+  try{ localStorage.removeItem(MS_TOKEN_KEY); }catch(e){}
 }
 function loadSavedSession(){
   try{
