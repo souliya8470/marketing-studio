@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.60"; // v8.60 SECURITY (Tar 2026-11-05): calls to Edge Functions now carry the staff session token in the query string (?t=) so the functions can refuse callers who only have the public key. Nothing visible changes for staff.
+const APP_VERSION = "8.61"; // v8.61 FIX (Tar 2026-11-08, online orders): when staff press "confirm" on an online order whose slip check verdict is "fail", the warning is now stronger: it lists the reasons AND tells staff to open the shop bank app and check the money really arrived with the same amount before confirming. Staff are NOT blocked (Tar: staff are responsible for checking the shop account); owner and staff see the same warning.
+// (previous text of this slot, kept) // v8.60 SECURITY (Tar 2026-11-05): calls to Edge Functions now carry the staff session token in the query string (?t=) so the functions can refuse callers who only have the public key. Nothing visible changes for staff.
 // // v8.59 FIX (Tar 2026-11-05 16:26, "ເມນູແທັບປ່ຽນຕຳແໜ່ງໝົດ"): since the tables were locked (RLS), the data the page loads BEFORE login (menu order, page permissions, settings) came back empty, so a fresh login showed the default menu order until F5. completeLogin() now reloads all data right after a successful login (loadAllData) and re-renders, so the saved menu order / permissions / settings are shown immediately. Nothing in the saved settings was changed or lost.
 // (previous text of this slot, kept) // v8.58 SECURITY (Tar 2026-11-05): a browser that still holds an old saved session but has NO ms_token_v1 (logged in before v8.57) is now logged out at startup instead of being restored, so nobody keeps working with a session the database would reject once row-level security is on. Everyone logs in again once.
 // (previous text of this slot, kept) // v8.57 SECURITY (Tar 2026-11-05, POS/DB was probed with the public anon key): login is now server-side. dbLogin()/dbRegister() call the DB functions ms_login / ms_register (bcrypt hash, 8 wrong tries per 10 min lock) instead of reading the users table; ms_login returns a random session token (30 days) kept in localStorage "ms_token_v1" and sent as header x-ms-token on every /rest/v1/ request through a fetch wrapper installed BEFORE createClient. DB policies call ms_ok() to accept only requests that carry a valid token. dbChangeOwnPassword uses RPC ms_change_own_password. doLogout calls ms_logout. Plaintext passwords are no longer shown or read by the app. After this deploy everybody (and every n8n Chrome profile) must log in once again.
@@ -1602,7 +1603,8 @@ const APP_VERSION = "8.60"; // v8.60 SECURITY (Tar 2026-11-05): calls to Edge Fu
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.59"; // (v8.59 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.60"; // (v8.60 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) // (v8.59 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.58 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.57 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.56 text kept in the history comment lines of APP_VERSION above)
@@ -1694,7 +1696,8 @@ const APP_VERSION_PREV = "8.59"; // (v8.59 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.58"; // (v8.58 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.59"; // (v8.59 text kept in the history comment lines above)
+// (previous text of this slot, kept) // (v8.58 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.56 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.55 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.54 text kept in the history comment lines above)
@@ -13096,7 +13099,7 @@ function attachOnlineOrdersEvents(){
       const order = (STATE.data.onlineOrders||[]).find(o=>o.id===id);
       if(!order) return;
       if(action==="confirm"){
-        if(order.slipCheck && order.slipCheck.verdict==="fail" && !(await customConfirm("🚨 ສະລິບຂອງອໍເດີນີ້ບໍ່ຜ່ານການກວດ:\n"+(order.slipCheck.reasons||[]).join("\n")+"\n\nແນ່ໃຈບໍ່ວ່າຈະຢືນຢັນ?", {danger:true}))) return;
+        if(order.slipCheck && order.slipCheck.verdict==="fail" && !(await customConfirm("🚨 ສະລິບຂອງອໍເດີນີ້ບໍ່ຜ່ານການກວດ:\n"+(order.slipCheck.reasons||[]).join("\n")+"\n\n⚠️ ກ່ອນກົດຢືນຢັນ ຕ້ອງເປີດແອັບທະນາຄານຂອງຮ້ານ ແລ້ວກວດວ່າເງິນເຂົ້າບັນຊີແທ້ ແລະ ຍອດກົງກັນ.\nຖ້າກວດແລ້ວເງິນເຂົ້າແທ້ ຈຶ່ງກົດຢືນຢັນ. ຖ້າບໍ່ແນ່ໃຈ ໃຫ້ຍົກເລີກ ແລ້ວຖາມເຈົ້າຂອງຮ້ານ.", {danger:true}))) return;
         confirmOnlineOrder(order);
       } else rejectOnlineOrder(order);
     });
