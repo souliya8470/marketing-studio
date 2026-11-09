@@ -287,3 +287,92 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 grant execute on function public.ms_sheet_actor(), public.ms_sheet_list(), public.ms_sheet_get(uuid), public.ms_sheet_create(text,jsonb,boolean), public.ms_sheet_apply(uuid,jsonb), public.ms_sheet_since(uuid,bigint), public.ms_sheet_log(uuid,int,bigint), public.ms_sheet_replace(uuid,jsonb,text), public.ms_sheet_backups_list(uuid), public.ms_sheet_restore(bigint), public.ms_sheet_set_flags(uuid,boolean,boolean,text), public.ms_sheet_delete(uuid) to anon, authenticated;
+
+-- ===== v8.70: file manager (trash instead of instant delete, rename, per-file info) =====
+alter table public.ms_sheets add column if not exists deleted_at timestamptz;
+alter table public.ms_sheets add column if not exists deleted_by text;
+
+create or replace function public.ms_sheet_list() returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; res jsonb;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'version',version,'owner_only',owner_only,'staff_readonly',staff_readonly,'updated_by',updated_by,'updated_at',updated_at) order by created_at),'[]'::jsonb)
+    into res from public.ms_sheets where deleted_at is null and (a.o_role='owner' or not owner_only);
+  return jsonb_build_object('me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role), 'sheets', res);
+end $$;
+
+create or replace function public.ms_sheet_get(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and deleted_at is null and (a.o_role='owner' or not owner_only);
+  if s.id is null then raise exception 'not found'; end if;
+  return jsonb_build_object('id',s.id,'name',s.name,'tabs',s.tabs,'version',s.version,'owner_only',s.owner_only,'staff_readonly',s.staff_readonly,
+    'can_edit', (a.o_role='owner' or not s.staff_readonly), 'me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role));
+end $$;
+
+-- every file the caller may see, trash included. can_manage = owner, or the account that created it.
+create or replace function public.ms_sheet_files() returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; res jsonb;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'version',version,'owner_only',owner_only,'staff_readonly',staff_readonly,
+      'created_by',created_by,'created_at',created_at,'updated_by',updated_by,'updated_at',updated_at,'bytes',pg_column_size(tabs),
+      'tabs',(select count(*) from jsonb_object_keys(tabs)),'deleted_at',deleted_at,'deleted_by',deleted_by,
+      'can_manage',(a.o_role='owner' or created_by = a.o_name)) order by deleted_at is not null, created_at),'[]'::jsonb)
+    into res from public.ms_sheets where (a.o_role='owner' or not owner_only);
+  return jsonb_build_object('me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role), 'files', res);
+end $$;
+
+create or replace function public.ms_sheet_rename(p_id uuid, p_name text) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets; nn text;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  nn := left(nullif(trim(p_name),''),120);
+  if nn is null then raise exception 'empty name'; end if;
+  select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only);
+  if s.id is null then raise exception 'not found'; end if;
+  if not (a.o_role='owner' or s.created_by = a.o_name) then raise exception 'not allowed'; end if;
+  update public.ms_sheets set name = nn where id = p_id;
+  insert into public.ms_sheet_changes(sheet_id,version,kind,old_text,new_text,user_id,user_name) values (p_id,s.version,'meta',s.name,nn,a.o_id,a.o_name);
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- soft delete: file goes to the trash (still restorable); p_trash=false brings it back
+create or replace function public.ms_sheet_trash(p_id uuid, p_trash boolean default true) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only);
+  if s.id is null then raise exception 'not found'; end if;
+  if not (a.o_role='owner' or s.created_by = a.o_name) then raise exception 'not allowed'; end if;
+  if p_trash then
+    update public.ms_sheets set deleted_at = now(), deleted_by = a.o_name where id = p_id;
+  else
+    update public.ms_sheets set deleted_at = null, deleted_by = null where id = p_id;
+  end if;
+  insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (p_id,s.version,'meta', case when p_trash then 'ຍ້າຍໄຟລ໌ໄປຖັງຂີ້ເຫຍື້ອ' else 'ກູ້ໄຟລ໌ຄືນຈາກຖັງຂີ້ເຫຍື້ອ' end,a.o_id,a.o_name);
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- permanent delete: owner only, and only for a file that is already in the trash
+create or replace function public.ms_sheet_purge(p_id uuid) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null or a.o_role <> 'owner' then raise exception 'not allowed'; end if;
+  delete from public.ms_sheets where id = p_id and deleted_at is not null;
+  return jsonb_build_object('ok', true);
+end $$;
+grant execute on function public.ms_sheet_files(), public.ms_sheet_rename(uuid,text), public.ms_sheet_trash(uuid,boolean), public.ms_sheet_purge(uuid) to anon, authenticated;

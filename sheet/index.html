@@ -100,12 +100,50 @@
 .rpal .pn{padding:5px 6px;cursor:pointer;border:1px solid transparent;}
 .rpal .pn:hover{background:#e9e8e7;}
 .rhint{align-self:center;max-width:260px;color:#605e5c;font-size:12px;line-height:1.4;padding:0 10px;white-space:normal;}
+
+/* ---- v8.70 file manager (Excel "File" backstage look) ---- */
+#fm{position:fixed;inset:0;z-index:45;display:flex;background:#fff;font-family:"Segoe UI","Noto Sans Lao","Leelawadee UI",system-ui,sans-serif;color:#201f1e;}
+#fmNav{width:210px;flex:none;background:#217346;color:#fff;display:flex;flex-direction:column;padding-top:10px;overflow:auto;}
+#fmNav button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 18px;background:none;border:none;color:#fff;font:inherit;font-size:14px;text-align:left;cursor:pointer;}
+#fmNav button:hover{background:#185c37;}
+#fmNav button.on{background:#0f3d24;}
+#fmNav button.back{font-size:22px;padding:6px 18px 14px;}
+#fmNav .sep{height:1px;background:rgba(255,255,255,.35);margin:8px 18px;}
+#fmNav .grow{flex:1;}
+#fmMain{flex:1;overflow:auto;padding:22px 36px;min-width:0;}
+#fmMain h2{margin:0 0 14px;font-size:24px;font-weight:600;}
+#fmMain h4{margin:18px 0 8px;font-size:15px;font-weight:600;}
+.fmCards{display:flex;gap:16px;flex-wrap:wrap;}
+.fmCard{width:150px;cursor:pointer;text-align:center;font-size:13px;}
+.fmCard .pic{height:92px;border:1px solid #c8c6c4;background:#fff;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:6px;}
+.fmCard:hover .pic{border-color:#217346;box-shadow:0 0 0 1px #217346;}
+#fmSearch{width:100%;max-width:640px;box-sizing:border-box;padding:9px 12px;border:1px solid #8a8886;font:inherit;font-size:14px;margin:6px 0 10px;}
+#fmTabs{display:flex;gap:22px;border-bottom:1px solid #e1dfdd;margin-bottom:4px;}
+#fmTabs button{background:none;border:none;border-bottom:3px solid transparent;padding:8px 2px;font:inherit;font-size:14px;cursor:pointer;color:#323130;}
+#fmTabs button.on{border-bottom-color:#217346;font-weight:600;}
+.fmRow{display:flex;align-items:center;gap:12px;padding:9px 8px;border-bottom:1px solid #edebe9;}
+.fmRow:hover{background:#f3f2f1;}
+.fmRow .ico{width:30px;height:30px;flex:none;background:#217346;color:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;}
+.fmRow .inf{flex:1;min-width:0;cursor:pointer;}
+.fmRow .nm{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fmRow .sb{font-size:12px;color:#605e5c;margin-top:2px;}
+.fmRow .tag{display:inline-block;font-size:11px;border-radius:3px;padding:0 6px;margin-left:6px;background:#dff6dd;color:#107c41;}
+.fmRow .tag.w{background:#fff4ce;color:#835b00;}
+.fmRow .acts{display:flex;gap:6px;flex:none;}
+.fmRow .acts button,#fmBulk button{padding:5px 10px;border:1px solid #c8c6c4;background:#fff;border-radius:3px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;}
+.fmRow .acts button:hover,#fmBulk button:hover{background:#f3f2f1;}
+.fmRow .acts button.dng,#fmBulk button.dng{color:#b3261e;border-color:#e7b7b3;}
+.fmRow .acts button:disabled{opacity:.4;cursor:default;}
+#fmBulk{display:none;gap:10px;align-items:center;padding:8px 0;font-size:13px;}
+.fmEmpty{padding:26px 8px;color:#605e5c;}
+@media (max-width:700px){#fmNav{width:64px;}#fmNav button{font-size:0;padding:12px;justify-content:center;}#fmNav button i{font-size:18px;font-style:normal;}#fmMain{padding:14px;}.fmRow .acts{flex-direction:column;}}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="top">
     <span class="brand">📗 Excel</span>
+    <button id="btnFiles" class="pri" title="ຈັດການໄຟລ໌ (File)">📁 ຈັດການໄຟລ໌</button>
     <select id="fileSel" title="ໄຟລ໌"></select>
     <button id="btnNew">➕ ໄຟລ໌ໃໝ່</button>
     <button id="btnImport">📥 ນຳເຂົ້າ Excel</button>
@@ -616,6 +654,7 @@ function buildRibbon(){
   const tabs = ["Home","Insert","Formulas","Data","View"], panes = {Home:home,Insert:insert,Formulas:formulas,Data:data,View:view};
   $("ribbon").innerHTML =
     '<div id="rbTabs"><div class="qa">'+rbb("saveNow","",IC.save,{cls:"ic okro",title:"Save (Ctrl+S)"})+rbb("undo","",IC.undo,{cls:"ic",title:"Undo (Ctrl+Z)"})+rbb("redo","",IC.redo,{cls:"ic",title:"Redo (Ctrl+Y)"})+'</div>'+
+    '<button class="tab" data-act="files" style="background:#217346;color:#fff;font-weight:600;margin-right:4px">File</button>'+
     tabs.map(t=>'<button class="tab'+(t===RB.tab?" on":"")+'" data-tab="'+t+'">'+t+'</button>').join("")+'<span class="sp"></span><button class="collapse" data-act="collapse" title="Collapse the Ribbon">▲</button></div>'+
     '<div id="rbBody">'+tabs.map(t=>'<div class="rpane'+(t===RB.tab?" on":"")+'" data-pane="'+t+'">'+panes[t]+'</div>').join("")+'</div>';
   $("rbFont").innerHTML = FONT_LIST.map(f=>'<option>'+esc(f)+'</option>').join("");
@@ -711,6 +750,7 @@ function sortSel(asc){
 function rowsCols(r){ const s=selInfo(r); return {r0:s.r0, nr:s.r1-s.r0+1, c0:s.c0, nc:s.c1-s.c0+1}; }
 function askNumber(title, def, cb){ askText(title, String(def)).then(v=>{ if(v==null) return; const n=parseFloat(String(v).replace(",",".")); if(!isFinite(n) || n<=0){ toast("ໃສ່ຕົວເລກທີ່ຖືກຕ້ອງ"); return; } cb(n); }); }
 const ACT = {
+  files: ()=>openFiles("all"),
   saveNow(){ saveNow(); },
   undo(){ try{ S.boot.univerAPI.undo(); }catch(e){} }, redo(){ try{ S.boot.univerAPI.redo(); }catch(e){} },
   cut(){ edit(()=>{ cmd("univer.command.cut"); }); },
@@ -943,11 +983,146 @@ $("btnSet").onclick = async ()=>{
   if(!r) return;
   try{
     if(r.act==="save"){ await rpc("ms_sheet_set_flags",{p_id:f.id,p_owner_only:r.owner,p_staff_readonly:r.ro,p_name:r.name}); const id=await loadList(f.id); await openSheet(id); }
-    else if(r.act==="del"){ if(await askConfirm("ລົບໄຟລ໌ \""+f.name+"\" ຖາວອນ? ຈະກູ້ຄືນບໍ່ໄດ້.","ລົບ",true)){ await rpc("ms_sheet_delete",{p_id:f.id}); destroyBoot(); S.sheet=null; disconnectChannel(); const id=await loadList(); if(id) await openSheet(id); else { showMsg(emptyMsg()); ["btnExport","btnPull","btnLog","btnSet"].forEach(b=>$(b).disabled=true); } } }
+    else if(r.act==="del"){ if(await fmTrash([f.id],f.name)){ /* handled */ } }
     else if(r.act==="restore"){ if(await askConfirm("ຍ້ອນກັບໄຟລ໌ໄປເວີຊັນນີ້? ເວີຊັນປັດຈຸບັນຈະຖືກສຳຮອງໄວ້ກ່ອນ.","ຍ້ອນກັບ")){ await rpc("ms_sheet_restore",{p_backup:r.id}); await openSheet(f.id); pingOthers(); } }
   }catch(e){ alert("ເຮັດບໍ່ສຳເລັດ: "+e.message); }
 };
 function emptyMsg(){ return '<div style="font-size:16px">📗 ຍັງບໍ່ມີໄຟລ໌</div><div>ກົດ "➕ ໄຟລ໌ໃໝ່" ຫຼື "📥 ນຳເຂົ້າ Excel" ເພື່ອເລີ່ມ</div>'; }
+
+/* ======================================================================
+   File manager (v8.70) — Excel "File > Home/Open" look: list, search, open, rename, delete (trash), restore
+   ====================================================================== */
+const FM = { tab:"all", q:"", sel:new Set(), files:[], me:null, el:null };
+function fmSize(b){ b=Number(b)||0; return b>=1048576 ? (b/1048576).toFixed(1)+" MB" : Math.max(1,Math.round(b/1024))+" KB"; }
+async function fmLoad(){ const r = await rpc("ms_sheet_files", {}); FM.files = r.files||[]; FM.me = r.me; }
+function fmVisible(){
+  const q = FM.q.trim().toLowerCase(), me = FM.me ? FM.me.name : "";
+  let a = FM.files.filter(f=> FM.tab==="trash" ? !!f.deleted_at : !f.deleted_at);
+  if(FM.tab==="mine") a = a.filter(f=>f.created_by===me);
+  if(q) a = a.filter(f=>String(f.name).toLowerCase().indexOf(q)>=0 || String(f.created_by||"").toLowerCase().indexOf(q)>=0);
+  a.sort((x,y)=> FM.tab==="trash" ? String(y.deleted_at).localeCompare(String(x.deleted_at)) : String(y.updated_at).localeCompare(String(x.updated_at)));
+  return a;
+}
+function fmRender(){
+  const m = FM.el.querySelector("#fmMain"); if(!m) return;
+  const live = FM.files.filter(f=>!f.deleted_at), trash = FM.files.filter(f=>f.deleted_at);
+  const me = FM.me ? FM.me.name : "", mineN = live.filter(f=>f.created_by===me).length;
+  const dup = {}; live.forEach(f=>{ dup[f.name] = (dup[f.name]||0)+1; });
+  const cur = S.sheet && S.sheet.id;
+  const rows = fmVisible().map(f=>{
+    const t = !!f.deleted_at, can = !!f.can_manage;
+    const sub = t ? ('ລຶບໂດຍ '+esc(f.deleted_by||"?")+' · '+esc(fmtTime(f.deleted_at))+' · ສ້າງໂດຍ '+esc(f.created_by||"?"))
+      : ('ສ້າງໂດຍ '+esc(f.created_by||"?")+' · ແກ້ໄຂລ່າສຸດ '+esc(f.updated_by||"?")+' '+esc(fmtTime(f.updated_at))+' · '+fmSize(f.bytes)+' · '+esc(f.tabs)+' Sheet');
+    const tags = (f.id===cur?'<span class="tag">ກຳລັງເປີດຢູ່</span>':'') + (!t && dup[f.name]>1?'<span class="tag w">ຊື່ຊ້ຳກັນ</span>':'') + (f.owner_only?'<span class="tag w">🔐 ສະເພາະເຈົ້າຂອງ</span>':'') + (f.staff_readonly?'<span class="tag w">🔒 ເບິ່ງໄດ້ຢ່າງດຽວ</span>':'');
+    const tip = can ? '' : ' disabled title="ເຮັດໄດ້ສະເພາະເຈົ້າຂອງລະບົບ ຫຼື ຄົນທີ່ສ້າງໄຟລ໌ນີ້"';
+    const acts = t
+      ? '<button data-fa="restore" data-id="'+esc(f.id)+'"'+tip+'>ກູ້ຄືນ</button>' + (FM.me && FM.me.role==="owner" ? '<button class="dng" data-fa="purge" data-id="'+esc(f.id)+'">ລຶບຖາວອນ</button>' : '')
+      : '<button data-fa="open" data-id="'+esc(f.id)+'">ເປີດ</button><button data-fa="rename" data-id="'+esc(f.id)+'"'+tip+'>ປ່ຽນຊື່</button><button class="dng" data-fa="trash" data-id="'+esc(f.id)+'"'+tip+'>ລຶບ</button>';
+    return '<div class="fmRow"><input type="checkbox" data-sel="'+esc(f.id)+'" '+(can?'':'disabled ')+(FM.sel.has(f.id)?'checked':'')+'>'
+      + '<div class="ico">X</div><div class="inf" data-fa="'+(t?"none":"open")+'" data-id="'+esc(f.id)+'"><div class="nm">'+esc(f.name)+tags+'</div><div class="sb">'+sub+'</div></div><div class="acts">'+acts+'</div></div>';
+  }).join("");
+  const empty = FM.tab==="trash" ? "ຖັງຂີ້ເຫຍື້ອຫວ່າງ" : (FM.q ? "ບໍ່ພົບໄຟລ໌ທີ່ຄົ້ນຫາ" : "ຍັງບໍ່ມີໄຟລ໌");
+  const hdr = FM.tab==="home" ? "" : "";
+  m.innerHTML = '<h2>ໄຟລ໌ Excel</h2>'
+    + '<h4>ສ້າງໃໝ່</h4><div class="fmCards"><div class="fmCard" data-fa="new"><div class="pic">＋</div>ໄຟລ໌ວ່າງ</div><div class="fmCard" data-fa="import"><div class="pic">📥</div>ນຳເຂົ້າຈາກຄອມ (.xlsx)</div></div>'
+    + '<input id="fmSearch" type="text" placeholder="ຄົ້ນຫາໄຟລ໌ ຫຼື ຊື່ຜູ້ສ້າງ..." value="'+esc(FM.q)+'">'
+    + '<div id="fmTabs"><button data-ft="all" class="'+(FM.tab==="all"?"on":"")+'">ລ່າສຸດ ('+live.length+')</button><button data-ft="mine" class="'+(FM.tab==="mine"?"on":"")+'">ຂອງຂ້ອຍ ('+mineN+')</button><button data-ft="trash" class="'+(FM.tab==="trash"?"on":"")+'">🗑 ຖັງຂີ້ເຫຍື້ອ ('+trash.length+')</button></div>'
+    + '<div id="fmBulk"></div>' + (rows || '<div class="fmEmpty">'+empty+'</div>');
+  fmBulk();
+  const si = m.querySelector("#fmSearch"); si.oninput = ()=>{ FM.q = si.value; const pos=si.selectionStart; fmRender(); const n=FM.el.querySelector("#fmSearch"); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} };
+  FM.el.querySelectorAll("#fmNav button").forEach(b=>b.classList.toggle("on", b.dataset.fn===(FM.tab==="trash"?"trash":"home")));
+}
+function fmBulk(){
+  const b = FM.el.querySelector("#fmBulk"); if(!b) return;
+  const ids = [...FM.sel].filter(id=>FM.files.some(f=>f.id===id));
+  if(!ids.length){ b.style.display="none"; return; }
+  b.style.display="flex";
+  b.innerHTML = '<span>ເລືອກແລ້ວ '+ids.length+' ໄຟລ໌</span>' + (FM.tab==="trash" ? '<button data-fa="bulkrestore">ກູ້ຄືນທີ່ເລືອກ</button>' : '<button class="dng" data-fa="bulktrash">🗑 ລຶບທີ່ເລືອກ</button>') + '<button data-fa="clearsel">ຍົກເລີກການເລືອກ</button>';
+}
+// Move files to the trash. If the open file is among them, open another one afterwards.
+async function fmTrash(ids, label){
+  const names = FM.files.filter(f=>ids.indexOf(f.id)>=0).map(f=>f.name);
+  const nm = label || (names.length===1 ? names[0] : names.length+" ໄຟລ໌");
+  if(!(await askConfirm("ຍ້າຍ \""+nm+"\" ໄປຖັງຂີ້ເຫຍື້ອ? ຍັງກູ້ຄືນໄດ້ໃນພາຍຫຼັງ.","ລຶບ",true))) return false;
+  try{
+    for(const id of ids) await rpc("ms_sheet_trash",{p_id:id,p_trash:true});
+  }catch(e){ alert("ລຶບບໍ່ສຳເລັດ: "+e.message); return false; }
+  FM.sel.clear();
+  if(S.sheet && ids.indexOf(S.sheet.id)>=0){
+    S.dirty=false; destroyBoot(); S.sheet=null; disconnectChannel();
+    const id = await loadList(); if(id){ if(!FM.el) await openSheet(id); else { FM.pendingOpen = id; } } else { showMsg(emptyMsg()); ["btnExport","btnPull","btnLog","btnSet","btnSave"].forEach(b=>$(b).disabled=true); }
+  } else { await loadList(S.sheet && S.sheet.id); if(S.sheet) $("fileSel").value = S.sheet.id; }
+  toast("ຍ້າຍໄປຖັງຂີ້ເຫຍື້ອແລ້ວ");
+  if(FM.el){ await fmLoad(); fmRender(); }
+  return true;
+}
+function fmClose(skipPending){
+  if(!FM.el) return; FM.el.remove(); FM.el=null;
+  if(skipPending) FM.pendingOpen=null;
+  if(FM.pendingOpen){ const id=FM.pendingOpen; FM.pendingOpen=null; openSheet(id); }
+}
+async function fmOpenFile(id){
+  fmClose(true);
+  if(S.sheet && S.sheet.id===id) return;
+  if(S.dirty) await save(false);
+  await loadList(id); await openSheet(id);
+}
+async function fmAction(act, id, e){
+  const f = FM.files.find(x=>x.id===id);
+  try{
+    if(act==="open"){ await fmOpenFile(id); return; }
+    if(act==="new"){ const name = await askText("ຊື່ໄຟລ໌ໃໝ່","","ສ້າງ"); if(!name) return; fmClose(true); if(S.dirty) await save(false); await createFile(name); return; }
+    if(act==="import"){ fmClose(true); if(FM.pendingOpen===undefined){} $("fileIn").click(); return; }
+    if(act==="rename" && f){
+      const nn = await askText("ປ່ຽນຊື່ໄຟລ໌", f.name, "ບັນທຶກ"); if(!nn || nn===f.name) return;
+      await rpc("ms_sheet_rename",{p_id:id,p_name:nn});
+      await loadList(S.sheet && S.sheet.id); if(S.sheet){ if(S.sheet.id===id) S.sheet.name=nn; $("fileSel").value=S.sheet.id; }
+      await fmLoad(); fmRender(); toast("ປ່ຽນຊື່ແລ້ວ"); return;
+    }
+    if(act==="trash" && f){ await fmTrash([id], f.name); return; }
+    if(act==="bulktrash"){ await fmTrash([...FM.sel]); return; }
+    if(act==="restore" || act==="bulkrestore"){
+      const ids = act==="restore" ? [id] : [...FM.sel];
+      for(const x of ids) await rpc("ms_sheet_trash",{p_id:x,p_trash:false});
+      FM.sel.clear(); await loadList(S.sheet && S.sheet.id); if(S.sheet) $("fileSel").value=S.sheet.id; await fmLoad(); fmRender(); toast("ກູ້ຄືນແລ້ວ"); return;
+    }
+    if(act==="purge" && f){
+      if(!(await askConfirm("ລຶບໄຟລ໌ \""+f.name+"\" ຖາວອນ? ຈະກູ້ຄືນບໍ່ໄດ້ອີກ.","ລຶບຖາວອນ",true))) return;
+      await rpc("ms_sheet_purge",{p_id:id}); FM.sel.delete(id); await fmLoad(); fmRender(); toast("ລຶບຖາວອນແລ້ວ"); return;
+    }
+    if(act==="clearsel"){ FM.sel.clear(); fmRender(); return; }
+  }catch(err){ alert("ເຮັດບໍ່ສຳເລັດ: "+err.message); }
+}
+async function openFiles(tab){
+  if(FM.el) return;
+  FM.tab = tab||"all"; FM.q=""; FM.sel.clear();
+  const el = document.createElement("div"); el.id="fm"; FM.el = el;
+  el.innerHTML = '<div id="fmNav"><button class="back" data-fn="close" title="ກັບຄືນ">←</button>'
+    + '<button data-fn="home"><i>🏠</i> ໜ້າຫຼັກ</button><button data-fn="new"><i>📄</i> ໄຟລ໌ໃໝ່</button><button data-fn="import"><i>📂</i> ເປີດ / ນຳເຂົ້າ</button><div class="sep"></div>'
+    + '<button data-fn="save"><i>💾</i> ບັນທຶກ</button><button data-fn="export"><i>📤</i> ສົ່ງອອກ Excel</button><button data-fn="trash"><i>🗑</i> ຖັງຂີ້ເຫຍື້ອ</button><div class="grow"></div><button data-fn="close"><i>✕</i> ປິດ</button></div>'
+    + '<div id="fmMain"><div style="padding:20px">ກຳລັງໂຫຼດ...</div></div>';
+  document.body.appendChild(el);
+  el.addEventListener("click", async e=>{
+    const n = e.target.closest("[data-fn]");
+    if(n){
+      const k = n.dataset.fn;
+      if(k==="close") fmClose();
+      else if(k==="home"){ FM.tab="all"; fmRender(); }
+      else if(k==="trash"){ FM.tab="trash"; fmRender(); }
+      else if(k==="new") fmAction("new");
+      else if(k==="import") fmAction("import");
+      else if(k==="save"){ if(S.sheet) saveNow(); else toast("ຍັງບໍ່ໄດ້ເປີດໄຟລ໌"); }
+      else if(k==="export"){ if(S.sheet){ fmClose(); $("btnExport").click(); } else toast("ຍັງບໍ່ໄດ້ເປີດໄຟລ໌"); }
+      return;
+    }
+    const t = e.target.closest("[data-ft]"); if(t){ FM.tab=t.dataset.ft; fmRender(); return; }
+    const c = e.target.closest("[data-sel]"); if(c){ if(c.checked) FM.sel.add(c.dataset.sel); else FM.sel.delete(c.dataset.sel); fmBulk(); return; }
+    const a = e.target.closest("[data-fa]"); if(a && a.dataset.fa!=="none" && !a.disabled) fmAction(a.dataset.fa, a.dataset.id, e);
+  });
+  el.addEventListener("keydown", e=>{ if(e.key==="Escape" && !document.querySelector(".modal-bg")) fmClose(); });
+  try{ await fmLoad(); fmRender(); }catch(e){ el.querySelector("#fmMain").innerHTML = '<div class="fmEmpty" style="color:#b3261e">ໂຫຼດບໍ່ໄດ້: '+esc(e.message)+'</div>'; }
+}
+$("btnFiles").onclick = ()=>openFiles("all");
 
 /* ======================================================================
    xlsx <-> tabs (ExcelJS, loaded only when needed)
