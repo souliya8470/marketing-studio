@@ -159,6 +159,7 @@ function askConfirm(text, okLabel, danger){
                      cells:{ "r,c": {v?,f?,t?,s?} } } }          (r,c are 0-based; s = inline style object)
    ====================================================================== */
 const DEFAULT_ROWS = 1000, DEFAULT_COLS = 26;
+const MIN_ROWS = 2000, MIN_COLS = 200;   // like Excel: grid keeps going past Z (AA, AB, ... up to GR) instead of ending in a blank gap
 
 function buildWorkbook(row){
   const tabs = row.tabs || {};
@@ -183,7 +184,7 @@ function buildWorkbook(row){
     (meta.hcols||[]).forEach(c=>{ (columnData[c] = columnData[c] || {}).hd = 1; });
     const rowData = {}; for(const r in (meta.rowh||{})) rowData[r] = {h: meta.rowh[r], ia: 0};
     (meta.hrows||[]).forEach(r=>{ (rowData[r] = rowData[r] || {}).hd = 1; });
-    const sh = { id, name: meta.name || ("Sheet"+(idx+1)), rowCount: Math.max(meta.rows||DEFAULT_ROWS, maxR+50), columnCount: Math.max(meta.cols||DEFAULT_COLS, maxC+5),
+    const sh = { id, name: meta.name || ("Sheet"+(idx+1)), rowCount: Math.max(meta.rows||DEFAULT_ROWS, MIN_ROWS, maxR+50), columnCount: Math.max(meta.cols||DEFAULT_COLS, MIN_COLS, maxC+5),
       cellData, columnData, rowData, showGridlines: 1,
       defaultRowHeight: 20, defaultColumnWidth: 64, rowHeader: {width: 40}, columnHeader: {height: 20} };   // Excel defaults
     if(meta.freeze) sh.freeze = meta.freeze;
