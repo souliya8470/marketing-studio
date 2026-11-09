@@ -493,7 +493,12 @@ async function pullRemote(skipKeys, sinceOverride){
   let res;
   try{ res = await rpc("ms_sheet_since", {p_id: sheetId, p_since: since}); }catch(e){ console.error(e); return; }
   if(!S.sheet || S.sheet.id!==sheetId) return;
-  if(res.full){ await openSheet(sheetId, true); return; }
+  if(res.full){
+    // never swap the grid under someone who is typing in a cell: try again in a moment
+    let typing = false; try{ typing = S.boot.univerAPI.getActiveWorkbook().isCellEditing(); }catch(e){}
+    if(typing){ S.pullTimer = setTimeout(()=>pullRemote(), 1500); return; }
+    await openSheet(sheetId, true, true); return;
+  }
   if(res.version > S.version) S.version = res.version;
   const ch = (res.changes||[]).filter(c=>!(skipKeys && skipKeys[c.tab+"|"+c.key]));
   if(!ch.length) return;
@@ -508,7 +513,7 @@ async function pullRemote(skipKeys, sinceOverride){
       for(const r in byTab[tab]){ cellValue[r] = {}; for(const k in byTab[tab][r]){ const o = byTab[tab][r][k]; cellValue[r][k] = o ? toCellData(o) : null; } }
       api.syncExecuteCommand("sheet.mutation.set-range-values", {unitId, subUnitId: tab, cellValue});
     }
-  }catch(e){ console.error("apply remote failed", e); S.applyingRemote=false; await openSheet(sheetId, true); return; }
+  }catch(e){ console.error("apply remote failed", e); S.applyingRemote=false; await openSheet(sheetId, true, true); return; }
   // refresh baseline for those cells from what Univer actually holds now (avoids echo edits)
   setTimeout(()=>{
     try{
@@ -845,18 +850,29 @@ function destroyBoot(){
   if(S.boot){ try{ S.boot.dispose(); }catch(e){} S.boot=null; }
   if(S.hostEl){ S.hostEl.remove(); S.hostEl=null; }
 }
-async function openSheet(id, keepActiveTab){
-  showMsg('<div class="spin"></div><div>ກຳລັງເປີດໄຟລ໌...</div>');
+// soft=true: someone else changed the structure (insert/delete row, width...). Rebuild the grid in the background and swap it in
+// without the loading screen, keeping the same sheet tab, selected cell and scroll position, so it feels like an in-place update.
+async function openSheet(id, keepActiveTab, soft){
+  soft = !!(soft && S.boot && S.sheet && S.sheet.id===id);
+  if(!soft) showMsg('<div class="spin"></div><div>ກຳລັງເປີດໄຟລ໌...</div>');
   let row;
   try{ await ensureUniver(); row = await rpc("ms_sheet_get", {p_id:id}); }
-  catch(e){ console.error(e); showMsg('<div>⚠ ເປີດໄຟລ໌ບໍ່ໄດ້: '+esc(e.message)+'</div>'); return; }
-  let activeId = null;
+  catch(e){ console.error(e); if(soft){ setStatus("err","⚠ ອັບເດດບໍ່ໄດ້: "+e.message); return; } showMsg('<div>⚠ ເປີດໄຟລ໌ບໍ່ໄດ້: '+esc(e.message)+'</div>'); return; }
+  if(soft && S.sheet.id!==id) return;
+  let activeId = null, keepSel = null, keepScroll = null;
   if(keepActiveTab && S.boot){ try{ activeId = S.boot.univerAPI.getActiveWorkbook().getActiveSheet().getSheetId(); }catch(e){} }
+  if(soft){
+    try{ const sh = S.boot.univerAPI.getActiveWorkbook().getActiveSheet(); const rg = sh.getSelection && sh.getSelection() && sh.getSelection().getActiveRange(); if(rg) keepSel = rg.getA1Notation(); }catch(e){}
+    try{ const sh = S.boot.univerAPI.getActiveWorkbook().getActiveSheet(); keepScroll = sh.getScrollState(); }catch(e){}
+  }
   clearTimeout(S.timer); S.dirty=false; S.saving=false; S.saveAgain=false; S.retry=0;
-  destroyBoot(); disconnectChannel();
+  let old = null;
+  if(soft){ old = {boot:S.boot, off:S.offCmd, el:S.hostEl}; S.boot=null; S.offCmd=null; S.hostEl=null; }
+  else { destroyBoot(); disconnectChannel(); }
   S.sheet = row; S.version = row.version; S.canEdit = !!row.can_edit; S.me = row.me;
   try{ localStorage.setItem("ms_sheet_last_"+row.me.id, row.id); }catch(e){}
   const host = document.createElement("div"); host.className = "univer-host-inner"; $("host").appendChild(host); S.hostEl = host;
+  if(old) host.style.visibility = "hidden";      // old grid stays on screen until the new one is ready
   const data = buildWorkbook(row);
   if(activeId && data.sheets[activeId]) data.sheetOrder = data.sheetOrder; // order kept; active tab restored below
   S.boot = window.UniverBoot(host, data);
@@ -871,8 +887,20 @@ async function openSheet(id, keepActiveTab){
   });
   if(!S.canEdit){ try{ S.boot.univerAPI.getActiveWorkbook().setEditable(false); }catch(e){} }
   if(activeId){ try{ const wb=S.boot.univerAPI.getActiveWorkbook(); const sh=wb.getSheetBySheetId(activeId); if(sh) wb.setActiveSheet(sh); }catch(e){} }
-  hideMsg();
+  if(!soft) hideMsg();
   await new Promise(r=>setTimeout(r,400));                 // let Univer finish its first load
+  if(old){
+    try{
+      const wb = S.boot.univerAPI.getActiveWorkbook(), sh = wb.getActiveSheet();
+      if(keepSel){ try{ sh.getRange(keepSel).activate(); }catch(e){} }
+      if(keepScroll){ try{ sh.scrollToCell(keepScroll.sheetViewStartRow||0, keepScroll.sheetViewStartColumn||0); }catch(e){} }
+    }catch(e){ console.error(e); }
+    await new Promise(r=>setTimeout(r,120));
+    host.style.visibility = "";                             // swap: show the new grid, then drop the old one
+    try{ old.off && old.off(); }catch(e){}
+    try{ old.boot && old.boot.dispose(); }catch(e){}
+    try{ old.el && old.el.remove(); }catch(e){}
+  }
   S.baseline = extract(snapshot(), false);
   // a brand-new/empty file: make the default tab exist on the server too
   if(!Object.keys(row.tabs||{}).length && S.canEdit) markDirty();
@@ -880,7 +908,8 @@ async function openSheet(id, keepActiveTab){
   ["btnExport","btnPull","btnLog","btnSave"].forEach(b=>$(b).disabled=false);
   const setBtn = $("btnSet"); setBtn.style.display = (S.me && S.me.role==="owner") ? "" : "none"; setBtn.disabled = false;
   $("fileSel").value = row.id;
-  connectChannel();
+  if(!soft || !S.channel) connectChannel();
+  if(soft) setStatus("", "🔄 ອັບເດດຈາກບັນຊີອື່ນ");
 }
 
 /* ======================================================================
