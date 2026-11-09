@@ -376,3 +376,99 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 grant execute on function public.ms_sheet_files(), public.ms_sheet_rename(uuid,text), public.ms_sheet_trash(uuid,boolean), public.ms_sheet_purge(uuid) to anon, authenticated;
+
+-- ===== v8.71: per-file account access (creator/owner picks which accounts can open / edit a file) =====
+alter table public.ms_sheets add column if not exists restricted boolean not null default false;
+create table if not exists public.ms_sheet_access (
+  sheet_id uuid not null references public.ms_sheets(id) on delete cascade,
+  user_id text not null,
+  can_edit boolean not null default true,
+  primary key (sheet_id, user_id)
+);
+alter table public.ms_sheet_access enable row level security;
+revoke all on public.ms_sheet_access from anon, authenticated;
+
+-- may this account SEE the file? owner role always; creator always; otherwise not owner_only and (unrestricted or listed)
+create or replace function public.ms_sheet_vis(s public.ms_sheets, uid text, uname text, urole text) returns boolean
+language sql stable security definer set search_path to 'public','extensions' as $$
+  select urole = 'owner' or (not s.owner_only and (not s.restricted or s.created_by = uname
+         or exists (select 1 from public.ms_sheet_access x where x.sheet_id = s.id and x.user_id = uid)))
+$$;
+-- may this account EDIT the file?
+create or replace function public.ms_sheet_edit(s public.ms_sheets, uid text, uname text, urole text) returns boolean
+language sql stable security definer set search_path to 'public','extensions' as $$
+  select urole = 'owner' or s.created_by = uname
+      or (case when s.restricted then exists (select 1 from public.ms_sheet_access x where x.sheet_id = s.id and x.user_id = uid and x.can_edit)
+               else not s.staff_readonly end)
+$$;
+revoke all on function public.ms_sheet_vis(public.ms_sheets,text,text,text), public.ms_sheet_edit(public.ms_sheets,text,text,text) from public, anon, authenticated;
+
+-- patch every existing function that decides visibility / editing (idempotent: patterns vanish after the first run)
+do $$
+declare fn text; def text; nd text; n int := 0;
+begin
+  foreach fn in array array['ms_sheet_list','ms_sheet_get','ms_sheet_files','ms_sheet_apply','ms_sheet_since','ms_sheet_log','ms_sheet_replace','ms_sheet_rename','ms_sheet_trash','ms_sheet_backups_list','ms_sheet_restore'] loop
+    select pg_get_functiondef(p.oid) into def from pg_proc p join pg_namespace ns on ns.oid=p.pronamespace where ns.nspname='public' and p.proname=fn limit 1;
+    if def is null then continue; end if;
+    nd := replace(def, '(a.o_role=''owner'' or not owner_only)', 'public.ms_sheet_vis(ms_sheets,a.o_id,a.o_name,a.o_role)');
+    nd := replace(nd, 's.staff_readonly and a.o_role <> ''owner''', 'not public.ms_sheet_edit(s,a.o_id,a.o_name,a.o_role)');
+    nd := replace(nd, '(a.o_role=''owner'' or not s.staff_readonly)', 'public.ms_sheet_edit(s,a.o_id,a.o_name,a.o_role)');
+    if nd <> def then execute nd; n := n + 1; end if;
+  end loop;
+  raise notice 'patched % functions', n;
+end $$;
+
+create or replace function public.ms_sheet_access_get(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id;
+  if s.id is null or not public.ms_sheet_vis(s,a.o_id,a.o_name,a.o_role) then raise exception 'not found'; end if;
+  if not (a.o_role='owner' or s.created_by = a.o_name) then raise exception 'not allowed'; end if;
+  return jsonb_build_object('restricted', s.restricted, 'creator', s.created_by,
+    'users', (select coalesce(jsonb_agg(jsonb_build_object('id',u.id,'name',u.name,'role',u.role,'listed',x.user_id is not null,'can_edit',coalesce(x.can_edit,true)) order by u.role<>'owner', u.name),'[]'::jsonb)
+              from public.users u left join public.ms_sheet_access x on x.sheet_id = p_id and x.user_id = u.id where u.role in ('owner','admin')));
+end $$;
+
+create or replace function public.ms_sheet_access_set(p_id uuid, p_restricted boolean, p_users jsonb) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets; names text;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id;
+  if s.id is null or not public.ms_sheet_vis(s,a.o_id,a.o_name,a.o_role) then raise exception 'not found'; end if;
+  if not (a.o_role='owner' or s.created_by = a.o_name) then raise exception 'not allowed'; end if;
+  delete from public.ms_sheet_access where sheet_id = p_id;
+  if coalesce(p_restricted,false) then
+    insert into public.ms_sheet_access(sheet_id,user_id,can_edit)
+      select p_id, u.id, coalesce((e->>'can_edit')::boolean,true)
+      from jsonb_array_elements(coalesce(p_users,'[]'::jsonb)) e join public.users u on u.id = e->>'id' where u.role in ('owner','admin')
+      on conflict do nothing;
+  end if;
+  update public.ms_sheets set restricted = coalesce(p_restricted,false) where id = p_id;
+  select string_agg(u.name || case when x.can_edit then '' else ' (ເບິ່ງຢ່າງດຽວ)' end, ', ' order by u.name) into names
+    from public.ms_sheet_access x join public.users u on u.id = x.user_id where x.sheet_id = p_id;
+  insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (p_id,s.version,'meta',
+    case when coalesce(p_restricted,false) then 'ກຳນົດສິດເຂົ້າເຖິງໄຟລ໌: ສະເພາະເຈົ້າຂອງ, ຜູ້ສ້າງ'||coalesce(', '||names,'') else 'ເປີດໃຫ້ທຸກບັນຊີເຂົ້າເຖິງໄຟລ໌' end, a.o_id, a.o_name);
+  return jsonb_build_object('ok', true);
+end $$;
+grant execute on function public.ms_sheet_access_get(uuid), public.ms_sheet_access_set(uuid,boolean,jsonb) to anon, authenticated;
+
+create or replace function public.ms_sheet_files() returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; res jsonb;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'version',version,'owner_only',owner_only,'staff_readonly',staff_readonly,
+      'created_by',created_by,'created_at',created_at,'updated_by',updated_by,'updated_at',updated_at,'bytes',pg_column_size(tabs),
+      'tabs',(select count(*) from jsonb_object_keys(tabs)),'deleted_at',deleted_at,'deleted_by',deleted_by,
+      'restricted',restricted,'access_n',(select count(*) from public.ms_sheet_access x where x.sheet_id = ms_sheets.id),
+      'can_edit',public.ms_sheet_edit(ms_sheets,a.o_id,a.o_name,a.o_role),
+      'can_manage',(a.o_role='owner' or created_by = a.o_name)) order by deleted_at is not null, created_at),'[]'::jsonb)
+    into res from public.ms_sheets where public.ms_sheet_vis(ms_sheets,a.o_id,a.o_name,a.o_role);
+  return jsonb_build_object('me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role), 'files', res);
+end $$;

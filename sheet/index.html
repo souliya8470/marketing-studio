@@ -898,11 +898,11 @@ async function loadList(selectId){
 }
 async function createFile(name, tabs){
   const r = await rpc("ms_sheet_create", {p_name:name, p_tabs: tabs || {t1:{meta:{name:"Sheet1",order:0,rows:DEFAULT_ROWS,cols:DEFAULT_COLS},cells:{}}}, p_owner_only:false});
-  const id = await loadList(r.id); await openSheet(id);
+  const id = await loadList(r.id); await openSheet(id); return r.id;
 }
 $("btnNew").onclick = async ()=>{
   const name = await askText("ຊື່ໄຟລ໌ໃໝ່", "", "ສ້າງ"); if(!name) return;
-  try{ await createFile(name); }catch(e){ alert("ສ້າງບໍ່ສຳເລັດ: "+e.message); }
+  try{ const nid = await createFile(name); if(nid) await openAccess(nid, name); }catch(e){ alert("ສ້າງບໍ່ສຳເລັດ: "+e.message); }
 };
 $("fileSel").onchange = async e=>{ if(!e.target.value) return; if(S.dirty) await save(false); await openSheet(e.target.value); };
 $("btnPull").onclick = ()=>pullRemote();
@@ -989,6 +989,40 @@ $("btnSet").onclick = async ()=>{
 };
 function emptyMsg(){ return '<div style="font-size:16px">📗 ຍັງບໍ່ມີໄຟລ໌</div><div>ກົດ "➕ ໄຟລ໌ໃໝ່" ຫຼື "📥 ນຳເຂົ້າ Excel" ເພື່ອເລີ່ມ</div>'; }
 
+/* ---- per-file account access (v8.71): creator/owner chooses which accounts may open / edit a file ---- */
+async function openAccess(id, name){
+  let info; try{ info = await rpc("ms_sheet_access_get", {p_id:id}); }catch(e){ alert("ເປີດບໍ່ໄດ້: "+e.message); return false; }
+  const users = (info.users||[]);
+  const rows = users.map(u=>{
+    const always = u.role==="owner" || u.name===info.creator;
+    return '<div class="acr" data-u="'+esc(u.id)+'" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #eee">'
+      + '<label style="flex:1;margin:0"><input type="checkbox" class="acc" '+(always||u.listed?'checked ':'')+(always?'disabled ':'')+'> '+esc(u.name)+'</label>'
+      + (always ? '<span style="font-size:12px;color:#107c41">'+(u.role==="owner"?"ເຈົ້າຂອງ — ເຂົ້າໄດ້ສະເໝີ":"ຜູ້ສ້າງ — ເຂົ້າໄດ້ສະເໝີ")+'</span>'
+        : '<select class="ace"><option value="1"'+(u.can_edit?' selected':'')+'>ແກ້ໄຂໄດ້</option><option value="0"'+(u.can_edit?'':' selected')+'>ເບິ່ງຢ່າງດຽວ</option></select>')
+      + '</div>';
+  }).join("");
+  const html = '<h3>🔑 ສິດເຂົ້າເຖິງໄຟລ໌</h3><div style="margin-bottom:8px;font-weight:600">'+esc(name||"")+'</div>'
+    + '<label><input type="radio" name="am" value="all" '+(info.restricted?'':'checked')+'> ທຸກບັນຊີເຂົ້າໄດ້</label>'
+    + '<label><input type="radio" name="am" value="sel" '+(info.restricted?'checked':'')+'> ສະເພາະບັນຊີທີ່ເລືອກ</label>'
+    + '<div id="acList" style="max-height:300px;overflow:auto;margin-top:6px">'+rows+'</div>'
+    + '<div style="font-size:12px;color:#605e5c;margin-top:8px">ບັນຊີທີ່ບໍ່ໄດ້ເລືອກ ຈະບໍ່ເຫັນໄຟລ໌ນີ້ເລີຍ. ເຈົ້າຂອງລະບົບ ແລະ ຜູ້ສ້າງ ເຂົ້າໄດ້ສະເໝີ.</div>'
+    + '<div class="row"><button id="ac0">ຍົກເລີກ</button><button class="pri" id="ac1">ບັນທຶກ</button></div>';
+  const r = await modal(html, (m, close)=>{
+    const sync = ()=>{ const sel = m.querySelector('input[name=am]:checked').value==="sel"; m.querySelector("#acList").style.opacity = sel?1:.4; m.querySelector("#acList").style.pointerEvents = sel?"":"none"; };
+    m.querySelectorAll('input[name=am]').forEach(x=>x.onchange=sync); sync();
+    m.querySelector("#ac0").onclick = ()=>close(null);
+    m.querySelector("#ac1").onclick = ()=>{
+      const restricted = m.querySelector('input[name=am]:checked').value==="sel";
+      const list = [...m.querySelectorAll(".acr")].filter(r=>{ const c=r.querySelector(".acc"); return c && c.checked && !c.disabled; }).map(r=>({id:r.dataset.u, can_edit:r.querySelector(".ace").value==="1"}));
+      close({restricted, users:list});
+    };
+  });
+  if(!r) return false;
+  try{ await rpc("ms_sheet_access_set", {p_id:id, p_restricted:r.restricted, p_users:r.users}); toast("ບັນທຶກສິດແລ້ວ"); }
+  catch(e){ alert("ບັນທຶກສິດບໍ່ສຳເລັດ: "+e.message); return false; }
+  return true;
+}
+
 /* ======================================================================
    File manager (v8.70) — Excel "File > Home/Open" look: list, search, open, rename, delete (trash), restore
    ====================================================================== */
@@ -1013,11 +1047,11 @@ function fmRender(){
     const t = !!f.deleted_at, can = !!f.can_manage;
     const sub = t ? ('ລຶບໂດຍ '+esc(f.deleted_by||"?")+' · '+esc(fmtTime(f.deleted_at))+' · ສ້າງໂດຍ '+esc(f.created_by||"?"))
       : ('ສ້າງໂດຍ '+esc(f.created_by||"?")+' · ແກ້ໄຂລ່າສຸດ '+esc(f.updated_by||"?")+' '+esc(fmtTime(f.updated_at))+' · '+fmSize(f.bytes)+' · '+esc(f.tabs)+' Sheet');
-    const tags = (f.id===cur?'<span class="tag">ກຳລັງເປີດຢູ່</span>':'') + (!t && dup[f.name]>1?'<span class="tag w">ຊື່ຊ້ຳກັນ</span>':'') + (f.owner_only?'<span class="tag w">🔐 ສະເພາະເຈົ້າຂອງ</span>':'') + (f.staff_readonly?'<span class="tag w">🔒 ເບິ່ງໄດ້ຢ່າງດຽວ</span>':'');
+    const tags = (f.id===cur?'<span class="tag">ກຳລັງເປີດຢູ່</span>':'') + (!t && dup[f.name]>1?'<span class="tag w">ຊື່ຊ້ຳກັນ</span>':'') + (f.owner_only?'<span class="tag w">🔐 ສະເພາະເຈົ້າຂອງ</span>':'') + (f.staff_readonly?'<span class="tag w">🔒 ເບິ່ງໄດ້ຢ່າງດຽວ</span>':'') + (f.restricted?'<span class="tag w">🔑 ສະເພາະບັນຊີທີ່ເລືອກ</span>':'') + (!t && f.can_edit===false?'<span class="tag w">ແກ້ໄຂບໍ່ໄດ້</span>':'');
     const tip = can ? '' : ' disabled title="ເຮັດໄດ້ສະເພາະເຈົ້າຂອງລະບົບ ຫຼື ຄົນທີ່ສ້າງໄຟລ໌ນີ້"';
     const acts = t
       ? '<button data-fa="restore" data-id="'+esc(f.id)+'"'+tip+'>ກູ້ຄືນ</button>' + (FM.me && FM.me.role==="owner" ? '<button class="dng" data-fa="purge" data-id="'+esc(f.id)+'">ລຶບຖາວອນ</button>' : '')
-      : '<button data-fa="open" data-id="'+esc(f.id)+'">ເປີດ</button><button data-fa="rename" data-id="'+esc(f.id)+'"'+tip+'>ປ່ຽນຊື່</button><button class="dng" data-fa="trash" data-id="'+esc(f.id)+'"'+tip+'>ລຶບ</button>';
+      : '<button data-fa="open" data-id="'+esc(f.id)+'">ເປີດ</button><button data-fa="rename" data-id="'+esc(f.id)+'"'+tip+'>ປ່ຽນຊື່</button><button data-fa="access" data-id="'+esc(f.id)+'"'+tip+'>🔑 ສິດ</button><button class="dng" data-fa="trash" data-id="'+esc(f.id)+'"'+tip+'>ລຶບ</button>';
     return '<div class="fmRow"><input type="checkbox" data-sel="'+esc(f.id)+'" '+(can?'':'disabled ')+(FM.sel.has(f.id)?'checked':'')+'>'
       + '<div class="ico">X</div><div class="inf" data-fa="'+(t?"none":"open")+'" data-id="'+esc(f.id)+'"><div class="nm">'+esc(f.name)+tags+'</div><div class="sb">'+sub+'</div></div><div class="acts">'+acts+'</div></div>';
   }).join("");
@@ -1071,7 +1105,7 @@ async function fmAction(act, id, e){
   const f = FM.files.find(x=>x.id===id);
   try{
     if(act==="open"){ await fmOpenFile(id); return; }
-    if(act==="new"){ const name = await askText("ຊື່ໄຟລ໌ໃໝ່","","ສ້າງ"); if(!name) return; fmClose(true); if(S.dirty) await save(false); await createFile(name); return; }
+    if(act==="new"){ const name = await askText("ຊື່ໄຟລ໌ໃໝ່","","ສ້າງ"); if(!name) return; fmClose(true); if(S.dirty) await save(false); const nid = await createFile(name); if(nid) await openAccess(nid, name); return; }
     if(act==="import"){ fmClose(true); if(FM.pendingOpen===undefined){} $("fileIn").click(); return; }
     if(act==="rename" && f){
       const nn = await askText("ປ່ຽນຊື່ໄຟລ໌", f.name, "ບັນທຶກ"); if(!nn || nn===f.name) return;
@@ -1079,6 +1113,7 @@ async function fmAction(act, id, e){
       await loadList(S.sheet && S.sheet.id); if(S.sheet){ if(S.sheet.id===id) S.sheet.name=nn; $("fileSel").value=S.sheet.id; }
       await fmLoad(); fmRender(); toast("ປ່ຽນຊື່ແລ້ວ"); return;
     }
+    if(act==="access" && f){ await openAccess(id, f.name); await fmLoad(); fmRender(); return; }
     if(act==="trash" && f){ await fmTrash([id], f.name); return; }
     if(act==="bulktrash"){ await fmTrash([...FM.sel]); return; }
     if(act==="restore" || act==="bulkrestore"){
