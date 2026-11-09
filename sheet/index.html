@@ -51,17 +51,55 @@
   .bk{display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;padding:5px 0;font-size:12.5px;}
   .bk span{flex:1;}
   input[type=file]{display:none;}
-/* Bigger, easier-to-read ribbon icons (Excel-like) */
-[class*="h-[73px]"]{ height:100px !important; }
-[class*="h-[73px]"] [class*="grid-rows-"]{ grid-template-rows:repeat(2,2.4rem) !important; }
-[class*="h-[73px]"] svg.univerjs-icon{ font-size:24px !important; }
-[class*="h-[73px]"] svg.univerjs-icon-more-down-icon{ font-size:14px !important; }
-[class*="h-[73px]"] button.univer-h-6{ height:34px !important; min-width:34px !important; }
-[class*="h-[73px]"] button, [class*="h-[73px]"] span{ font-size:13px; }
-[class*="h-[73px]"] [class*="flex-col"] > svg.univerjs-icon{ width:36px !important; height:36px !important; font-size:36px !important; }
-[class*="h-[73px]"] .univer-toolbar-selector-root[class*="flex-col"]{ min-width:64px !important; gap:4px !important; font-size:13px !important; }
-[class*="h-[73px]"] svg.univerjs-icon{ color:#323130; }
-[class*="h-[73px]"] [class*="grid-rows-"] > div{ padding:0 2px; }
+/* ===== Excel-style ribbon (own HTML; Univer's built-in toolbar is hidden) ===== */
+#ribbon{background:#fff;border-bottom:1px solid #d1d1d1;font-family:"Segoe UI","Noto Sans Lao","Leelawadee UI",system-ui,sans-serif;font-size:12px;color:#201f1e;user-select:none;flex:none;}
+#rbTabs{display:flex;align-items:flex-end;gap:2px;padding:0 8px;background:#f3f2f1;border-bottom:1px solid #e1dfdd;height:28px;}
+#rbTabs .tab{padding:5px 14px 6px;font-size:13px;cursor:pointer;border:1px solid transparent;border-bottom:none;color:#323130;background:none;font-family:inherit;}
+#rbTabs .tab:hover{background:#e9e8e7;}
+#rbTabs .tab.on{background:#fff;color:#107c41;font-weight:600;border-color:#e1dfdd;border-bottom:1px solid #fff;margin-bottom:-1px;}
+#rbTabs .qa{display:flex;gap:2px;margin-right:10px;align-self:center;}
+#rbTabs .sp{flex:1;}
+#rbTabs .collapse{align-self:center;background:none;border:none;cursor:pointer;color:#605e5c;font-size:13px;padding:2px 8px;}
+#rbBody{display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden;min-height:92px;padding:3px 4px 0;}
+#ribbon.collapsed #rbBody{display:none;}
+.rpane{display:none;align-items:stretch;}
+.rpane.on{display:flex;}
+.grp{display:flex;flex-direction:column;padding:0 6px;border-right:1px solid #e1dfdd;flex:none;}
+.grp .gb{display:flex;align-items:stretch;gap:2px;flex:1;min-height:0;}
+.grp .gn{text-align:center;font-size:11px;color:#605e5c;padding:2px 0 3px;white-space:nowrap;}
+.rc{display:flex;flex-direction:column;justify-content:center;gap:1px;}
+.rr{display:flex;align-items:center;gap:1px;}
+.rb{display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;border-radius:3px;background:none;cursor:pointer;color:#201f1e;font-family:inherit;font-size:12px;padding:2px 5px;min-height:24px;box-sizing:border-box;white-space:nowrap;}
+.rb:hover{background:#e9e8e7;border-color:#d6d6d6;}
+.rb.on{background:#cfe8d9;border-color:#8cc3a1;}
+.rb:disabled{opacity:.4;cursor:default;}
+.rb svg{width:18px;height:18px;flex:none;}
+.rb.big{flex-direction:column;justify-content:flex-start;gap:2px;padding:3px 7px;min-width:46px;min-height:62px;text-align:center;line-height:1.15;}
+.rb.big svg{width:32px;height:32px;}
+.rb .car{font-size:8px;margin-left:1px;color:#605e5c;}
+.rb.big .car{margin:0;}
+.rb.ic{padding:2px 4px;min-width:26px;justify-content:center;}
+.rb.txtb{font-size:15px;font-weight:700;min-width:26px;justify-content:center;padding:1px 4px;}
+.rb .fcol{display:block;height:4px;width:16px;margin-top:-5px;}
+.rb[data-act="bold"]{font-weight:800;} .rb[data-act="italic"]{font-style:italic;font-weight:600;font-family:Georgia,"Times New Roman",serif;} .rb[data-act="underline"]{text-decoration:underline;font-weight:600;} .rb[data-act="strike"]{text-decoration:line-through;font-weight:600;}
+.rb[data-act="grow"],.rb[data-act="shrink"]{font-size:12px;font-weight:700;}
+.rbsel,.rbin{height:24px;border:1px solid #c8c6c4;border-radius:2px;background:#fff;font-family:inherit;font-size:12px;color:#201f1e;box-sizing:border-box;padding:0 4px;}
+.rbsel:hover,.rbin:hover{border-color:#8a8886;}
+.sepv{width:1px;background:#e1dfdd;margin:3px 3px;}
+#ribbon.ro .rb:not(.okro){opacity:.4;pointer-events:none;}
+#ribbon.ro .rbsel,#ribbon.ro .rbin{opacity:.4;pointer-events:none;}
+.rmenu{position:fixed;z-index:200;background:#fff;border:1px solid #c8c6c4;box-shadow:0 4px 14px rgba(0,0,0,.2);padding:3px 0;min-width:190px;font-family:"Segoe UI","Noto Sans Lao",system-ui,sans-serif;font-size:12.5px;max-height:70vh;overflow:auto;}
+.rmenu .mi{padding:6px 14px;cursor:pointer;white-space:nowrap;color:#201f1e;}
+.rmenu .mi:hover{background:#e9e8e7;}
+.rmenu .ms{height:1px;background:#e1dfdd;margin:3px 0;}
+.rpal{position:fixed;z-index:200;background:#fff;border:1px solid #c8c6c4;box-shadow:0 4px 14px rgba(0,0,0,.2);padding:8px;font-size:12px;}
+.rpal .pt{margin:0 0 4px;color:#605e5c;}
+.rpal .pg{display:grid;grid-template-columns:repeat(10,18px);gap:2px;margin-bottom:6px;}
+.rpal .pg i{width:18px;height:18px;border:1px solid #bdbdbd;cursor:pointer;display:block;box-sizing:border-box;}
+.rpal .pg i:hover{outline:2px solid #107c41;}
+.rpal .pn{padding:5px 6px;cursor:pointer;border:1px solid transparent;}
+.rpal .pn:hover{background:#e9e8e7;}
+.rhint{align-self:center;max-width:260px;color:#605e5c;font-size:12px;line-height:1.4;padding:0 10px;white-space:normal;}
 </style>
 </head>
 <body>
@@ -80,6 +118,7 @@
     <button id="btnSet" style="display:none" disabled>⚙️</button>
     <input type="file" id="fileIn" accept=".xlsx,.xlsm">
   </div>
+  <div id="ribbon" style="display:none"></div>
   <div id="stage">
     <div id="host"><div id="msg"><div class="spin"></div><div>ກຳລັງໂຫຼດ Excel...</div></div></div>
     <div id="drawer">
@@ -423,7 +462,283 @@ function ensureUniver(){
   });
   return univerReady;
 }
+/* ======================================================================
+   Excel-style ribbon (v8.68). Univer's own toolbar is hidden (setUIVisible('toolbar', false)); this ribbon
+   drives the Univer facade (range / worksheet methods) so every button is a normal edit that is saved,
+   merged and logged exactly like a typed edit. Labels are English like the staff's real Excel.
+   ====================================================================== */
+const RB = { tab:"Home", fontColor:"#ff0000", fillColor:"#ffff00", menu:null, tmr:null };
+function svgi(inner, vb){ return '<svg viewBox="'+(vb||"0 0 18 18")+'" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>'; }
+function alignLines(kind){ // 4 text lines, left / center / right
+  const w=[12,8,12,6]; return svgi(w.map((n,i)=>{ const y=3.5+i*3.6; const x= kind==="left"?3 : kind==="right"?15-n : 9-n/2; return '<path d="M'+x+' '+y+'h'+n+'"/>'; }).join(""));
+}
+function valign(kind){ // 3 bars placed top / middle / bottom inside a frame
+  const y= kind==="top"?3.5 : kind==="middle"?7.5 : 11.5; return svgi('<path d="M2.5 2.5h13M2.5 15.5h13" stroke="#a19f9d"/><path d="M5 '+y+'h8M6.5 '+(y+2.5)+'h5"/>');
+}
+const IC = {
+  paste: svgi('<rect x="4" y="4" width="10" height="12" rx="1.5" fill="#fff" stroke="#605e5c"/><rect x="6.5" y="2.5" width="5" height="3" rx="1" fill="#e6c565" stroke="#8a6d1d"/><path d="M6.5 9h5M6.5 11.5h5" stroke="#2b6cb0"/>',"0 0 18 18"),
+  cut: svgi('<circle cx="5" cy="13.5" r="2.2"/><circle cx="13" cy="13.5" r="2.2"/><path d="M6.4 11.8L12 3M11.6 11.8L6 3"/>'),
+  copy: svgi('<rect x="6" y="6" width="9" height="10" rx="1" fill="#fff"/><path d="M4 12V3.5a1 1 0 011-1h7"/>'),
+  painter: svgi('<rect x="3" y="2.5" width="9" height="4" rx="1" fill="#f4d35e" stroke="#8a6d1d"/><path d="M12 4.5h2.5v4H8.5v2.5"/><rect x="7" y="11" width="3" height="5" rx="1" fill="#605e5c" stroke="none"/>'),
+  undo: svgi('<path d="M4 7h7a3.5 3.5 0 010 7H7"/><path d="M6.5 4L3.5 7l3 3"/>'),
+  redo: svgi('<path d="M14 7H7a3.5 3.5 0 000 7h4"/><path d="M11.5 4l3 3-3 3"/>'),
+  border: svgi('<rect x="3" y="3" width="12" height="12" stroke="#605e5c"/><path d="M9 3v12M3 9h12" stroke-dasharray="1.6 1.6" stroke="#a19f9d"/>'),
+  fill: svgi('<path d="M3.5 9l5-5.5 5.5 5.5-5 5.5z" fill="#fff"/><path d="M14.5 11.5c1 1.5 1.5 2.5 0 3.2-1.5-.7-1-1.7 0-3.2z" fill="#0f6cbd" stroke="#0f6cbd"/>'),
+  wrap: svgi('<path d="M3 4h12M3 8h9a2.5 2.5 0 010 5H9"/><path d="M10.5 11.2L8.7 13l1.8 1.8"/><path d="M3 12h3"/>'),
+  merge: svgi('<rect x="2.5" y="4" width="13" height="10" rx="1"/><path d="M6 9h6M7.8 7.2L6 9l1.8 1.8M10.2 7.2L12 9l-1.8 1.8"/>'),
+  decL: svgi('<path d="M3 5h4M3 9h4" opacity="0"/><text x="2" y="10" font-size="7" fill="currentColor" stroke="none" font-family="Segoe UI,Arial">.0</text><path d="M13 12.5H8M10 10.5l-2 2 2 2"/>'),
+  decR: svgi('<text x="2" y="10" font-size="7" fill="currentColor" stroke="none" font-family="Segoe UI,Arial">.00</text><path d="M7 14.5h6M11 12.5l2 2-2 2"/>'),
+  insert: svgi('<rect x="3" y="3" width="12" height="12" rx="1" fill="#fff"/><path d="M3 8h12M9 3v12" stroke="#a19f9d"/><path d="M12 10.5v4M10 12.5h4" stroke="#107c41" stroke-width="1.8"/>',"0 0 18 18"),
+  del: svgi('<rect x="3" y="3" width="12" height="12" rx="1" fill="#fff"/><path d="M3 8h12M9 3v12" stroke="#a19f9d"/><path d="M10.3 10.8l3.4 3.4M13.7 10.8l-3.4 3.4" stroke="#c42b1c" stroke-width="1.8"/>'),
+  format: svgi('<rect x="3" y="3" width="12" height="12" rx="1" fill="#fff"/><path d="M3 7h12M3 11h12M8 3v12" stroke="#a19f9d"/><path d="M10.5 12.5l3-3 1.5 1.5-3 3h-1.5z" fill="#f4d35e" stroke="#8a6d1d"/>'),
+  sum: '<svg viewBox="0 0 18 18"><text x="3" y="14" font-size="15" font-family="Segoe UI,Arial" fill="#107c41" font-weight="700">Σ</text></svg>',
+  clear: svgi('<path d="M4 12l6-8 4 3-5 8H6z" fill="#fff"/><path d="M9 15h6" stroke="#c42b1c"/>'),
+  sort: svgi('<text x="1.5" y="7" font-size="6.5" fill="currentColor" stroke="none" font-family="Segoe UI,Arial" font-weight="700">A</text><text x="1.5" y="15" font-size="6.5" fill="currentColor" stroke="none" font-family="Segoe UI,Arial" font-weight="700">Z</text><path d="M12 3v11M9.8 11.8L12 14l2.2-2.2"/>'),
+  filter: svgi('<path d="M3 4h12l-4.6 5.5V14l-2.8 1.5V9.5z" fill="#fff"/>'),
+  find: svgi('<circle cx="7.5" cy="7.5" r="4.3" fill="#fff"/><path d="M10.8 10.8l4.2 4.2" stroke-width="1.8"/>'),
+  plus: svgi('<path d="M9 3.5v11M3.5 9h11" stroke="#107c41" stroke-width="1.8"/>'),
+  freeze: svgi('<rect x="3" y="3" width="12" height="12" rx="1" fill="#fff"/><path d="M3 7.5h12M7.5 3v12" stroke="#0f6cbd" stroke-width="1.6"/>'),
+  grid: svgi('<rect x="3" y="3" width="12" height="12" fill="#fff"/><path d="M3 7h12M3 11h12M7 3v12M11 3v12" stroke="#a19f9d"/>'),
+  zoom: svgi('<circle cx="7.5" cy="7.5" r="4.3" fill="#fff"/><path d="M10.8 10.8l4.2 4.2M5.5 7.5h4M7.5 5.5v4" stroke-width="1.5"/>'),
+};
+/* --- button builders --- */
+function rbb(act, label, icon, o){ o=o||{};
+  return '<button class="rb '+(o.cls||"")+(o.okro?" okro":"")+'" data-act="'+act+'"'+(o.arg!=null?' data-arg="'+esc(o.arg)+'"':"")+' title="'+esc(o.title||label)+'">'+(icon||"")+(label?'<span>'+esc(label)+'</span>':"")+(o.car?'<span class="car">▼</span>':"")+'</button>';
+}
+function grp(name, body){ return '<div class="grp"><div class="gb">'+body+'</div><div class="gn">'+name+'</div></div>'; }
+const FONT_LIST = ["Saysettha OT","Phetsarath OT","Leelawadee UI","Noto Sans Lao","Calibri","Arial","Tahoma","Times New Roman","Segoe UI","Courier New"];
+const SIZE_LIST = [8,9,10,11,12,14,16,18,20,22,24,26,28,36,48,72];
+const NUMFMT = [  // [label, pattern]
+  ["General","General"],["Number","0.00"],["Comma","#,##0"],["Currency (₭)",'"₭"#,##0'],["Accounting",'_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'],
+  ["Short Date","dd/mm/yyyy"],["Long Date","dddd, mmmm d, yyyy"],["Time","hh:mm:ss"],["Percentage","0.00%"],["Fraction","# ?/?"],["Scientific","0.00E+00"],["Text","@"] ];
+const PAL = ["#000000","#7f7f7f","#c00000","#ff0000","#ffc000","#ffff00","#92d050","#00b050","#00b0f0","#0070c0","#7030a0","#ffffff","#d9d9d9","#f4b183","#ffd966","#fff2cc","#c5e0b3","#a9d18e","#bdd7ee","#9dc3e6","#d9c3e6","#e2b6f0"];
+
+function buildRibbon(){
+  const home =
+    grp("Clipboard",
+      rbb("paste","Paste",IC.paste,{cls:"big",title:"Paste (Ctrl+V)"}) +
+      '<div class="rc">'+rbb("cut","Cut",IC.cut,{title:"Cut (Ctrl+X)"})+rbb("copy","Copy",IC.copy,{title:"Copy (Ctrl+C)",okro:1})+rbb("painter","Format Painter",IC.painter)+'</div>') +
+    grp("Font",
+      '<div class="rc"><div class="rr"><select id="rbFont" class="rbsel" style="width:122px" title="Font"></select>'+
+      '<input id="rbSize" class="rbin" style="width:44px;margin-left:3px;text-align:center" list="rbSizes" title="Font Size"><datalist id="rbSizes">'+SIZE_LIST.map(n=>'<option value="'+n+'">').join("")+'</datalist>'+
+      rbb("grow","A▲",null,{cls:"ic txtb",title:"Increase Font Size"})+rbb("shrink","A▼",null,{cls:"ic txtb",title:"Decrease Font Size"})+'</div>'+
+      '<div class="rr">'+rbb("bold","B",null,{cls:"ic txtb",title:"Bold (Ctrl+B)"})+rbb("italic","I",null,{cls:"ic txtb",title:"Italic (Ctrl+I)"})+rbb("underline","U",null,{cls:"ic txtb",title:"Underline (Ctrl+U)"})+rbb("strike","S",null,{cls:"ic txtb",title:"Strikethrough"})+'</div>'+
+      '<div class="rr">'+rbb("border","Borders",IC.border,{car:1,title:"Borders"})+
+      '<button class="rb" data-act="fillApply" title="Fill Color">'+IC.fill+'<span>Fill</span></button><button class="rb ic" data-act="fillMenu" title="Fill Color options"><span class="car">▼</span></button>'+
+      '<button class="rb" data-act="fcolApply" title="Font Color"><span style="font-weight:700;font-size:15px;line-height:1">A</span><span>Font Color</span></button><button class="rb ic" data-act="fcolMenu" title="Font Color options"><span class="car">▼</span></button></div></div>') +
+    grp("Alignment",
+      '<div class="rc"><div class="rr">'+rbb("vtop","Top",valign("top"),{title:"Top Align"})+rbb("vmid","Middle",valign("middle"),{title:"Middle Align"})+rbb("vbot","Bottom",valign("bottom"),{title:"Bottom Align"})+'</div>'+
+      '<div class="rr">'+rbb("hleft","Left",alignLines("left"),{title:"Align Left (Ctrl+L)"})+rbb("hcenter","Center",alignLines("center"),{title:"Center (Ctrl+E)"})+rbb("hright","Right",alignLines("right"),{title:"Align Right (Ctrl+R)"})+'</div>'+
+      '<div class="rr">'+rbb("wrap","Wrap Text",IC.wrap,{title:"Wrap Text"})+rbb("mergeMenu","Merge & Center",IC.merge,{car:1,title:"Merge & Center"})+'</div></div>') +
+    grp("Number",
+      '<div class="rc"><div class="rr"><select id="rbNum" class="rbsel" style="width:150px" title="Number Format">'+NUMFMT.map((n,i)=>'<option value="'+i+'">'+esc(n[0])+'</option>').join("")+'<option value="-1" hidden>Custom</option></select></div>'+
+      '<div class="rr">'+rbb("fmtAcc","Accounting",null,{title:"Accounting Number Format"})+rbb("fmtPct","Percent %",null,{title:"Percent Style"})+rbb("fmtComma","Comma ,",null,{title:"Comma Style"})+'</div>'+
+      '<div class="rr">'+rbb("decMore","Increase Decimal",IC.decR)+rbb("decLess","Decrease Decimal",IC.decL)+'</div></div>') +
+    grp("Cells",
+      rbb("menuInsert","Insert",IC.insert,{cls:"big",car:1,title:"Insert"})+rbb("menuDelete","Delete",IC.del,{cls:"big",car:1,title:"Delete"})+rbb("menuFormat","Format",IC.format,{cls:"big",car:1,title:"Format"})) +
+    grp("Editing",
+      '<div class="rc">'+rbb("menuSum","AutoSum",IC.sum,{car:1,title:"AutoSum"})+rbb("menuClear","Clear",IC.clear,{car:1,title:"Clear"})+'</div>'+
+      rbb("menuSort","Sort & Filter",IC.sort,{cls:"big",car:1,title:"Sort & Filter"})+rbb("menuFind","Find & Select",IC.find,{cls:"big",car:1,title:"Find & Select"}));
+  const insert =
+    grp("Rows & Columns", rbb("rowAbove","Insert Row Above",IC.insert,{cls:"big"})+rbb("rowBelow","Insert Row Below",IC.insert,{cls:"big"})+rbb("colLeft","Insert Column Left",IC.insert,{cls:"big"})+rbb("colRight","Insert Column Right",IC.insert,{cls:"big"})) +
+    grp("Sheets", rbb("newSheet","New Sheet",IC.plus,{cls:"big"}));
+  const formulas =
+    grp("Function Library", rbb("sum:SUM","Sum",IC.sum,{cls:"big"})+rbb("sum:AVERAGE","Average",IC.sum,{cls:"big"})+rbb("sum:COUNT","Count Numbers",IC.sum,{cls:"big"})+rbb("sum:MAX","Max",IC.sum,{cls:"big"})+rbb("sum:MIN","Min",IC.sum,{cls:"big"})) +
+    '<div class="rhint">VLOOKUP / XLOOKUP / IF …: click a cell and type <b>=</b> then the formula, like Excel.</div>';
+  const data =
+    grp("Sort & Filter", rbb("sortAsc","Sort A to Z",IC.sort,{cls:"big"})+rbb("sortDesc","Sort Z to A",IC.sort,{cls:"big"})+rbb("filter","Filter",IC.filter,{cls:"big"})) +
+    grp("Find", rbb("find","Find",IC.find,{cls:"big",okro:1})+rbb("replace","Replace",IC.find,{cls:"big"}));
+  const view =
+    grp("Freeze", rbb("frzRow","Freeze Top Row",IC.freeze,{cls:"big"})+rbb("frzCol","Freeze First Column",IC.freeze,{cls:"big"})+rbb("frzSel","Freeze Panes",IC.freeze,{cls:"big"})+rbb("frzOff","Unfreeze Panes",IC.freeze,{cls:"big"})) +
+    grp("Show", rbb("gridlines","Gridlines",IC.grid,{cls:"big okro"})) +
+    grp("Zoom", rbb("zoom:0.75","75%",IC.zoom,{cls:"big okro"})+rbb("zoom:1","100%",IC.zoom,{cls:"big okro"})+rbb("zoom:1.25","125%",IC.zoom,{cls:"big okro"})+rbb("zoom:1.5","150%",IC.zoom,{cls:"big okro"}));
+  const tabs = ["Home","Insert","Formulas","Data","View"], panes = {Home:home,Insert:insert,Formulas:formulas,Data:data,View:view};
+  $("ribbon").innerHTML =
+    '<div id="rbTabs"><div class="qa">'+rbb("undo","",IC.undo,{cls:"ic",title:"Undo (Ctrl+Z)"})+rbb("redo","",IC.redo,{cls:"ic",title:"Redo (Ctrl+Y)"})+'</div>'+
+    tabs.map(t=>'<button class="tab'+(t===RB.tab?" on":"")+'" data-tab="'+t+'">'+t+'</button>').join("")+'<span class="sp"></span><button class="collapse" data-act="collapse" title="Collapse the Ribbon">▲</button></div>'+
+    '<div id="rbBody">'+tabs.map(t=>'<div class="rpane'+(t===RB.tab?" on":"")+'" data-pane="'+t+'">'+panes[t]+'</div>').join("")+'</div>';
+  $("rbFont").innerHTML = FONT_LIST.map(f=>'<option>'+esc(f)+'</option>').join("");
+}
+/* --- helpers --- */
+function toast(msg){ let t=$("rbToast"); if(!t){ t=document.createElement("div"); t.id="rbToast"; t.style.cssText="position:fixed;left:50%;bottom:46px;transform:translateX(-50%);background:#323130;color:#fff;padding:8px 16px;border-radius:4px;font-size:13px;z-index:300;max-width:90vw;"; document.body.appendChild(t); } t.textContent=msg; t.style.display="block"; clearTimeout(t._t); t._t=setTimeout(()=>{ t.style.display="none"; },2800); }
+function wbk(){ try{ return S.boot && S.boot.univerAPI.getActiveWorkbook(); }catch(e){ return null; } }
+function colName(c){ let s=""; c=c+1; while(c>0){ const m=(c-1)%26; s=String.fromCharCode(65+m)+s; c=Math.floor((c-1)/26); } return s; }
+function edit(fn){
+  if(!S.boot || !S.canEdit) return;
+  const wb=wbk(); const r = wb && wb.getActiveRange();
+  if(!r){ toast("ເລືອກຊ່ອງກ່ອນ"); return; }
+  try{ fn(r, wb.getActiveSheet(), wb); }catch(e){ console.error(e); toast("⚠ "+(e.message||e)); }
+  rbRefreshSoon();
+}
+function cstyle(r){ try{ return r.getCellStyleData() || {}; }catch(e){ return {}; } }
+function cmd(id, params){ try{ return S.boot.univerAPI.executeCommand(id, params); }catch(e){ console.error(e); } }
+function closeMenu(){ if(RB.menu){ RB.menu.remove(); RB.menu=null; } }
+function openMenu(anchor, items){
+  closeMenu();
+  const m=document.createElement("div"); m.className="rmenu";
+  m.innerHTML = items.map((it,i)=> it==="-" ? '<div class="ms"></div>' : '<div class="mi" data-i="'+i+'">'+esc(it[0])+'</div>').join("");
+  document.body.appendChild(m); RB.menu=m;
+  const a=anchor.getBoundingClientRect(); m.style.left=Math.min(a.left, window.innerWidth-m.offsetWidth-6)+"px"; m.style.top=(a.bottom+1)+"px";
+  m.addEventListener("mousedown", e=>e.preventDefault());
+  m.addEventListener("click", e=>{ const mi=e.target.closest(".mi"); if(!mi) return; const it=items[+mi.dataset.i]; closeMenu(); try{ it[1](); }catch(err){ console.error(err); } });
+}
+function openPalette(anchor, kind){
+  closeMenu();
+  const p=document.createElement("div"); p.className="rpal";
+  p.innerHTML='<div class="pt">'+(kind==="fill"?"Fill Color":"Font Color")+'</div><div class="pg">'+PAL.map(c=>'<i data-c="'+c+'" style="background:'+c+'"></i>').join("")+'</div><div class="pn" data-c="none">'+(kind==="fill"?"No Fill":"Automatic (black)")+'</div>';
+  document.body.appendChild(p); RB.menu=p;
+  const a=anchor.getBoundingClientRect(); p.style.left=Math.min(a.left, window.innerWidth-p.offsetWidth-6)+"px"; p.style.top=(a.bottom+1)+"px";
+  p.addEventListener("mousedown", e=>e.preventDefault());
+  p.addEventListener("click", e=>{ const t=e.target.closest("[data-c]"); if(!t) return; closeMenu(); applyColor(kind, t.dataset.c); });
+}
+function applyColor(kind, c){
+  edit(r=>{
+    if(kind==="fill"){ if(c==="none") r.setBackground(null); else { RB.fillColor=c; r.setBackground(c); } }
+    else { const v = c==="none" ? "#000000" : c; if(c!=="none") RB.fontColor=c; r.setFontColor(v); }
+  });
+  rbPaintBars();
+}
+function rbPaintBars(){ /* coloured bar under Fill / Font Color icons */
+  const f=document.querySelector('[data-act="fillApply"]'), t=document.querySelector('[data-act="fcolApply"]');
+  if(f) f.style.boxShadow="inset 0 -3px 0 "+RB.fillColor; if(t) t.style.boxShadow="inset 0 -3px 0 "+RB.fontColor;
+}
+function setNum(p){ edit(r=>r.setNumberFormat(p)); }
+function bumpDec(d){
+  edit(r=>{
+    let p = ""; try{ p = r.getNumberFormat() || ""; }catch(e){}
+    if(!p || p==="General" || p==="@"){ if(d>0) r.setNumberFormat("0.0"); return; }
+    const parts = p.split(";").map(s=>{
+      const m = s.match(/\.(0+)/);
+      if(m){ const n=m[1].length+d; return n<=0 ? s.replace(/\.0+/,"") : s.replace(/\.0+/,"."+"0".repeat(n)); }
+      if(d>0){ const i=Math.max(s.lastIndexOf("0"), s.lastIndexOf("#")); if(i>=0) return s.slice(0,i+1)+".0"+s.slice(i+1); }
+      return s;
+    });
+    r.setNumberFormat(parts.join(";"));
+  });
+}
+function selInfo(r){ return {r0:r.getRow(), r1:r.getLastRow(), c0:r.getColumn(), c1:r.getLastColumn()}; }
+function autoFn(fn){
+  edit((r, ws)=>{
+    const s=selInfo(r), isNum=(v)=>typeof v==="number" && isFinite(v);
+    const val=(row,col)=>{ try{ return ws.getRange(row,col).getRawValue(); }catch(e){ return null; } };
+    const put=(row,col,f)=>{ ws.getRange(row,col).setFormula(f); };
+    if(s.r0===s.r1 && s.c0===s.c1){
+      let t=s.r0-1; while(t>=0 && isNum(val(t,s.c0))) t--;
+      if(t < s.r0-1){ put(s.r0,s.c0,"="+fn+"("+colName(s.c0)+(t+2)+":"+colName(s.c0)+s.r0+")"); return; }
+      let l=s.c0-1; while(l>=0 && isNum(val(s.r0,l))) l--;
+      if(l < s.c0-1){ put(s.r0,s.c0,"="+fn+"("+colName(l+1)+(s.r0+1)+":"+colName(s.c0-1)+(s.r0+1)+")"); return; }
+      toast("ບໍ່ພົບຕົວເລກ ໃຫ້ເລືອກຊ່ວງຕົວເລກກ່ອນ"); return;
+    }
+    if(s.r0===s.r1){ put(s.r0, s.c1+1, "="+fn+"("+colName(s.c0)+(s.r0+1)+":"+colName(s.c1)+(s.r0+1)+")"); return; }
+    for(let c=s.c0;c<=s.c1;c++) put(s.r1+1, c, "="+fn+"("+colName(c)+(s.r0+1)+":"+colName(c)+(s.r1+1)+")");
+  });
+}
+function sortSel(asc){
+  edit((r, ws)=>{
+    let rg=r, s=selInfo(r);
+    const activeCol = (()=>{ try{ return wbk().getActiveCell().getColumn(); }catch(e){ return s.c0; } })();
+    if(s.r0===s.r1 && s.c0===s.c1){ try{ rg=r.getDataRegion(); s=selInfo(rg); }catch(e){} }
+    let first=s.r0;
+    if(s.r1>s.r0 && r.getRow()===r.getLastRow() && r.getColumn()===r.getLastColumn()){ // single cell -> auto-detect header row
+      let allText=true; for(let c=s.c0;c<=s.c1;c++){ const v=ws.getRange(s.r0,c).getRawValue(); if(typeof v!=="string" || v==="") allText=false; }
+      if(allText) first=s.r0+1;
+    }
+    const target = ws.getRange(first, s.c0, s.r1-first+1, s.c1-s.c0+1);
+    target.sort({column: Math.max(0, activeCol - s.c0), ascending: !!asc});
+  });
+}
+function rowsCols(r){ const s=selInfo(r); return {r0:s.r0, nr:s.r1-s.r0+1, c0:s.c0, nc:s.c1-s.c0+1}; }
+function askNumber(title, def, cb){ askText(title, String(def)).then(v=>{ if(v==null) return; const n=parseFloat(String(v).replace(",",".")); if(!isFinite(n) || n<=0){ toast("ໃສ່ຕົວເລກທີ່ຖືກຕ້ອງ"); return; } cb(n); }); }
+const ACT = {
+  undo(){ try{ S.boot.univerAPI.undo(); }catch(e){} }, redo(){ try{ S.boot.univerAPI.redo(); }catch(e){} },
+  cut(){ edit(()=>{ cmd("univer.command.cut"); }); },
+  copy(){ Promise.resolve().then(()=>S.boot.univerAPI.copy()).then(ok=>{ if(ok===false) toast("ກົດ Ctrl+C ແທນ"); }).catch(()=>toast("ກົດ Ctrl+C ແທນ")); },
+  paste(){ if(!S.canEdit) return; Promise.resolve().then(()=>S.boot.univerAPI.paste()).then(ok=>{ if(ok===false) toast("ກົດ Ctrl+V ແທນ"); }).catch(()=>toast("ກົດ Ctrl+V ແທນ")); },
+  painter(){ edit(()=>{ cmd("sheet.command.set-once-format-painter"); }); },
+  bold(){ edit(r=>{ r.setFontWeight(cstyle(r).bl===1 ? "normal" : "bold"); }); },
+  italic(){ edit(r=>{ r.setFontStyle(cstyle(r).it===1 ? "normal" : "italic"); }); },
+  underline(){ edit(r=>{ const s=cstyle(r); r.setFontLine(s.ul && s.ul.s===1 ? "none" : "underline"); }); },
+  strike(){ edit(r=>{ const s=cstyle(r); r.setFontLine(s.st && s.st.s===1 ? "none" : "line-through"); }); },
+  grow(){ edit(r=>{ const s=cstyle(r).fs||11; const n=SIZE_LIST.find(x=>x>s)||s+1; r.setFontSize(n); }); },
+  shrink(){ edit(r=>{ const s=cstyle(r).fs||11; const n=[...SIZE_LIST].reverse().find(x=>x<s)||Math.max(1,s-1); r.setFontSize(n); }); },
+  fillApply(){ applyColor("fill", RB.fillColor); }, fcolApply(){ applyColor("font", RB.fontColor); },
+  fillMenu(el){ openPalette(el.previousElementSibling||el, "fill"); }, fcolMenu(el){ openPalette(el.previousElementSibling||el, "font"); },
+  border(el){ const E=S.boot.univerAPI.Enum; const T=E.BorderType, St=E.BorderStyleTypes;
+    const mk=(type,style)=>()=>edit(r=>r.setBorder(type, style||St.THIN, "#000000"));
+    openMenu(el, [["All Borders",mk(T.ALL)],["Outside Borders",mk(T.OUTSIDE)],["Thick Outside Borders",mk(T.OUTSIDE,St.THICK)],["Inside Borders",mk(T.INSIDE)],"-",["Bottom Border",mk(T.BOTTOM)],["Top Border",mk(T.TOP)],["Left Border",mk(T.LEFT)],["Right Border",mk(T.RIGHT)],"-",["No Border",mk(T.NONE)]]); },
+  vtop(){ edit(r=>r.setVerticalAlignment("top")); }, vmid(){ edit(r=>r.setVerticalAlignment("middle")); }, vbot(){ edit(r=>r.setVerticalAlignment("bottom")); },
+  hleft(){ edit(r=>r.setHorizontalAlignment("left")); }, hcenter(){ edit(r=>r.setHorizontalAlignment("center")); }, hright(){ edit(r=>r.setHorizontalAlignment("right")); },
+  wrap(){ edit(r=>{ r.setWrap(cstyle(r).tb!==3); }); },
+  mergeMenu(el){ openMenu(el, [
+    ["Merge & Center",()=>edit(r=>{ r.merge(); r.setHorizontalAlignment("center"); })],
+    ["Merge Across",()=>edit(r=>r.mergeAcross())],
+    ["Merge Cells",()=>edit(r=>r.merge())],
+    ["Unmerge Cells",()=>edit(r=>r.breakApart())] ]); },
+  fmtAcc(){ setNum(NUMFMT[4][1]); }, fmtPct(){ setNum("0%"); }, fmtComma(){ setNum("#,##0"); },
+  decMore(){ bumpDec(1); }, decLess(){ bumpDec(-1); },
+  menuInsert(el){ openMenu(el, [["Insert Sheet Rows",()=>ACT.rowAbove()],["Insert Sheet Columns",()=>ACT.colLeft()],["Insert Sheet",()=>ACT.newSheet()]]); },
+  menuDelete(el){ openMenu(el, [["Delete Sheet Rows",()=>edit((r,ws)=>{ const x=rowsCols(r); ws.deleteRows(x.r0, x.nr); })],["Delete Sheet Columns",()=>edit((r,ws)=>{ const x=rowsCols(r); ws.deleteColumns(x.c0, x.nc); })]]); },
+  menuFormat(el){ openMenu(el, [
+    ["Row Height…",()=>edit((r,ws)=>{ const x=rowsCols(r); askNumber("Row Height (px)", ws.getRowHeight(x.r0)||20, n=>edit((r2,w2)=>w2.setRowHeights(x.r0,x.nr,n))); })],
+    ["AutoFit Row Height",()=>edit((r,ws)=>{ const x=rowsCols(r); ws.autoResizeRows(x.r0,x.nr); })],
+    ["Column Width…",()=>edit((r,ws)=>{ const x=rowsCols(r); askNumber("Column Width (px)", ws.getColumnWidth(x.c0)||64, n=>edit((r2,w2)=>w2.setColumnWidths(x.c0,x.nc,n))); })],
+    ["AutoFit Column Width",()=>edit((r,ws)=>{ const x=rowsCols(r); ws.autoResizeColumns(x.c0,x.nc); })] ]); },
+  menuSum(el){ openMenu(el, [["Sum",()=>autoFn("SUM")],["Average",()=>autoFn("AVERAGE")],["Count Numbers",()=>autoFn("COUNT")],["Max",()=>autoFn("MAX")],["Min",()=>autoFn("MIN")]]); },
+  menuClear(el){ openMenu(el, [["Clear All",()=>edit(r=>r.clear())],["Clear Formats",()=>edit(r=>r.clearFormat())],["Clear Contents",()=>edit(r=>r.clearContent())]]); },
+  menuSort(el){ openMenu(el, [["Sort A to Z",()=>sortSel(true)],["Sort Z to A",()=>sortSel(false)],"-",["Filter",()=>ACT.filter()]]); },
+  menuFind(el){ openMenu(el, [["Find…",()=>ACT.find()],["Replace…",()=>ACT.replace()]]); },
+  sortAsc(){ sortSel(true); }, sortDesc(){ sortSel(false); },
+  filter(){ edit(()=>{ cmd("sheet.command.smart-toggle-filter"); }); },
+  find(){ cmd("ui.operation.open-find-dialog"); }, replace(){ cmd("ui.operation.open-replace-dialog"); },
+  rowAbove(){ edit((r,ws)=>{ const x=rowsCols(r); ws.insertRowsBefore(x.r0, x.nr); }); },
+  rowBelow(){ edit((r,ws)=>{ const x=rowsCols(r); ws.insertRowsAfter(x.r0+x.nr-1, x.nr); }); },
+  colLeft(){ edit((r,ws)=>{ const x=rowsCols(r); ws.insertColumnsBefore(x.c0, x.nc); }); },
+  colRight(){ edit((r,ws)=>{ const x=rowsCols(r); ws.insertColumnsAfter(x.c0+x.nc-1, x.nc); }); },
+  newSheet(){ if(!S.canEdit) return; try{ wbk().insertSheet(); }catch(e){ console.error(e); toast("⚠ "+e.message); } },
+  frzRow(){ edit((r,ws)=>ws.setFrozenRows(1)); }, frzCol(){ edit((r,ws)=>ws.setFrozenColumns(1)); },
+  frzSel(){ edit((r,ws)=>{ const s=selInfo(r); ws.setFreeze({xSplit:s.c0, ySplit:s.r0, startRow:s.r0, startColumn:s.c0}); }); },
+  frzOff(){ edit((r,ws)=>ws.cancelFreeze()); },
+  gridlines(){ try{ const ws=wbk().getActiveSheet(); ws.setHiddenGridlines(!ws.hasHiddenGridLines()); }catch(e){ console.error(e); } },
+  collapse(){ $("ribbon").classList.toggle("collapsed"); },
+};
+function rbSetTab(t){ RB.tab=t; document.querySelectorAll("#rbTabs .tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===t)); document.querySelectorAll("#rbBody .rpane").forEach(p=>p.classList.toggle("on", p.dataset.pane===t)); $("ribbon").classList.remove("collapsed"); }
+/* --- show current cell state in the ribbon (bold pressed, font, size, number format...) --- */
+function rbRefreshSoon(){ clearTimeout(RB.tmr); RB.tmr=setTimeout(rbRefresh, 90); }
+function rbRefresh(){
+  const rib=$("ribbon"); if(!rib || !S.boot) return;
+  const wb=wbk(); const r=wb && wb.getActiveRange(); if(!r) return;
+  const s=cstyle(r), on=(act,v)=>{ const b=rib.querySelector('[data-act="'+act+'"]'); if(b) b.classList.toggle("on", !!v); };
+  on("bold", s.bl===1); on("italic", s.it===1); on("underline", s.ul && s.ul.s===1); on("strike", s.st && s.st.s===1); on("wrap", s.tb===3);
+  on("hleft", s.ht===1); on("hcenter", s.ht===2); on("hright", s.ht===3); on("vtop", s.vt===1); on("vmid", s.vt===2); on("vbot", s.vt===3);
+  try{ on("mergeMenu", r.isMerged()); }catch(e){}
+  const fs=$("rbFont"); if(fs && document.activeElement!==fs){ const f=s.ff||"Saysettha OT"; if(![...fs.options].some(o=>o.value===f)){ const o=document.createElement("option"); o.textContent=f; fs.appendChild(o); } fs.value=f; }
+  const sz=$("rbSize"); if(sz && document.activeElement!==sz) sz.value = s.fs || 11;
+  const ns=$("rbNum"); if(ns){ let p="General"; try{ p=r.getNumberFormat()||"General"; }catch(e){} const i=NUMFMT.findIndex(n=>n[1]===p); ns.value = String(i); if(i<0) ns.value="-1"; }
+}
+function rbInit(){
+  buildRibbon(); rbPaintBars();
+  const rib=$("ribbon");
+  rib.addEventListener("mousedown", e=>{ if(!e.target.closest("select,input")) e.preventDefault(); });   // keep the cell selection
+  rib.addEventListener("click", e=>{
+    const tb=e.target.closest("[data-tab]"); if(tb){ rbSetTab(tb.dataset.tab); return; }
+    const b=e.target.closest("[data-act]"); if(!b) return;
+    let name=b.dataset.act, arg=null; const i=name.indexOf(":"); if(i>0){ arg=name.slice(i+1); name=name.slice(0,i); }
+    if(name==="sum"){ autoFn(arg); return; }
+    if(name==="zoom"){ try{ wbk().getActiveSheet().zoom(parseFloat(arg)); }catch(e2){ console.error(e2); } return; }
+    if(ACT[name]) ACT[name](b, e);
+  });
+  rib.addEventListener("dblclick", e=>{ if(e.target.closest("#rbTabs .tab")) $("ribbon").classList.toggle("collapsed"); });
+  $("rbFont").addEventListener("change", e=>{ const v=e.target.value; edit(r=>r.setFontFamily(v)); });
+  const sz=$("rbSize"); const applySize=()=>{ const n=parseFloat(sz.value); if(isFinite(n)&&n>=1&&n<=400) edit(r=>r.setFontSize(n)); };
+  sz.addEventListener("change", applySize); sz.addEventListener("keydown", e=>{ if(e.key==="Enter"){ applySize(); sz.blur(); } });
+  $("rbNum").addEventListener("change", e=>{ const i=+e.target.value; if(i>=0) setNum(NUMFMT[i][1]); });
+  document.addEventListener("mousedown", e=>{ if(RB.menu && !e.target.closest(".rmenu,.rpal") && !e.target.closest("#ribbon")) closeMenu(); });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeMenu(); });
+}
+rbInit();
+
 function destroyBoot(){
+  { const rb=$("ribbon"); if(rb) rb.style.display="none"; closeMenu(); }
   if(S.offCmd){ try{ S.offCmd(); }catch(e){} S.offCmd=null; }
   if(S.boot){ try{ S.boot.dispose(); }catch(e){} S.boot=null; }
   if(S.hostEl){ S.hostEl.remove(); S.hostEl=null; }
@@ -443,7 +758,10 @@ async function openSheet(id, keepActiveTab){
   const data = buildWorkbook(row);
   if(activeId && data.sheets[activeId]) data.sheetOrder = data.sheetOrder; // order kept; active tab restored below
   S.boot = window.UniverBoot(host, data);
+  try{ S.boot.univerAPI.setUIVisible("toolbar", false); }catch(e){ console.error(e); }   // our own Excel-style ribbon replaces Univer's
+  { const rb=$("ribbon"); rb.style.display=""; rb.classList.toggle("ro", !S.canEdit); }
   S.offCmd = S.boot.onCommand((cid)=>{
+    rbRefreshSoon();
     if(!cid || cid.indexOf("sheet.mutation.")!==0) return;
     if(/active|scroll|zoom|selection|activate/.test(cid)) return;
     markDirty();
