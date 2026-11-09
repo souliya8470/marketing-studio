@@ -1,4 +1,4 @@
-import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets';
+import { createUniver, LocaleType, mergeLocales, greenTheme, defaultTheme } from '@univerjs/presets';
 import { ICommandService } from '@univerjs/core';
 import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
 import sheetsCoreEnUS from '@univerjs/preset-sheets-core/locales/en-US';
@@ -20,11 +20,19 @@ import '@univerjs/preset-sheets-data-validation/lib/index.css';
 import '@univerjs/preset-sheets-find-replace/lib/index.css';
 window.UniverBoot = function(container, workbookData, opts){
   opts = opts || {};
+  // Excel wording for the ribbon (Univer says "Start", "Alignment and layout", "Number format"...)
+  // Excel wording for the ribbon (Univer says "Start", "Alignment and layout", "Number format"). mergeLocales is shallow per namespace, so edit a copy.
+  const excelLocale = JSON.parse(JSON.stringify(mergeLocales(sheetsCoreEnUS, sheetsFilterEnUS, sheetsSortEnUS, sheetsCFEnUS, sheetsDVEnUS, sheetsFREnUS)));
+  try{ const rb = excelLocale.ui.ribbon; rb.start = 'Home'; rb.groups.layout = 'Alignment'; rb.groups.number = 'Number'; }catch(e){ console.error(e); }
+  // green accents (selection, active tab) like Excel, but neutral grey grid lines / headers
+  const excelTheme = Object.assign({}, greenTheme, { gray: defaultTheme.gray });
+  const fonts = ['Saysettha OT','Phetsarath OT','Leelawadee UI','Noto Sans Lao','Calibri','Arial','Tahoma','Times New Roman','Segoe UI','Courier New'].map(function(f){ return {value:f, label:f}; });
   const { univer, univerAPI } = createUniver({
     locale: LocaleType.EN_US,
-    locales: { [LocaleType.EN_US]: mergeLocales(sheetsCoreEnUS, sheetsFilterEnUS, sheetsSortEnUS, sheetsCFEnUS, sheetsDVEnUS, sheetsFREnUS) },
+    locales: { [LocaleType.EN_US]: excelLocale },
+    theme: excelTheme,
     presets: [
-      UniverSheetsCorePreset({ container, header: true, toolbar: true, footer: true, formulaBar: true }),
+      UniverSheetsCorePreset({ container, header: true, toolbar: true, footer: true, formulaBar: true, ribbonType: opts.ribbonType || 'grid', customFontFamily: fonts }),
       UniverSheetsFilterPreset(), UniverSheetsSortPreset(),
       UniverSheetsConditionalFormattingPreset(), UniverSheetsDataValidationPreset(), UniverSheetsFindReplacePreset(),
     ],

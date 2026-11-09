@@ -8,17 +8,19 @@
 <style>
   html,body{margin:0;height:100%;font-family:"Noto Sans Lao","Leelawadee UI","Phetsarath OT","Saysettha OT",system-ui,sans-serif;font-size:13px;color:#222;background:#fff;}
   #app{display:flex;flex-direction:column;height:100%;}
-  #top{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#217346;color:#fff;flex-wrap:wrap;min-height:34px;}
-  #top .brand{font-weight:700;margin-right:4px;white-space:nowrap;}
-  #top select{max-width:240px;padding:4px 6px;border-radius:4px;border:1px solid #17563a;font-size:13px;background:#fff;color:#222;}
-  #top button{background:#185c37;color:#fff;border:1px solid #2f8f5b;border-radius:4px;padding:4px 9px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit;}
-  #top button:hover{background:#13472b;}
-  #top button:disabled{opacity:.5;cursor:default;}
+  #top{display:flex;align-items:center;gap:6px;padding:4px 10px;background:#fff;color:#201f1e;flex-wrap:wrap;min-height:36px;border-bottom:1px solid #e1dfdd;font-family:"Segoe UI","Noto Sans Lao","Leelawadee UI",system-ui,sans-serif;}
+  #top .brand{font-weight:600;margin-right:4px;white-space:nowrap;color:#107c41;font-size:14px;}
+  #top select{max-width:260px;padding:3px 6px;border-radius:2px;border:1px solid #c8c6c4;font-size:13px;background:#fff;color:#201f1e;}
+  #top button{background:#fff;color:#201f1e;border:1px solid #c8c6c4;border-radius:2px;padding:3px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  #top button:hover{background:#f3f2f1;}
+  #top button.pri{background:#107c41;border-color:#107c41;color:#fff;}
+  #top button.pri:hover{background:#0b6a37;}
+  #top button:disabled{opacity:.45;cursor:default;}
   #top .sp{flex:1;}
-  #status{font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.18);white-space:nowrap;}
-  #status.bad{background:#b3261e;}
-  #status.dirty{background:#8a6d00;}
-  #presence{font-size:12px;opacity:.95;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #status{font-size:12px;padding:2px 9px;border-radius:10px;background:#e6f4ea;color:#0b6a37;white-space:nowrap;}
+  #status.bad{background:#fde7e9;color:#a4262c;}
+  #status.dirty{background:#fff4ce;color:#7a5b00;}
+  #presence{font-size:12px;color:#605e5c;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #stage{flex:1;position:relative;min-height:0;display:flex;}
   #host{flex:1;min-width:0;position:relative;}
   #host .univer-host-inner{position:absolute;inset:0;}
@@ -63,7 +65,7 @@
     <span id="presence"></span>
     <span id="status">—</span>
     <button id="btnPull" title="ໂຫຼດການແກ້ໄຂຂອງຄົນອື່ນ" disabled>🔄</button>
-    <button id="btnLog" disabled>📜 ປະຫວັດ</button>
+    <button id="btnLog" class="pri" disabled>📜 ປະຫວັດ</button>
     <button id="btnSet" style="display:none" disabled>⚙️</button>
     <input type="file" id="fileIn" accept=".xlsx,.xlsm">
   </div>
@@ -182,7 +184,8 @@ function buildWorkbook(row){
     const rowData = {}; for(const r in (meta.rowh||{})) rowData[r] = {h: meta.rowh[r], ia: 0};
     (meta.hrows||[]).forEach(r=>{ (rowData[r] = rowData[r] || {}).hd = 1; });
     const sh = { id, name: meta.name || ("Sheet"+(idx+1)), rowCount: Math.max(meta.rows||DEFAULT_ROWS, maxR+50), columnCount: Math.max(meta.cols||DEFAULT_COLS, maxC+5),
-      cellData, columnData, rowData, showGridlines: 1 };
+      cellData, columnData, rowData, showGridlines: 1,
+      defaultRowHeight: 20, defaultColumnWidth: 64, rowHeader: {width: 40}, columnHeader: {height: 20} };   // Excel defaults
     if(meta.freeze) sh.freeze = meta.freeze;
     if(meta.merges && meta.merges.length) sh.mergeData = meta.merges;
     sheets[id] = sh;
