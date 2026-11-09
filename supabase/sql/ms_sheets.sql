@@ -97,7 +97,7 @@ create or replace function public.ms_sheet_apply(p_id uuid, p_patch jsonb) retur
 language plpgsql security definer set search_path to 'public','extensions' as $$
 declare a record; s public.ms_sheets; ver bigint; v_tabs jsonb; t_id text; tp jsonb; ocells jsonb; ncells jsonb; k text; c jsonb;
   nulls text[]; nn int := 0; total int := 0; cr int; cc int; bulk boolean; tname text; structural boolean := false;
-  parts text[]; otxt text; ntxt text;
+  parts text[]; otxt text; ntxt text; nt jsonb; nnotes int := 0; nn_t int;
 begin
   select * into a from public.ms_sheet_actor();
   if a.o_id is null then raise exception 'not allowed'; end if;
@@ -138,6 +138,15 @@ begin
       tname := v_tabs->t_id->'meta'->>'name';
       ocells := coalesce(v_tabs->t_id->'cells','{}'::jsonb);
       nulls := array[]::text[]; ncells := '{}'::jsonb;
+      if bulk then
+        -- v8.69: big patches (row/column delete shifts thousands of cells) are merged set-based, with no per-cell log rows.
+        -- (the old per-cell loop took ~14 s for 6000 cells -> hit the 3 s anon statement timeout -> the save was lost)
+        select count(*) into nn_t from jsonb_each(tp->'cells') p left join jsonb_each(ocells) o on o.key = p.key
+          where public.ms_sheet_cell_text(p.value) is distinct from public.ms_sheet_cell_text(o.value);
+        nn := nn + nn_t;
+        select coalesce(jsonb_object_agg(key, value) filter (where value <> 'null'::jsonb), '{}'::jsonb), coalesce(array_agg(key) filter (where value = 'null'::jsonb), array[]::text[])
+          into ncells, nulls from jsonb_each(tp->'cells');
+      else
       for k, c in select * from jsonb_each(tp->'cells') loop
         if c = 'null'::jsonb then nulls := nulls || k; else ncells := ncells || jsonb_build_object(k, c); end if;
         otxt := public.ms_sheet_cell_text(ocells->k);
@@ -153,15 +162,29 @@ begin
             values (s.id,ver,t_id,tname,k,null,c,'sync',a.o_id,a.o_name);
         end if;
       end loop;
+      end if;
       ocells := (ocells || ncells);
       if array_length(nulls,1) is not null then ocells := ocells - nulls; end if;
       v_tabs := jsonb_set(v_tabs, array[t_id,'cells'], ocells);
     end if;
   end loop;
   if bulk then
-    insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,ver,'bulk','ແກ້ໄຂຫຼາຍຊ່ອງພ້ອມກັນ ('||nn||' ຊ່ອງ)',a.o_id,a.o_name);
+    insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,ver,'bulk',
+      case when nn > 0 then 'ແກ້ໄຂຫຼາຍຊ່ອງພ້ອມກັນ ('||nn||' ຊ່ອງ)' else 'ປ່ຽນຮູບແບບຫຼາຍຊ່ອງພ້ອມກັນ ('||total||' ຊ່ອງ)' end, a.o_id,a.o_name);
+    if nn > 400 then   -- big destructive/shifting edit: keep the state from before it (owner can restore)
+      insert into public.ms_sheet_backups(sheet_id,version,tabs,reason,created_by) values (s.id,s.version,s.tabs,'before-bulk',a.o_name);
+      delete from public.ms_sheet_backups where sheet_id = s.id and id not in (select id from public.ms_sheet_backups where sheet_id = s.id order by created_at desc limit 40);
+    end if;
   end if;
-  if structural then
+  -- v8.69: the client describes structural actions (delete row 12 + what was in it, column width, ...) as notes
+  for nt in select * from jsonb_array_elements(case when jsonb_typeof(p_patch->'notes')='array' then p_patch->'notes' else '[]'::jsonb end) limit 60 loop
+    if coalesce(nt->>'t','') <> '' then
+      nnotes := nnotes + 1;
+      insert into public.ms_sheet_changes(sheet_id,version,tab_name,kind,new_text,user_id,user_name) values (s.id,ver,left(nt->>'tab',100),'meta',left(nt->>'t',700),a.o_id,a.o_name);
+    end if;
+  end loop;
+  if nnotes > 0 then structural := true; end if;
+  if structural and nnotes = 0 then
     insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,ver,'meta','ປ່ຽນໂຄງສ້າງ/ຮູບແບບຕາຕະລາງ',a.o_id,a.o_name);
   end if;
   update public.ms_sheets set tabs = v_tabs, version = ver, updated_by = a.o_name, updated_at = now() where id = s.id;
@@ -178,7 +201,7 @@ begin
   select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only);
   if s.id is null then raise exception 'not found'; end if;
   if s.version = p_since then return jsonb_build_object('version',s.version,'full',false,'changes','[]'::jsonb); end if;
-  if exists (select 1 from public.ms_sheet_changes where sheet_id = p_id and version > p_since and kind = 'meta') then
+  if exists (select 1 from public.ms_sheet_changes where sheet_id = p_id and version > p_since and kind in ('meta','bulk')) then
     return jsonb_build_object('version',s.version,'full',true);
   end if;
   select count(*) into cnt from public.ms_sheet_changes where sheet_id = p_id and version > p_since and cell_key is not null;

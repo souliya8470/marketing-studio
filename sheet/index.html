@@ -113,6 +113,7 @@
     <span class="sp"></span>
     <span id="presence"></span>
     <span id="status">—</span>
+    <button id="btnSave" title="Save (Ctrl+S)" disabled>💾 ບັນທຶກ</button>
     <button id="btnPull" title="ໂຫຼດການແກ້ໄຂຂອງຄົນອື່ນ" disabled>🔄</button>
     <button id="btnLog" class="pri" disabled>📜 ປະຫວັດ</button>
     <button id="btnSet" style="display:none" disabled>⚙️</button>
@@ -145,7 +146,7 @@ const $ = id => document.getElementById(id);
 const S = {                       // state
   me: null, files: [], sheet: null, boot: null, offCmd: null,
   version: 0, canEdit: true, baseline: null, dirty: false, saving: false, saveAgain: false,
-  timer: null, firstDirtyAt: 0, applyingRemote: false, channel: null, pullTimer: null, retry: 0, hostEl: null,
+  notes: [], timer: null, firstDirtyAt: 0, applyingRemote: false, channel: null, pullTimer: null, retry: 0, hostEl: null,
 };
 
 /* ---------- tiny helpers ---------- */
@@ -230,7 +231,8 @@ function buildWorkbook(row){
       (cellData[r] = cellData[r] || {})[c] = cd;
       if(r>maxR) maxR=r; if(c>maxC) maxC=c;
     }
-    const columnData = {}; for(const c in (meta.colw||{})) columnData[c] = {w: meta.colw[c]};
+    const colLimit = Math.max(meta.cols||DEFAULT_COLS, MIN_COLS, maxC+5);   // v8.69: files imported earlier stored 16384 column widths (slow saves) -> ignore those beyond the sheet
+    const columnData = {}; for(const c in (meta.colw||{})) if(Number(c) < colLimit) columnData[c] = {w: meta.colw[c]};
     (meta.hcols||[]).forEach(c=>{ (columnData[c] = columnData[c] || {}).hd = 1; });
     const rowData = {}; for(const r in (meta.rowh||{})) rowData[r] = {h: meta.rowh[r], ia: 0};
     (meta.hrows||[]).forEach(r=>{ (rowData[r] = rowData[r] || {}).hd = 1; });
@@ -267,7 +269,7 @@ function extract(snap, keepFormulaValue){
     const sh = snap.sheets[id]; if(!sh) return;
     const meta = { name: sh.name, order: idx, rows: sh.rowCount, cols: sh.columnCount };
     const colw = {}, hcols = [], rowh = {}, hrows = [];
-    for(const c in (sh.columnData||{})){ const d = sh.columnData[c]; if(d && d.w!=null) colw[c]=Math.round(d.w); if(d && d.hd) hcols.push(Number(c)); }
+    for(const c in (sh.columnData||{})){ if(Number(c) >= sh.columnCount) continue; const d = sh.columnData[c]; if(d && d.w!=null) colw[c]=Math.round(d.w); if(d && d.hd) hcols.push(Number(c)); }
     for(const r in (sh.rowData||{})){ const d = sh.rowData[r]; if(d && d.h!=null && d.ia===0) rowh[r]=Math.round(d.h); if(d && d.hd) hrows.push(Number(r)); }
     if(Object.keys(colw).length) meta.colw = colw; if(Object.keys(rowh).length) meta.rowh = rowh;
     if(hcols.length) meta.hcols = hcols.sort((a,b)=>a-b); if(hrows.length) meta.hrows = hrows.sort((a,b)=>a-b);
@@ -335,6 +337,51 @@ function chunkPatch(p, size){
 /* ======================================================================
    Saving
    ====================================================================== */
+/* ---------- v8.69: describe structural actions for the edit log (who deleted row 12, what was in it, ...) ---------- */
+function rowsTxt(a,b){ return a===b ? String(a+1) : (a+1)+"–"+(b+1); }
+function colsTxt(a,b){ return a===b ? colName(a) : colName(a)+"–"+colName(b); }
+function a1Txt(g){ return colName(g.startColumn)+(g.startRow+1)+(g.startRow===g.endRow && g.startColumn===g.endColumn ? "" : ":"+colName(g.endColumn)+(g.endRow+1)); }
+function lostSummary(tab, r0, r1, c0, c1){   // what was in the deleted rows/columns (taken from the last saved state)
+  const cells = S.baseline && S.baseline[tab] && S.baseline[tab].cells; if(!cells) return "";
+  const found = [];
+  for(const k in cells){ const rc = k.split(",").map(Number); if(rc[0]>=r0 && rc[0]<=r1 && rc[1]>=c0 && rc[1]<=c1){ const o=cells[k]; const t = o.f!=null ? o.f : (o.v==null ? "" : String(o.v)); if(t!=="") found.push([rc[0],rc[1],t]); } }
+  if(!found.length) return " — ບໍ່ມີຂໍ້ມູນ";
+  found.sort((x,y)=>x[0]-y[0] || x[1]-y[1]);
+  return " — ຂໍ້ມູນທີ່ຖືກລຶບ ("+found.length+" ຊ່ອງ): "+found.slice(0,8).map(f=>colName(f[1])+(f[0]+1)+"="+f[2].slice(0,40)).join(", ")+(found.length>8 ? " …" : "");
+}
+function describeStruct(cid, p){
+  if(!p || cid.indexOf("sheet.mutation.")!==0) return null;
+  const rg = p.range, rs = p.ranges || [];
+  const rowList = ()=>rs.map(x=>rowsTxt(x.startRow,x.endRow)).join(", ");
+  const colList = ()=>rs.map(x=>colsTxt(x.startColumn,x.endColumn)).join(", ");
+  switch(cid.slice(15)){
+    case "remove-rows": return rg ? "ລຶບແຖວ "+rowsTxt(rg.startRow,rg.endRow)+lostSummary(p.subUnitId, rg.startRow, rg.endRow, 0, 1e9) : null;
+    case "insert-row": return rg ? "ແຊກແຖວໃໝ່ "+rowsTxt(rg.startRow,rg.endRow) : null;
+    case "remove-col": return rg ? "ລຶບຖັນ "+colsTxt(rg.startColumn,rg.endColumn)+lostSummary(p.subUnitId, 0, 1e9, rg.startColumn, rg.endColumn) : null;
+    case "insert-col": return rg ? "ແຊກຖັນໃໝ່ "+colsTxt(rg.startColumn,rg.endColumn) : null;
+    case "set-worksheet-row-height": return rs.length ? "ປັບຄວາມສູງແຖວ "+rowList()+" ເປັນ "+Math.round(p.rowHeight) : null;
+    case "set-worksheet-col-width": return rs.length ? "ປັບຄວາມກວ້າງຖັນ "+colList()+" ເປັນ "+Math.round(p.colWidth) : null;
+    case "set-row-hidden": return rs.length ? "ຊ່ອນແຖວ "+rowList() : null;
+    case "set-row-visible": return rs.length ? "ສະແດງແຖວ "+rowList()+" ຄືນ" : null;
+    case "set-col-hidden": return rs.length ? "ຊ່ອນຖັນ "+colList() : null;
+    case "set-col-visible": return rs.length ? "ສະແດງຖັນ "+colList()+" ຄືນ" : null;
+    case "add-worksheet-merge": return rs.length ? "ລວມຊ່ອງ "+rs.map(a1Txt).join(", ") : null;
+    case "remove-worksheet-merge": return rs.length ? "ແຍກຊ່ອງທີ່ລວມ "+rs.map(a1Txt).join(", ") : null;
+    case "set-frozen": return "ປ່ຽນ Freeze Panes";
+    case "move-rows": return p.sourceRange && p.targetRange ? "ຍ້າຍແຖວ "+rowsTxt(p.sourceRange.startRow,p.sourceRange.endRow)+" ໄປກ່ອນແຖວ "+(p.targetRange.startRow+1) : null;
+    case "move-range": return p.fromRange && p.toRange ? "ຍ້າຍ/ເລື່ອນຊ່ອງ "+a1Txt(p.fromRange)+" → "+a1Txt(p.toRange) : null;
+  }
+  return null;
+}
+function noteStruct(cid, p){
+  if(S.applyingRemote || !S.canEdit) return;
+  let t = null; try{ t = describeStruct(cid, p); }catch(e){ console.error(e); }
+  if(!t) return;
+  let tab = ""; try{ tab = S.boot.univerAPI.getActiveWorkbook().getSheetBySheetId(p.subUnitId).getSheetName(); }catch(e){}
+  const last = S.notes[S.notes.length-1];
+  if(last && last.t===t && last.tab===tab) return;
+  if(S.notes.length < 60) S.notes.push({t:t.slice(0,600), tab:tab});
+}
 function markDirty(){
   if(!S.canEdit || S.applyingRemote) return;
   if(!S.dirty){ S.dirty = true; S.firstDirtyAt = Date.now(); }
@@ -343,35 +390,48 @@ function markDirty(){
   const wait = Math.max(300, Math.min(1200, 8000 - (Date.now()-S.firstDirtyAt)));
   S.timer = setTimeout(()=>save(false), wait);
 }
+function nowTxt(){ try{ return new Date().toLocaleTimeString("en-GB"); }catch(e){ return ""; } }
+async function saveNow(){   // Save button / Ctrl+S: save immediately and say what happened
+  if(!S.sheet) return;
+  if(!S.canEdit){ toast("ໄຟລ໌ນີ້ເບິ່ງໄດ້ຢ່າງດຽວ"); return; }
+  if(S.saving){ toast("ກຳລັງບັນທຶກ..."); return; }
+  S.retry = 0;
+  const ok = await save(false);
+  toast(ok ? "ບັນທຶກແລ້ວ ✓" : "ບັນທຶກບໍ່ສຳເລັດ ກະລຸນາລອງໃໝ່");
+}
 async function save(keepalive){
   if(!S.sheet || !S.canEdit) return true;
   if(S.saving){ S.saveAgain = true; return false; }
   clearTimeout(S.timer);
   let cur;
   try{ cur = extract(snapshot(), false); }catch(e){ console.error(e); return false; }
-  const patch = makePatch(S.baseline, cur);
-  if(!patch){ S.dirty = false; setStatus("","✓ ບັນທຶກແລ້ວ"); return true; }
+  let patch = makePatch(S.baseline, cur);
+  const notes = S.notes.splice(0, S.notes.length);
+  if(!patch && !notes.length){ S.dirty = false; setStatus("","✓ ບັນທຶກແລ້ວ "+nowTxt()); return true; }
+  if(!patch) patch = {tabs:{}, n:0};
   S.saving = true; setStatus("","ກຳລັງບັນທຶກ...");
   const sheetId = S.sheet.id, before = S.version;
   const mine = {}; for(const id in patch.tabs){ const t=patch.tabs[id]; if(t.cells) for(const k in t.cells) mine[id+"|"+k]=1; }
   try{
     let res = null;
+    let first = true;
     for(const part of chunkPatch(patch, 3000)){
-      res = await rpc("ms_sheet_apply", {p_id: sheetId, p_patch: {tabs: part.tabs}}, keepalive ? {keepalive:true} : null);
+      res = await rpc("ms_sheet_apply", {p_id: sheetId, p_patch: first && notes.length ? {tabs: part.tabs, notes} : {tabs: part.tabs}}, keepalive ? {keepalive:true} : null);
+      first = false;
     }
     if(!S.sheet || S.sheet.id !== sheetId) { S.saving=false; return true; }
     S.baseline = cur; S.version = res.version; S.retry = 0;
     S.dirty = false; S.saving = false;
-    setStatus("","✓ ບັນທຶກແລ້ວ");
+    setStatus("","✓ ບັນທຶກແລ້ວ "+nowTxt());
     pingOthers();
     if(res.version !== before + 1 + (chunkPatch(patch,3000).length-1)){ pullRemote(mine, before); } // somebody else saved in between
     if(S.saveAgain){ S.saveAgain=false; markDirty(); }
     return true;
   }catch(e){
-    S.saving = false; console.error("save failed", e);
+    S.saving = false; console.error("save failed", e); S.notes = notes.concat(S.notes).slice(0,60);
     if(/read only/i.test(e.message||"")){ setStatus("bad","🔒 ໄຟລ໌ນີ້ເບິ່ງໄດ້ຢ່າງດຽວ"); S.canEdit=false; try{ S.boot.univerAPI.getActiveWorkbook().setEditable(false); }catch(_){} return false; }
-    setStatus("bad","⚠ ບັນທຶກບໍ່ສຳເລັດ"+(S.retry<3?" — ກຳລັງລອງໃໝ່":""));
-    if(S.retry++ < 3){ clearTimeout(S.timer); S.timer = setTimeout(()=>save(false), 5000); }
+    setStatus("bad","⚠ ບັນທຶກບໍ່ສຳເລັດ"+(S.retry<6 ? " — ກຳລັງລອງໃໝ່ ຢ່າປິດໜ້ານີ້" : " — ກົດ 💾 ບັນທຶກ"));
+    if(S.retry++ < 6){ clearTimeout(S.timer); S.timer = setTimeout(()=>save(false), Math.min(30000, 4000*S.retry)); }
     return false;
   }
 }
@@ -480,6 +540,7 @@ const IC = {
   cut: svgi('<circle cx="5" cy="13.5" r="2.2"/><circle cx="13" cy="13.5" r="2.2"/><path d="M6.4 11.8L12 3M11.6 11.8L6 3"/>'),
   copy: svgi('<rect x="6" y="6" width="9" height="10" rx="1" fill="#fff"/><path d="M4 12V3.5a1 1 0 011-1h7"/>'),
   painter: svgi('<rect x="3" y="2.5" width="9" height="4" rx="1" fill="#f4d35e" stroke="#8a6d1d"/><path d="M12 4.5h2.5v4H8.5v2.5"/><rect x="7" y="11" width="3" height="5" rx="1" fill="#605e5c" stroke="none"/>'),
+  save: svgi('<path d="M3.5 3.5h8.5l2.5 2.5v8.5h-11z" fill="#fff"/><path d="M6 3.5v3.5h5V3.5M6 14.5v-4h6v4"/>'),
   undo: svgi('<path d="M4 7h7a3.5 3.5 0 010 7H7"/><path d="M6.5 4L3.5 7l3 3"/>'),
   redo: svgi('<path d="M14 7H7a3.5 3.5 0 000 7h4"/><path d="M11.5 4l3 3-3 3"/>'),
   border: svgi('<rect x="3" y="3" width="12" height="12" stroke="#605e5c"/><path d="M9 3v12M3 9h12" stroke-dasharray="1.6 1.6" stroke="#a19f9d"/>'),
@@ -554,7 +615,7 @@ function buildRibbon(){
     grp("Zoom", rbb("zoom:0.75","75%",IC.zoom,{cls:"big okro"})+rbb("zoom:1","100%",IC.zoom,{cls:"big okro"})+rbb("zoom:1.25","125%",IC.zoom,{cls:"big okro"})+rbb("zoom:1.5","150%",IC.zoom,{cls:"big okro"}));
   const tabs = ["Home","Insert","Formulas","Data","View"], panes = {Home:home,Insert:insert,Formulas:formulas,Data:data,View:view};
   $("ribbon").innerHTML =
-    '<div id="rbTabs"><div class="qa">'+rbb("undo","",IC.undo,{cls:"ic",title:"Undo (Ctrl+Z)"})+rbb("redo","",IC.redo,{cls:"ic",title:"Redo (Ctrl+Y)"})+'</div>'+
+    '<div id="rbTabs"><div class="qa">'+rbb("saveNow","",IC.save,{cls:"ic okro",title:"Save (Ctrl+S)"})+rbb("undo","",IC.undo,{cls:"ic",title:"Undo (Ctrl+Z)"})+rbb("redo","",IC.redo,{cls:"ic",title:"Redo (Ctrl+Y)"})+'</div>'+
     tabs.map(t=>'<button class="tab'+(t===RB.tab?" on":"")+'" data-tab="'+t+'">'+t+'</button>').join("")+'<span class="sp"></span><button class="collapse" data-act="collapse" title="Collapse the Ribbon">▲</button></div>'+
     '<div id="rbBody">'+tabs.map(t=>'<div class="rpane'+(t===RB.tab?" on":"")+'" data-pane="'+t+'">'+panes[t]+'</div>').join("")+'</div>';
   $("rbFont").innerHTML = FONT_LIST.map(f=>'<option>'+esc(f)+'</option>').join("");
@@ -650,6 +711,7 @@ function sortSel(asc){
 function rowsCols(r){ const s=selInfo(r); return {r0:s.r0, nr:s.r1-s.r0+1, c0:s.c0, nc:s.c1-s.c0+1}; }
 function askNumber(title, def, cb){ askText(title, String(def)).then(v=>{ if(v==null) return; const n=parseFloat(String(v).replace(",",".")); if(!isFinite(n) || n<=0){ toast("ໃສ່ຕົວເລກທີ່ຖືກຕ້ອງ"); return; } cb(n); }); }
 const ACT = {
+  saveNow(){ saveNow(); },
   undo(){ try{ S.boot.univerAPI.undo(); }catch(e){} }, redo(){ try{ S.boot.univerAPI.redo(); }catch(e){} },
   cut(){ edit(()=>{ cmd("univer.command.cut"); }); },
   copy(){ Promise.resolve().then(()=>S.boot.univerAPI.copy()).then(ok=>{ if(ok===false) toast("ກົດ Ctrl+C ແທນ"); }).catch(()=>toast("ກົດ Ctrl+C ແທນ")); },
@@ -760,8 +822,9 @@ async function openSheet(id, keepActiveTab){
   S.boot = window.UniverBoot(host, data);
   try{ S.boot.univerAPI.setUIVisible("toolbar", false); }catch(e){ console.error(e); }   // our own Excel-style ribbon replaces Univer's
   { const rb=$("ribbon"); rb.style.display=""; rb.classList.toggle("ro", !S.canEdit); }
-  S.offCmd = S.boot.onCommand((cid)=>{
+  S.offCmd = S.boot.onCommand((cid, params)=>{
     rbRefreshSoon();
+    if(cid && cid.indexOf("sheet.mutation.")===0) noteStruct(cid, params);
     if(!cid || cid.indexOf("sheet.mutation.")!==0) return;
     if(/active|scroll|zoom|selection|activate/.test(cid)) return;
     markDirty();
@@ -774,7 +837,7 @@ async function openSheet(id, keepActiveTab){
   // a brand-new/empty file: make the default tab exist on the server too
   if(!Object.keys(row.tabs||{}).length && S.canEdit) markDirty();
   setStatus("", S.canEdit ? "✓ ບັນທຶກແລ້ວ" : "🔒 ເບິ່ງໄດ້ຢ່າງດຽວ");
-  ["btnExport","btnPull","btnLog"].forEach(b=>$(b).disabled=false);
+  ["btnExport","btnPull","btnLog","btnSave"].forEach(b=>$(b).disabled=false);
   const setBtn = $("btnSet"); setBtn.style.display = (S.me && S.me.role==="owner") ? "" : "none"; setBtn.disabled = false;
   $("fileSel").value = row.id;
   connectChannel();
@@ -803,6 +866,8 @@ $("btnNew").onclick = async ()=>{
 };
 $("fileSel").onchange = async e=>{ if(!e.target.value) return; if(S.dirty) await save(false); await openSheet(e.target.value); };
 $("btnPull").onclick = ()=>pullRemote();
+$("btnSave").onclick = ()=>saveNow();
+window.addEventListener("keydown", e=>{ if((e.ctrlKey||e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase()==="s"){ e.preventDefault(); saveNow(); } }, true);
 $("btnImport").onclick = ()=>$("fileIn").click();
 $("fileIn").onchange = async e=>{
   const f = e.target.files[0]; e.target.value=""; if(!f) return;
@@ -957,8 +1022,9 @@ async function xlsxToTabs(file){
         if(Object.keys(o).length) cells[(rn-1)+","+(cn-1)] = o;
       });
     });
-    const meta = { name: ws.name, order: idx, rows: Math.max(ws.rowCount+200, DEFAULT_ROWS), cols: Math.max(ws.columnCount+5, DEFAULT_COLS) };
-    const colw = {}; (ws.columns||[]).forEach((c,i)=>{ if(c && c.width) colw[i] = Math.round(c.width*7+5); if(c && c.hidden){ (meta.hcols = meta.hcols||[]).push(i); } });
+    let usedC = 0; for(const k in cells){ const cc = Number(k.split(",")[1]); if(cc>usedC) usedC=cc; }
+    const meta = { name: ws.name, order: idx, rows: Math.max(ws.rowCount+200, DEFAULT_ROWS), cols: Math.max(usedC+30, DEFAULT_COLS) };   // v8.69: not ws.columnCount (16384 when the xlsx defines every column)
+    const colw = {}; (ws.columns||[]).forEach((c,i)=>{ if(i >= meta.cols) return; if(c && c.width) colw[i] = Math.round(c.width*7+5); if(c && c.hidden){ (meta.hcols = meta.hcols||[]).push(i); } });
     if(Object.keys(colw).length) meta.colw = colw;
     const rowh = {}; ws.eachRow({includeEmpty:false},(row,rn)=>{ if(row.height && row.customHeight!==false) rowh[rn-1] = Math.round(row.height*4/3); if(row.hidden){ (meta.hrows=meta.hrows||[]).push(rn-1); } });
     if(Object.keys(rowh).length) meta.rowh = rowh;
