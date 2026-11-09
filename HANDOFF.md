@@ -125,3 +125,9 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 
 - Realtime plan (not started): keep scans instant by (1) updating the scanning screen locally at once, (2) DB trigger -> realtime.send() broadcast ping with NO data on a public channel, clients refetch via token-protected REST. Test on ONE table first; if not sub-second, do not lock that table. Do not touch scan tables before testing.
 - Big functions (e.g. ads-test-auto is ~70 KB) need the whole source re-emitted to add the guard; do them one at a time, test each (anon=401, token passes), and switch its cron job to the cron token in the same step.
+
+## Clock-in display bug — v8.63 (2026-11-09)
+- Symptom: DB had the clock-in rows, owner report showed them, staff own page still said "not clocked in" (duplicates on 08/11 Ky, 09/11 Mek).
+- Cause not reproduced live (no staff token): staff page only used the list loaded at login.
+- Fix: `refreshMyAttendance()` re-reads own rows on opening the clock page and before each clock-in; clock-in refused if today's record already exists.
+- If staff still report it: ask for browser console error on the clock page (could be a token/RLS read problem).

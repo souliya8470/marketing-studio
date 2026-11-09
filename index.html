@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.62"; // v8.62 CHANGE (Tar 2026-11-08, online orders): the "reason for rejecting order" box was a native browser prompt() that opened at the top of the window and looked unlike every other notice. It is now the same centered in-app dialog (customPrompt, red danger style, buttons "ປະຕິເສດອໍເດີ" / "ຍົກເລີກ"); Enter confirms, Esc or clicking outside cancels without rejecting. Nothing else changed.
+const APP_VERSION = "8.63"; // v8.63 FIX (Tar 2026-11-09, clock-in): staff pressed clock-in, the owner report showed them clocked in, but their own page still said not clocked in (so some pressed twice: Ky 08/11, Mek 09/11). The staff page only used the list loaded at login. Now opening the clock page (and every clock-in/out press) first re-reads THIS user's own attendance rows fresh from the database (refreshMyAttendance, same idea as the owner report), and a clock-in press is refused if the database already has an open record for today. Nothing else changed.
+// (previous text of this slot, kept) // v8.62 CHANGE (Tar 2026-11-08, online orders): the "reason for rejecting order" box was a native browser prompt() that opened at the top of the window and looked unlike every other notice. It is now the same centered in-app dialog (customPrompt, red danger style, buttons "ປະຕິເສດອໍເດີ" / "ຍົກເລີກ"); Enter confirms, Esc or clicking outside cancels without rejecting. Nothing else changed.
 // (previous text of this slot, kept) v8.61 FIX (Tar 2026-11-08, online orders): when staff press "confirm" on an online order whose slip check verdict is "fail", the warning is now stronger: it lists the reasons AND tells staff to open the shop bank app and check the money really arrived with the same amount before confirming. Staff are NOT blocked (Tar: staff are responsible for checking the shop account); owner and staff see the same warning.
 // (previous text of this slot, kept) // v8.60 SECURITY (Tar 2026-11-05): calls to Edge Functions now carry the staff session token in the query string (?t=) so the functions can refuse callers who only have the public key. Nothing visible changes for staff.
 // // v8.59 FIX (Tar 2026-11-05 16:26, "ເມນູແທັບປ່ຽນຕຳແໜ່ງໝົດ"): since the tables were locked (RLS), the data the page loads BEFORE login (menu order, page permissions, settings) came back empty, so a fresh login showed the default menu order until F5. completeLogin() now reloads all data right after a successful login (loadAllData) and re-renders, so the saved menu order / permissions / settings are shown immediately. Nothing in the saved settings was changed or lost.
@@ -1604,7 +1605,8 @@ const APP_VERSION = "8.62"; // v8.62 CHANGE (Tar 2026-11-08, online orders): the
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.61"; // (v8.61 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.62"; // (v8.62 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) // 8.61 slot:  (v8.61 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.60 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.59 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.58 text kept in the history comment lines of APP_VERSION above)
@@ -1698,7 +1700,8 @@ const APP_VERSION_PREV = "8.61"; // (v8.61 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.60"; // (v8.60 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.61"; // (v8.61 text kept in the history comment lines above)
+// (previous text of this slot, kept) // 8.60 slot:  (v8.60 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.59 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.58 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.56 text kept in the history comment lines above)
@@ -4338,6 +4341,21 @@ async function dbListApprovedUserNames(){
   return (data||[]).map(u=>u.name);
 }
 
+/* v8.63: fresh read of the current user's own attendance rows (today + any open session), merged into STATE.data.attendance. Returns true if it could read. */
+async function refreshMyAttendance(){
+  try{
+    const me = STATE.currentUser?.name||"";
+    if(!me) return false;
+    const {data, error} = await sb.from("attendance").select("*").eq("adminname", me).order("created_at", {ascending:false}).limit(60);
+    if(error || !data) return false;
+    const fresh = data.map(rowToAttendance);
+    const ids = new Set(fresh.map(a=>a.id));
+    const mine = STATE.data.attendance.filter(a=>a.adminName===me);
+    const keepLocal = mine.filter(a=>!ids.has(a.id) && a.id && String(a.id).startsWith("att") && (Date.now()-Number(String(a.id).slice(3)) < 60000)); // just-pressed, not yet confirmed
+    STATE.data.attendance = [...keepLocal, ...fresh, ...STATE.data.attendance.filter(a=>a.adminName!==me)];
+    return true;
+  }catch(e){ return false; }
+}
 async function dbClockIn(rec){ const {error} = await sb.from("attendance").insert({id:rec.id, adminname:rec.adminName, clock_in:rec.clockIn, clock_out:null, date:rec.date, clock_in_lat:rec.clockInLat, clock_in_lng:rec.clockInLng, clock_in_accuracy:rec.clockInAccuracy}); return error; }
 async function dbClockOut(id, clockOut, lat, lng, accuracy){ const {error} = await sb.from("attendance").update({clock_out:clockOut, clock_out_lat:lat, clock_out_lng:lng, clock_out_accuracy:accuracy}).eq("id", id); return error; }
 async function dbDeleteAttendance(id, label){ const {data, error} = await sb.from("attendance").delete().eq("id", id).select(); if(error) throw error; logDeletion("attendance", id, label, data&&data[0]); }
@@ -29028,6 +29046,7 @@ function navigateToPage(pageId, opts){
   // renderAttendanceSummary) — normally already loaded at boot for the owner, but load it here
   // too as a safety net in case that step didn't run (e.g. a very old session restored).
   if(STATE.page==="attendance" && isOwner() && (STATE.usersList||[]).length===0) loadUsersList();
+  if(STATE.page==="attendance") refreshMyAttendance().then(ok=>{ if(ok && STATE.page==="attendance") render(); }); // v8.63
 }
 
 async function loadLoginHistory(){
@@ -37620,6 +37639,15 @@ function attachAttendanceEvents(){
       }
     }
     clockInBtn.textContent = "ກຳລັງບັນທຶກ...";
+    // v8.63: re-check the database first — if today's record already exists (page was stale), show it instead of inserting a duplicate
+    if(await refreshMyAttendance()){
+      const meN = STATE.currentUser?.name||"";
+      if(STATE.data.attendance.some(a=>a.adminName===meN && a.date===todayStr())){
+        render();
+        customAlert("ທ່ານລົງໂມງເຂົ້າວຽກມື້ນີ້ແລ້ວ");
+        return;
+      }
+    }
     const now = new Date().toISOString();
     const rec = {
       id:"att"+Date.now(),
