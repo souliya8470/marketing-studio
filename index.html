@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.63"; // v8.63 FIX (Tar 2026-11-09, clock-in): staff pressed clock-in, the owner report showed them clocked in, but their own page still said not clocked in (so some pressed twice: Ky 08/11, Mek 09/11). The staff page only used the list loaded at login. Now opening the clock page (and every clock-in/out press) first re-reads THIS user's own attendance rows fresh from the database (refreshMyAttendance, same idea as the owner report), and a clock-in press is refused if the database already has an open record for today. Nothing else changed.
+const APP_VERSION = "8.64"; // v8.64 NEW (Tar 2026-11-09, Excel tab): new sidebar page "📊 Excel" = an Excel-like spreadsheet inside Marketing Studio so the shop does not need a Microsoft 365 subscription. The grid is Univer (bundled in /sheet/, no CDN; ribbon, formula bar, sheet tabs, fill handle, Ctrl+C/V/Z, filter/sort, SUM/VLOOKUP/XLOOKUP/INDEX-MATCH). The page is /sheet/index.html shown in ONE persistent iframe (#ms-sheet-frame) that lives outside #root so render() never destroys it; it is only shown/positioned while STATE.page==="sheets" (syncSheetFrame). Data = new tables ms_sheets / ms_sheet_changes / ms_sheet_backups (RLS on, no policies) reached ONLY through ms_sheet_* RPC functions that check the x-ms-token session and take the user name from the token (edit log cannot be forged). Saves are cell-level patches (debounced ~1s), so two people editing different cells never overwrite each other. No polling: other people's edits arrive via a Realtime broadcast ping (no data) -> ms_sheet_since, plus on window focus and the 🔄 button. Edit log (who/when/cell/old->new), daily auto-backup + owner restore, per-file flags (owner-only, staff read-only), import/export .xlsx (ExcelJS). SQL in supabase/sql/ms_sheets.sql. Page permission: appears for everyone by default; owner can hide it per staff in the permissions page like any other tab. Nothing else in index.html changed.
+// (previous text of this slot, kept) // v8.63 FIX (Tar 2026-11-09, clock-in): staff pressed clock-in, the owner report showed them clocked in, but their own page still said not clocked in (so some pressed twice: Ky 08/11, Mek 09/11). The staff page only used the list loaded at login. Now opening the clock page (and every clock-in/out press) first re-reads THIS user's own attendance rows fresh from the database (refreshMyAttendance, same idea as the owner report), and a clock-in press is refused if the database already has an open record for today. Nothing else changed.
 // (previous text of this slot, kept) // v8.62 CHANGE (Tar 2026-11-08, online orders): the "reason for rejecting order" box was a native browser prompt() that opened at the top of the window and looked unlike every other notice. It is now the same centered in-app dialog (customPrompt, red danger style, buttons "ປະຕິເສດອໍເດີ" / "ຍົກເລີກ"); Enter confirms, Esc or clicking outside cancels without rejecting. Nothing else changed.
 // (previous text of this slot, kept) v8.61 FIX (Tar 2026-11-08, online orders): when staff press "confirm" on an online order whose slip check verdict is "fail", the warning is now stronger: it lists the reasons AND tells staff to open the shop bank app and check the money really arrived with the same amount before confirming. Staff are NOT blocked (Tar: staff are responsible for checking the shop account); owner and staff see the same warning.
 // (previous text of this slot, kept) // v8.60 SECURITY (Tar 2026-11-05): calls to Edge Functions now carry the staff session token in the query string (?t=) so the functions can refuse callers who only have the public key. Nothing visible changes for staff.
@@ -1605,7 +1606,8 @@ const APP_VERSION = "8.63"; // v8.63 FIX (Tar 2026-11-09, clock-in): staff press
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.62"; // (v8.62 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.63"; // (v8.63 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) // 8.62 slot:  (v8.62 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.61 slot:  (v8.61 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.60 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // (v8.59 text kept in the history comment lines of APP_VERSION above)
@@ -1700,7 +1702,8 @@ const APP_VERSION_PREV = "8.62"; // (v8.62 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.61"; // (v8.61 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.62"; // (v8.62 text kept in the history comment lines above)
+// (previous text of this slot, kept) // 8.61 slot:  (v8.61 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.60 slot:  (v8.60 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.59 text kept in the history comment lines above)
 // (previous text of this slot, kept) // (v8.58 text kept in the history comment lines above)
@@ -28620,6 +28623,7 @@ const BASE_NAV = [
   {id:"content", label:"Marketing Studio", icon:"&#9998;"},
   {id:"productChat", label:"ຖາມ AI ກ່ຽວກັບສິນຄ້າ", icon:"&#129302;"},
   {id:"costs", label:"ຕົ້ນທຶນ & ກຳໄລ", icon:"&#3647;"},
+  {id:"sheets", label:"📊 Excel", icon:"&#128215;"}, // v8.64: Excel-like sheets (iframe /sheet/index.html, see APP_VERSION comment)
   {id:"myTasks", label:"📋 ໜ້າວຽກຂອງຂ້ອຍ", icon:"&#128203;"}, // v5.125 (Tar 2026-08-17): staff-facing counterpart to "ຄວບຄຸມແອັດມິນ" — everyone sees this, but each person's own view only ever shows rows matching their own login name (or rows Tar has explicitly marked visible_to_all)
   {id:"insights", label:"ຄວາມຄິດເຫັນລູກຄ້າ", icon:"&#128172;"},
   {id:"reports", label:"ລາຍງານຂໍ້ຜິດພາດ", icon:"&#9888;"},
@@ -28780,6 +28784,7 @@ function render(){
   // to no longer exist). Deferring the render until the drag's pointerup/pointercancel fixes
   // this for every resizable table at once, since they all share attachTableColumnResize.
   if(window.__resizeDragActive){ window.__renderPendingAfterDrag = true; return; }
+  if(!STATE.currentUser){ const _f = document.getElementById("ms-sheet-frame"); if(_f) _f.remove(); } // v8.64: Excel tab iframe does not outlive the login
   // v3.18: preserve scroll position of specific known-scrollable containers across
   // re-renders — realtime updates (new message, unread-count change, etc.) re-render the
   // WHOLE page often, which was resetting scroll to the top even while someone was mid-way
@@ -29223,7 +29228,42 @@ function updateMainContent(){
   main.innerHTML = renderPage();
   main.classList.add("main-fade");
   attachPageEvents();
+  try{ syncSheetFrame(); }catch(e){ console.error("syncSheetFrame", e); } // v8.64
 }
+
+/* ---------- v8.64: EXCEL TAB (iframe /sheet/index.html) ----------
+   The iframe is created once and lives on document.body (outside #root), so render()/updateMainContent()
+   never destroy it (a re-render would otherwise throw away the open spreadsheet). #sheet-slot is an empty
+   placeholder inside #main; syncSheetFrame() lays the iframe exactly over it while the "sheets" page is
+   open and hides it (display:none, state kept) on every other page. Logout removes it. */
+function renderSheetsPage(){
+  // desktop: full-bleed (cancels .main padding). <=1200px: keep the 64px top strip free for the hamburger button.
+  return `<style>#sheet-slot{margin:-32px -40px; height:100vh;} @media (max-width:1200px){ #sheet-slot{margin:0 -12px -12px -12px; height:calc(100vh - 64px - env(safe-area-inset-top));} }</style><div id="sheet-slot"></div>`;
+}
+function syncSheetFrame(){
+  let fr = document.getElementById("ms-sheet-frame");
+  if(!STATE.currentUser){ if(fr) fr.remove(); return; }
+  const slot = document.getElementById("sheet-slot");
+  if(STATE.page!=="sheets" || !slot){ if(fr) fr.style.display = "none"; return; }
+  const fresh = !fr;
+  if(!fr){
+    fr = document.createElement("iframe");
+    fr.id = "ms-sheet-frame";
+    fr.title = "Excel";
+    fr.src = "sheet/index.html?v="+encodeURIComponent(APP_VERSION);
+    fr.style.cssText = "position:fixed;border:0;background:#fff;z-index:5;";
+    document.body.appendChild(fr);
+  }
+  const was = fr.style.display;
+  const r = slot.getBoundingClientRect();
+  fr.style.display = "block";
+  fr.style.left = Math.max(0, r.left)+"px";
+  fr.style.top = Math.max(0, r.top)+"px";
+  fr.style.width = Math.max(0, r.width)+"px";
+  fr.style.height = Math.max(0, r.height)+"px";
+  if(!fresh && was==="none"){ try{ fr.contentWindow.postMessage("ms-sheet-show", location.origin); }catch(e){} } // pull others' edits once when the tab is reopened
+}
+window.addEventListener("resize", ()=>{ try{ syncSheetFrame(); }catch(e){} });
 
 function renderPage(){
   // Defense in depth: the nav already hides disabled pages, but also block direct
@@ -29237,6 +29277,7 @@ function renderPage(){
     case "content": return renderContent();
     case "productChat": return renderProductChat();
     case "costs": return renderCosts();
+    case "sheets": return renderSheetsPage(); // v8.64
     case "admin": return isOwner() ? renderAdmin() : renderDashboard(); // v5.128 (Tar 2026-08-17, "ໃນລະດັບພະນັກງານ ບໍ່ໃຫ້ສາມາດເພີ່ມໜ້າວຽກໄດ້ ມີແຕ່ເບິ່ງຂອງໂຕເອງໄດ້")
     case "myTasks": return renderMyTasks();
     case "insights": return renderInsights();

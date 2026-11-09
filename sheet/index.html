@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="lo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Excel — Marketing Studio</title>
+<link rel="stylesheet" id="univer-css">
+<style>
+  html,body{margin:0;height:100%;font-family:"Noto Sans Lao","Leelawadee UI","Phetsarath OT","Saysettha OT",system-ui,sans-serif;font-size:13px;color:#222;background:#fff;}
+  #app{display:flex;flex-direction:column;height:100%;}
+  #top{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#217346;color:#fff;flex-wrap:wrap;min-height:34px;}
+  #top .brand{font-weight:700;margin-right:4px;white-space:nowrap;}
+  #top select{max-width:240px;padding:4px 6px;border-radius:4px;border:1px solid #17563a;font-size:13px;background:#fff;color:#222;}
+  #top button{background:#185c37;color:#fff;border:1px solid #2f8f5b;border-radius:4px;padding:4px 9px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  #top button:hover{background:#13472b;}
+  #top button:disabled{opacity:.5;cursor:default;}
+  #top .sp{flex:1;}
+  #status{font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.18);white-space:nowrap;}
+  #status.bad{background:#b3261e;}
+  #status.dirty{background:#8a6d00;}
+  #presence{font-size:12px;opacity:.95;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #stage{flex:1;position:relative;min-height:0;display:flex;}
+  #host{flex:1;min-width:0;position:relative;}
+  #host .univer-host-inner{position:absolute;inset:0;}
+  #msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;padding:20px;color:#555;background:#fff;z-index:3;font-size:14px;}
+  #msg .spin{width:26px;height:26px;border:3px solid #cfe5d8;border-top-color:#217346;border-radius:50%;animation:sp 0.9s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  #drawer{width:380px;max-width:92vw;border-left:1px solid #ccc;background:#fafafa;display:none;flex-direction:column;z-index:5;}
+  #drawer.open{display:flex;}
+  #drawer .dh{display:flex;align-items:center;padding:8px 10px;background:#eef5f1;border-bottom:1px solid #d5e4db;font-weight:700;}
+  #drawer .dh button{margin-left:auto;}
+  #logList{flex:1;overflow:auto;padding:6px 8px;}
+  .le{border-bottom:1px solid #e6e6e6;padding:6px 2px;line-height:1.45;}
+  .le .who{font-weight:700;color:#185c37;}
+  .le .tm{color:#777;font-size:11.5px;}
+  .le .ref{display:inline-block;background:#e8f1ec;border-radius:3px;padding:0 5px;margin:0 3px;font-family:monospace;}
+  .le .old{color:#b3261e;text-decoration:line-through;word-break:break-all;}
+  .le .new{color:#0b6b2e;word-break:break-all;}
+  .le .meta{color:#555;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50;}
+  .modal{background:#fff;border-radius:8px;padding:16px 18px;width:420px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.3);}
+  .modal h3{margin:0 0 10px;font-size:15px;}
+  .modal label{display:flex;align-items:center;gap:6px;margin:8px 0;}
+  .modal input[type=text]{width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid #bbb;border-radius:4px;font-size:14px;font-family:inherit;}
+  .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;}
+  .modal button{padding:6px 12px;border-radius:4px;border:1px solid #bbb;background:#f4f4f4;cursor:pointer;font-family:inherit;font-size:13px;}
+  .modal button.pri{background:#217346;border-color:#217346;color:#fff;}
+  .modal button.dng{background:#b3261e;border-color:#b3261e;color:#fff;}
+  .bk{display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;padding:5px 0;font-size:12.5px;}
+  .bk span{flex:1;}
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <span class="brand">📗 Excel</span>
+    <select id="fileSel" title="ໄຟລ໌"></select>
+    <button id="btnNew">➕ ໄຟລ໌ໃໝ່</button>
+    <button id="btnImport">📥 ນຳເຂົ້າ Excel</button>
+    <button id="btnExport" disabled>📤 ສົ່ງອອກ Excel</button>
+    <span class="sp"></span>
+    <span id="presence"></span>
+    <span id="status">—</span>
+    <button id="btnPull" title="ໂຫຼດການແກ້ໄຂຂອງຄົນອື່ນ" disabled>🔄</button>
+    <button id="btnLog" disabled>📜 ປະຫວັດ</button>
+    <button id="btnSet" style="display:none" disabled>⚙️</button>
+    <input type="file" id="fileIn" accept=".xlsx,.xlsm">
+  </div>
+  <div id="stage">
+    <div id="host"><div id="msg"><div class="spin"></div><div>ກຳລັງໂຫຼດ Excel...</div></div></div>
+    <div id="drawer">
+      <div class="dh"><span>📜 ປະຫວັດການແກ້ໄຂ</span><button id="logClose">✕</button></div>
+      <div id="logList"></div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+/* ======================================================================
+   Excel-like sheets for Marketing Studio (v8.64)
+   - Univer (bundled, no CDN) for the grid. Data lives in Supabase (ms_sheets), reached ONLY through
+     the ms_sheet_* RPC functions with the staff session token (x-ms-token). User name is taken from the
+     token on the server, so the edit log cannot be forged.
+   - Save = cell-level patch (only changed cells), debounced. No polling: other people's edits arrive through a
+     Realtime broadcast PING (no data inside) -> we call ms_sheet_since. Also on window focus and the 🔄 button.
+   ====================================================================== */
+const SUPABASE_URL = "https://swrijpkkufarddsyqhrh.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3cmlqcGtrdWZhcmRkc3lxaHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDQ4ODYsImV4cCI6MjA5ODQ4MDg4Nn0.GoGsR4Z4u4UiCJ03-jZkJAgjJtjD8J4MosiBh4cpths";
+const TOKEN_KEY = "ms_token_v1";
+const VQ = (location.search.match(/[?&]v=([^&]+)/) || [])[1] || String(Date.now());
+const $ = id => document.getElementById(id);
+const S = {                       // state
+  me: null, files: [], sheet: null, boot: null, offCmd: null,
+  version: 0, canEdit: true, baseline: null, dirty: false, saving: false, saveAgain: false,
+  timer: null, firstDirtyAt: 0, applyingRemote: false, channel: null, pullTimer: null, retry: 0, hostEl: null,
+};
+
+/* ---------- tiny helpers ---------- */
+function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function stable(o){
+  if(o===null || typeof o!=="object") return JSON.stringify(o);
+  if(Array.isArray(o)) return "["+o.map(stable).join(",")+"]";
+  return "{"+Object.keys(o).sort().filter(k=>o[k]!==undefined).map(k=>JSON.stringify(k)+":"+stable(o[k])).join(",")+"}";
+}
+function fmtTime(iso){
+  try{
+    const p = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Vientiane",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date(iso));
+    const g = t => (p.find(x=>x.type===t)||{}).value || "";
+    return g("day")+"/"+g("month")+"/"+g("year")+" "+g("hour")+":"+g("minute");
+  }catch(e){ return String(iso||""); }
+}
+function loadScript(src){
+  return new Promise((res, rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>rej(new Error("load "+src)); document.head.appendChild(s); });
+}
+async function rpc(name, args, opts){
+  const r = await fetch(SUPABASE_URL+"/rest/v1/rpc/"+name, Object.assign({
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token() },
+    body: JSON.stringify(args||{}),
+  }, opts||{}));
+  const txt = await r.text();
+  let j = null; try{ j = txt ? JSON.parse(txt) : null; }catch(e){}
+  if(!r.ok){ const err = new Error((j && (j.message||j.hint)) || ("HTTP "+r.status)); err.status = r.status; throw err; }
+  return j;
+}
+function setStatus(kind, text){ const el=$("status"); el.className = kind||""; el.textContent = text; }
+function showMsg(html){ let m=$("msg"); if(!m){ m=document.createElement("div"); m.id="msg"; $("host").appendChild(m); } m.innerHTML = html; m.style.display="flex"; }
+function hideMsg(){ const m=$("msg"); if(m) m.style.display="none"; }
+
+/* small modals (prompt()/confirm() can be blocked inside some in-app browsers) */
+function modal(html, onMount){
+  return new Promise(resolve=>{
+    const bg = document.createElement("div"); bg.className="modal-bg";
+    bg.innerHTML = '<div class="modal">'+html+'</div>';
+    document.body.appendChild(bg);
+    const close = v => { bg.remove(); resolve(v); };
+    bg.addEventListener("mousedown", e=>{ if(e.target===bg) close(null); });
+    onMount(bg.querySelector(".modal"), close);
+  });
+}
+function askText(title, def, okLabel){
+  return modal('<h3>'+esc(title)+'</h3><input type="text" id="mi" value="'+esc(def||"")+'"><div class="row"><button id="mc">ຍົກເລີກ</button><button class="pri" id="mo">'+esc(okLabel||"ຕົກລົງ")+'</button></div>',
+    (m, close)=>{ const i=m.querySelector("#mi"); setTimeout(()=>{i.focus();i.select();},30);
+      m.querySelector("#mc").onclick=()=>close(null); m.querySelector("#mo").onclick=()=>close(i.value.trim()||null);
+      i.addEventListener("keydown", e=>{ if(e.key==="Enter") close(i.value.trim()||null); if(e.key==="Escape") close(null); }); });
+}
+function askConfirm(text, okLabel, danger){
+  return modal('<div style="line-height:1.5">'+esc(text)+'</div><div class="row"><button id="mc">ຍົກເລີກ</button><button class="'+(danger?"dng":"pri")+'" id="mo">'+esc(okLabel||"ຕົກລົງ")+'</button></div>',
+    (m, close)=>{ m.querySelector("#mc").onclick=()=>close(false); m.querySelector("#mo").onclick=()=>close(true); });
+}
+
+/* ======================================================================
+   Data model:  server "tabs" <-> Univer workbook snapshot
+   tabs = { tabId: { meta:{name,order,rows,cols,colw:{c:px},rowh:{r:px},freeze:{xSplit,ySplit,startRow,startColumn},merges:[...],hcols:[],hrows:[]},
+                     cells:{ "r,c": {v?,f?,t?,s?} } } }          (r,c are 0-based; s = inline style object)
+   ====================================================================== */
+const DEFAULT_ROWS = 1000, DEFAULT_COLS = 26;
+
+function buildWorkbook(row){
+  const tabs = row.tabs || {};
+  const styles = {}, styleIds = new Map(); let sc = 0;
+  const sid = st => { const k=stable(st); let id=styleIds.get(k); if(!id){ id="st"+(++sc); styleIds.set(k,id); styles[id]=st; } return id; };
+  let ids = Object.keys(tabs).sort((a,b)=>((tabs[a].meta||{}).order||0)-((tabs[b].meta||{}).order||0));
+  const sheets = {};
+  if(!ids.length){ ids=["t1"]; tabs.t1 = {meta:{name:"Sheet1",order:0,rows:DEFAULT_ROWS,cols:DEFAULT_COLS},cells:{}}; }
+  ids.forEach((id, idx)=>{
+    const meta = tabs[id].meta || {}, cells = tabs[id].cells || {};
+    const cellData = {}; let maxR = 0, maxC = 0;
+    for(const key in cells){
+      const [r,c] = key.split(",").map(Number); const o = cells[key]; const cd = {};
+      if(o.f!=null) cd.f = o.f;
+      if(o.v!=null) cd.v = o.v;
+      if(o.t!=null) cd.t = o.t;
+      if(o.s) cd.s = sid(o.s);
+      (cellData[r] = cellData[r] || {})[c] = cd;
+      if(r>maxR) maxR=r; if(c>maxC) maxC=c;
+    }
+    const columnData = {}; for(const c in (meta.colw||{})) columnData[c] = {w: meta.colw[c]};
+    (meta.hcols||[]).forEach(c=>{ (columnData[c] = columnData[c] || {}).hd = 1; });
+    const rowData = {}; for(const r in (meta.rowh||{})) rowData[r] = {h: meta.rowh[r], ia: 0};
+    (meta.hrows||[]).forEach(r=>{ (rowData[r] = rowData[r] || {}).hd = 1; });
+    const sh = { id, name: meta.name || ("Sheet"+(idx+1)), rowCount: Math.max(meta.rows||DEFAULT_ROWS, maxR+50), columnCount: Math.max(meta.cols||DEFAULT_COLS, maxC+5),
+      cellData, columnData, rowData, showGridlines: 1 };
+    if(meta.freeze) sh.freeze = meta.freeze;
+    if(meta.merges && meta.merges.length) sh.mergeData = meta.merges;
+    sheets[id] = sh;
+  });
+  return { id: "wb-"+row.id, name: row.name, appVersion: "3.0.0-alpha", locale: "enUS", styles, sheetOrder: ids, sheets };
+}
+
+function cleanStyle(o){
+  if(!o) return null; const r = {};
+  for(const k of Object.keys(o)){
+    const v = o[k]; if(v===null || v===undefined) continue;
+    if(typeof v==="object"){
+      if(!Array.isArray(v)){ const c = cleanStyle(v); if(!c) continue; r[k]=c; continue; }
+      if(!v.length) continue;
+    }
+    r[k] = v;
+  }
+  return Object.keys(r).length ? r : null;
+}
+function richText(p){
+  try{ const ds = p && p.body && p.body.dataStream; if(typeof ds!=="string") return null; return ds.replace(/\r\n$/,"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/\u0000/g,""); }catch(e){ return null; }
+}
+const NUMLIKE = /^\s*[-+]?[\d.,]+\s*$/;
+// snapshot (Univer) -> {tabs:{id:{meta,cells:{key:{...}}}}, order:[ids]}
+function extract(snap, keepFormulaValue){
+  const out = {}; const order = snap.sheetOrder || Object.keys(snap.sheets);
+  order.forEach((id, idx)=>{
+    const sh = snap.sheets[id]; if(!sh) return;
+    const meta = { name: sh.name, order: idx, rows: sh.rowCount, cols: sh.columnCount };
+    const colw = {}, hcols = [], rowh = {}, hrows = [];
+    for(const c in (sh.columnData||{})){ const d = sh.columnData[c]; if(d && d.w!=null) colw[c]=Math.round(d.w); if(d && d.hd) hcols.push(Number(c)); }
+    for(const r in (sh.rowData||{})){ const d = sh.rowData[r]; if(d && d.h!=null && d.ia===0) rowh[r]=Math.round(d.h); if(d && d.hd) hrows.push(Number(r)); }
+    if(Object.keys(colw).length) meta.colw = colw; if(Object.keys(rowh).length) meta.rowh = rowh;
+    if(hcols.length) meta.hcols = hcols.sort((a,b)=>a-b); if(hrows.length) meta.hrows = hrows.sort((a,b)=>a-b);
+    const fz = sh.freeze; if(fz && (fz.xSplit>0 || fz.ySplit>0)) meta.freeze = {xSplit:fz.xSplit||0, ySplit:fz.ySplit||0, startRow:fz.startRow||0, startColumn:fz.startColumn||0};
+    if(sh.mergeData && sh.mergeData.length) meta.merges = sh.mergeData.map(m=>({startRow:m.startRow,endRow:m.endRow,startColumn:m.startColumn,endColumn:m.endColumn}))
+      .sort((a,b)=>a.startRow-b.startRow || a.startColumn-b.startColumn);
+    const cells = {};
+    const cd = sh.cellData || {};
+    for(const r in cd){ for(const c in cd[r]){
+      const cell = cd[r][c]; if(!cell) continue; const o = {};
+      let v = cell.v; if((v===undefined || v===null || v==="") && cell.p){ const t = richText(cell.p); if(t) v = t; }
+      if(cell.f){ o.f = cell.f; if(keepFormulaValue && v!=null && v!=="") o.v = v; }
+      else if(v!==undefined && v!==null && v!==""){
+        o.v = v;
+        if(cell.t===3) o.t = 3; else if(cell.t===1 && typeof v==="string" && NUMLIKE.test(v)) o.t = 1;
+      }
+      const st = cleanStyle(typeof cell.s==="string" ? (snap.styles||{})[cell.s] : cell.s);
+      if(st) o.s = st;
+      if(Object.keys(o).length) cells[r+","+c] = o;
+    } }
+    out[id] = {meta, cells};
+  });
+  return out;
+}
+function cellStr(o){ return stable(o); }
+function snapshot(){ return S.boot.univerAPI.getActiveWorkbook().save(); }
+
+// diff two extracted states -> patch (or null)
+function makePatch(base, cur){
+  const tabs = {}; let n = 0;
+  for(const id in cur){
+    const c = cur[id], b = base[id];
+    if(!b){ tabs[id] = {meta:c.meta, cells:c.cells}; n += 1 + Object.keys(c.cells).length; continue; }
+    const t = {};
+    if(stable(c.meta)!==stable(b.meta)){ t.meta = c.meta; n++; }
+    const cells = {}; let cn = 0;
+    for(const k in c.cells){ if(!b.cells[k] || cellStr(c.cells[k])!==cellStr(b.cells[k])){ cells[k]=c.cells[k]; cn++; } }
+    for(const k in b.cells){ if(!c.cells[k]){ cells[k]=null; cn++; } }
+    if(cn){ t.cells = cells; n += cn; }
+    if(t.meta || t.cells) tabs[id] = t;
+  }
+  for(const id in base){ if(!cur[id]){ tabs[id] = {del:true}; n++; } }
+  return n ? {tabs, n} : null;
+}
+function chunkPatch(p, size){
+  // split a big patch into several smaller ones (each is applied as its own version)
+  if(p.n <= size) return [p];
+  const out = []; let curTabs = {}, cnt = 0;
+  const flush = ()=>{ if(cnt){ out.push({tabs:curTabs,n:cnt}); curTabs={}; cnt=0; } };
+  for(const id in p.tabs){
+    const t = p.tabs[id];
+    if(t.del || !t.cells){ curTabs[id]=t; cnt++; continue; }
+    if(t.meta){ curTabs[id] = {meta:t.meta}; cnt++; }
+    let part = {}, pc = 0;
+    for(const k in t.cells){
+      part[k] = t.cells[k]; pc++;
+      if(pc>=size){ curTabs[id] = Object.assign({}, curTabs[id]||{}, {cells:part}); cnt+=pc; flush(); part={}; pc=0; }
+    }
+    if(pc){ curTabs[id] = Object.assign({}, curTabs[id]||{}, {cells:part}); cnt+=pc; if(cnt>=size) flush(); }
+  }
+  flush();
+  return out;
+}
+
+/* ======================================================================
+   Saving
+   ====================================================================== */
+function markDirty(){
+  if(!S.canEdit || S.applyingRemote) return;
+  if(!S.dirty){ S.dirty = true; S.firstDirtyAt = Date.now(); }
+  setStatus("dirty","● ຍັງບໍ່ໄດ້ບັນທຶກ");
+  clearTimeout(S.timer);
+  const wait = Math.max(300, Math.min(1200, 8000 - (Date.now()-S.firstDirtyAt)));
+  S.timer = setTimeout(()=>save(false), wait);
+}
+async function save(keepalive){
+  if(!S.sheet || !S.canEdit) return true;
+  if(S.saving){ S.saveAgain = true; return false; }
+  clearTimeout(S.timer);
+  let cur;
+  try{ cur = extract(snapshot(), false); }catch(e){ console.error(e); return false; }
+  const patch = makePatch(S.baseline, cur);
+  if(!patch){ S.dirty = false; setStatus("","✓ ບັນທຶກແລ້ວ"); return true; }
+  S.saving = true; setStatus("","ກຳລັງບັນທຶກ...");
+  const sheetId = S.sheet.id, before = S.version;
+  const mine = {}; for(const id in patch.tabs){ const t=patch.tabs[id]; if(t.cells) for(const k in t.cells) mine[id+"|"+k]=1; }
+  try{
+    let res = null;
+    for(const part of chunkPatch(patch, 3000)){
+      res = await rpc("ms_sheet_apply", {p_id: sheetId, p_patch: {tabs: part.tabs}}, keepalive ? {keepalive:true} : null);
+    }
+    if(!S.sheet || S.sheet.id !== sheetId) { S.saving=false; return true; }
+    S.baseline = cur; S.version = res.version; S.retry = 0;
+    S.dirty = false; S.saving = false;
+    setStatus("","✓ ບັນທຶກແລ້ວ");
+    pingOthers();
+    if(res.version !== before + 1 + (chunkPatch(patch,3000).length-1)){ pullRemote(mine, before); } // somebody else saved in between
+    if(S.saveAgain){ S.saveAgain=false; markDirty(); }
+    return true;
+  }catch(e){
+    S.saving = false; console.error("save failed", e);
+    if(/read only/i.test(e.message||"")){ setStatus("bad","🔒 ໄຟລ໌ນີ້ເບິ່ງໄດ້ຢ່າງດຽວ"); S.canEdit=false; try{ S.boot.univerAPI.getActiveWorkbook().setEditable(false); }catch(_){} return false; }
+    setStatus("bad","⚠ ບັນທຶກບໍ່ສຳເລັດ"+(S.retry<3?" — ກຳລັງລອງໃໝ່":""));
+    if(S.retry++ < 3){ clearTimeout(S.timer); S.timer = setTimeout(()=>save(false), 5000); }
+    return false;
+  }
+}
+
+/* ======================================================================
+   Other people's changes (ping -> since)
+   ====================================================================== */
+function toCellData(o){
+  if(!o) return null;
+  const cd = {};
+  if(o.f!=null){ cd.f = o.f; cd.v = null; } else { cd.f = null; cd.v = o.v==null ? null : o.v; }
+  cd.t = o.t==null ? null : o.t;
+  cd.s = o.s ? o.s : null;
+  return cd;
+}
+async function pullRemote(skipKeys, sinceOverride){
+  if(!S.sheet) return;
+  clearTimeout(S.pullTimer);
+  if(S.dirty || S.saving){ await save(false); }
+  const sheetId = S.sheet.id; const since = sinceOverride!=null ? sinceOverride : S.version;
+  let res;
+  try{ res = await rpc("ms_sheet_since", {p_id: sheetId, p_since: since}); }catch(e){ console.error(e); return; }
+  if(!S.sheet || S.sheet.id!==sheetId) return;
+  if(res.full){ await openSheet(sheetId, true); return; }
+  if(res.version > S.version) S.version = res.version;
+  const ch = (res.changes||[]).filter(c=>!(skipKeys && skipKeys[c.tab+"|"+c.key]));
+  if(!ch.length) return;
+  const api = S.boot.univerAPI, wb = api.getActiveWorkbook(), unitId = wb.getId();
+  const byTab = {};
+  ch.forEach(c=>{ const [r,k] = c.key.split(",").map(Number); ((byTab[c.tab] = byTab[c.tab] || {})[r] = (byTab[c.tab][r] || {}))[k] = c.cell; });
+  S.applyingRemote = true;
+  try{
+    for(const tab in byTab){
+      if(!wb.getSheetBySheetId(tab)) continue;
+      const cellValue = {};
+      for(const r in byTab[tab]){ cellValue[r] = {}; for(const k in byTab[tab][r]){ const o = byTab[tab][r][k]; cellValue[r][k] = o ? toCellData(o) : null; } }
+      api.syncExecuteCommand("sheet.mutation.set-range-values", {unitId, subUnitId: tab, cellValue});
+    }
+  }catch(e){ console.error("apply remote failed", e); S.applyingRemote=false; await openSheet(sheetId, true); return; }
+  // refresh baseline for those cells from what Univer actually holds now (avoids echo edits)
+  setTimeout(()=>{
+    try{
+      const now = extract(snapshot(), false);
+      for(const tab in byTab){ if(!now[tab]||!S.baseline[tab]) continue;
+        for(const r in byTab[tab]) for(const k in byTab[tab][r]){ const key=r+","+k;
+          if(now[tab].cells[key]) S.baseline[tab].cells[key]=now[tab].cells[key]; else delete S.baseline[tab].cells[key]; } }
+    }catch(e){ console.error(e); }
+    S.applyingRemote = false;
+    const who = [...new Set(ch.map(c=>c.by).filter(Boolean))].join(", ");
+    if(who) setStatus("", "🔄 ອັບເດດຈາກ "+who);
+  }, 350);
+}
+function schedulePull(){ clearTimeout(S.pullTimer); S.pullTimer = setTimeout(()=>pullRemote(), 500); }
+
+/* realtime: broadcast PING (no data) + presence names. Uses the parent app's supabase client when available. */
+function connectChannel(){
+  disconnectChannel();
+  let sb = null; try{ sb = window.parent && window.parent !== window ? window.parent.sb : null; }catch(e){}
+  if(!sb || !S.sheet || !S.me) return;
+  try{
+    const ch = sb.channel("ms-sheet:"+S.sheet.id, {config:{broadcast:{self:false}, presence:{key: String(S.me.id)+"-"+Math.random().toString(36).slice(2,7)}}});
+    ch.on("broadcast", {event:"changed"}, ()=>schedulePull());
+    ch.on("presence", {event:"sync"}, ()=>{
+      const st = ch.presenceState(); const names = [];
+      Object.keys(st).forEach(k=>(st[k]||[]).forEach(p=>{ if(p && p.name) names.push(p.name); }));
+      const uniq = [...new Set(names)];
+      $("presence").textContent = uniq.length>1 ? ("👥 ກຳລັງເປີດຢູ່: "+uniq.join(", ")) : "";
+    });
+    ch.subscribe(status=>{ if(status==="SUBSCRIBED"){ try{ ch.track({name:S.me.name}); }catch(e){} } });
+    S.channel = {ch, sb};
+  }catch(e){ console.error("realtime", e); }
+}
+function disconnectChannel(){
+  if(S.channel){ try{ S.channel.sb.removeChannel(S.channel.ch); }catch(e){} S.channel = null; }
+  $("presence").textContent = "";
+}
+function pingOthers(){ if(S.channel){ try{ S.channel.ch.send({type:"broadcast", event:"changed", payload:{v:S.version}}); }catch(e){} } }
+
+/* ======================================================================
+   Univer lifecycle
+   ====================================================================== */
+let univerReady = null;
+function ensureUniver(){
+  if(univerReady) return univerReady;
+  univerReady = new Promise((res, rej)=>{
+    $("univer-css").href = "univer.css?v="+VQ;
+    loadScript("univer.js?v="+VQ).then(res, rej);
+  });
+  return univerReady;
+}
+function destroyBoot(){
+  if(S.offCmd){ try{ S.offCmd(); }catch(e){} S.offCmd=null; }
+  if(S.boot){ try{ S.boot.dispose(); }catch(e){} S.boot=null; }
+  if(S.hostEl){ S.hostEl.remove(); S.hostEl=null; }
+}
+async function openSheet(id, keepActiveTab){
+  showMsg('<div class="spin"></div><div>ກຳລັງເປີດໄຟລ໌...</div>');
+  let row;
+  try{ await ensureUniver(); row = await rpc("ms_sheet_get", {p_id:id}); }
+  catch(e){ console.error(e); showMsg('<div>⚠ ເປີດໄຟລ໌ບໍ່ໄດ້: '+esc(e.message)+'</div>'); return; }
+  let activeId = null;
+  if(keepActiveTab && S.boot){ try{ activeId = S.boot.univerAPI.getActiveWorkbook().getActiveSheet().getSheetId(); }catch(e){} }
+  clearTimeout(S.timer); S.dirty=false; S.saving=false; S.saveAgain=false; S.retry=0;
+  destroyBoot(); disconnectChannel();
+  S.sheet = row; S.version = row.version; S.canEdit = !!row.can_edit; S.me = row.me;
+  try{ localStorage.setItem("ms_sheet_last_"+row.me.id, row.id); }catch(e){}
+  const host = document.createElement("div"); host.className = "univer-host-inner"; $("host").appendChild(host); S.hostEl = host;
+  const data = buildWorkbook(row);
+  if(activeId && data.sheets[activeId]) data.sheetOrder = data.sheetOrder; // order kept; active tab restored below
+  S.boot = window.UniverBoot(host, data);
+  S.offCmd = S.boot.onCommand((cid)=>{
+    if(!cid || cid.indexOf("sheet.mutation.")!==0) return;
+    if(/active|scroll|zoom|selection|activate/.test(cid)) return;
+    markDirty();
+  });
+  if(!S.canEdit){ try{ S.boot.univerAPI.getActiveWorkbook().setEditable(false); }catch(e){} }
+  if(activeId){ try{ const wb=S.boot.univerAPI.getActiveWorkbook(); const sh=wb.getSheetBySheetId(activeId); if(sh) wb.setActiveSheet(sh); }catch(e){} }
+  hideMsg();
+  await new Promise(r=>setTimeout(r,400));                 // let Univer finish its first load
+  S.baseline = extract(snapshot(), false);
+  // a brand-new/empty file: make the default tab exist on the server too
+  if(!Object.keys(row.tabs||{}).length && S.canEdit) markDirty();
+  setStatus("", S.canEdit ? "✓ ບັນທຶກແລ້ວ" : "🔒 ເບິ່ງໄດ້ຢ່າງດຽວ");
+  ["btnExport","btnPull","btnLog"].forEach(b=>$(b).disabled=false);
+  const setBtn = $("btnSet"); setBtn.style.display = (S.me && S.me.role==="owner") ? "" : "none"; setBtn.disabled = false;
+  $("fileSel").value = row.id;
+  connectChannel();
+}
+
+/* ======================================================================
+   File list / create / import / export / log / settings
+   ====================================================================== */
+async function loadList(selectId){
+  const r = await rpc("ms_sheet_list", {});
+  S.me = r.me; S.files = r.sheets || [];
+  const sel = $("fileSel");
+  sel.innerHTML = S.files.map(f=>'<option value="'+esc(f.id)+'">'+(f.owner_only?"🔐 ":"")+(f.staff_readonly?"🔒 ":"")+esc(f.name)+'</option>').join("") || '<option value="">(ຍັງບໍ່ມີໄຟລ໌)</option>';
+  let want = selectId;
+  if(!want){ try{ want = localStorage.getItem("ms_sheet_last_"+S.me.id); }catch(e){} }
+  if(!S.files.some(f=>f.id===want)) want = S.files[0] && S.files[0].id;
+  return want;
+}
+async function createFile(name, tabs){
+  const r = await rpc("ms_sheet_create", {p_name:name, p_tabs: tabs || {t1:{meta:{name:"Sheet1",order:0,rows:DEFAULT_ROWS,cols:DEFAULT_COLS},cells:{}}}, p_owner_only:false});
+  const id = await loadList(r.id); await openSheet(id);
+}
+$("btnNew").onclick = async ()=>{
+  const name = await askText("ຊື່ໄຟລ໌ໃໝ່", "", "ສ້າງ"); if(!name) return;
+  try{ await createFile(name); }catch(e){ alert("ສ້າງບໍ່ສຳເລັດ: "+e.message); }
+};
+$("fileSel").onchange = async e=>{ if(!e.target.value) return; if(S.dirty) await save(false); await openSheet(e.target.value); };
+$("btnPull").onclick = ()=>pullRemote();
+$("btnImport").onclick = ()=>$("fileIn").click();
+$("fileIn").onchange = async e=>{
+  const f = e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    showMsg('<div class="spin"></div><div>ກຳລັງອ່ານໄຟລ໌ Excel...</div>');
+    await ensureExcelJS();
+    const tabs = await xlsxToTabs(f);
+    const base = f.name.replace(/\.[^.]+$/,"");
+    const name = await askText("ຊື່ໄຟລ໌ທີ່ຈະສ້າງ (ເປັນໄຟລ໌ໃໝ່, ບໍ່ທັບໄຟລ໌ເດີມ)", base, "ນຳເຂົ້າ");
+    if(!name){ if(S.sheet) hideMsg(); else showMsg("ຍັງບໍ່ມີໄຟລ໌ເປີດຢູ່"); return; }
+    showMsg('<div class="spin"></div><div>ກຳລັງບັນທຶກເຂົ້າລະບົບ...</div>');
+    await createFile(name, tabs);
+  }catch(err){ console.error(err); hideMsg(); alert("ນຳເຂົ້າບໍ່ສຳເລັດ: "+(err.message||err)); }
+};
+$("btnExport").onclick = async ()=>{
+  try{
+    await ensureExcelJS();
+    const snap = snapshot(); const tabs = extract(snap, true);
+    const blob = await tabsToXlsx(tabs);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = (S.sheet.name||"excel").replace(/[\\/:*?"<>|]+/g,"_")+".xlsx"; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }catch(err){ console.error(err); alert("ສົ່ງອອກບໍ່ສຳເລັດ: "+(err.message||err)); }
+};
+
+/* ---- edit log drawer ---- */
+let logLast = null;
+async function loadLog(more){
+  if(!S.sheet) return;
+  const list = $("logList");
+  if(!more){ list.innerHTML = '<div style="padding:10px;color:#777">ກຳລັງໂຫຼດ...</div>'; logLast = null; }
+  try{
+    const rows = await rpc("ms_sheet_log", {p_id:S.sheet.id, p_limit:100, p_before: more ? logLast : null});
+    if(!more) list.innerHTML = "";
+    const old = list.querySelector(".more"); if(old) old.remove();
+    if(!rows.length && !more){ list.innerHTML = '<div style="padding:10px;color:#777">ຍັງບໍ່ມີປະຫວັດ</div>'; return; }
+    rows.forEach(r=>{
+      const d = document.createElement("div"); d.className="le";
+      let body;
+      if(r.kind==="cell"){
+        body = (r.tab_name?'<span class="meta">'+esc(r.tab_name)+'</span>':"")+'<span class="ref">'+esc(r.cell_ref||"")+'</span>'
+          + (r.old_text!=null?'<span class="old">'+esc(r.old_text)+'</span> → ':'')+'<span class="new">'+(r.new_text==null?'(ລຶບ)':esc(r.new_text))+'</span>';
+      } else {
+        body = '<span class="meta">'+esc(r.new_text||"")+(r.tab_name?' ('+esc(r.tab_name)+')':"")+(r.kind==="meta" && r.old_text?' : '+esc(r.old_text)+' → '+esc(r.new_text):"")+'</span>';
+      }
+      d.innerHTML = '<div><span class="who">'+esc(r.user_name||"?")+'</span> <span class="tm">'+esc(fmtTime(r.changed_at))+'</span></div><div>'+body+'</div>';
+      list.appendChild(d); logLast = r.id;
+    });
+    if(rows.length>=100){ const b=document.createElement("button"); b.className="more"; b.textContent="ໂຫຼດເພີ່ມ"; b.style.margin="8px"; b.onclick=()=>loadLog(true); list.appendChild(b); }
+  }catch(e){ list.innerHTML = '<div style="padding:10px;color:#b3261e">ໂຫຼດບໍ່ໄດ້: '+esc(e.message)+'</div>'; }
+}
+$("btnLog").onclick = ()=>{ const d=$("drawer"); if(d.classList.contains("open")){ d.classList.remove("open"); } else { d.classList.add("open"); loadLog(false); } };
+$("logClose").onclick = ()=>$("drawer").classList.remove("open");
+
+/* ---- owner settings ---- */
+$("btnSet").onclick = async ()=>{
+  if(!S.sheet) return;
+  const f = S.sheet;
+  let backups = []; try{ backups = await rpc("ms_sheet_backups_list", {p_id:f.id}); }catch(e){}
+  const html = '<h3>⚙️ ຕັ້ງຄ່າໄຟລ໌</h3>'
+    + '<div>ຊື່ໄຟລ໌</div><input type="text" id="sn" value="'+esc(f.name)+'">'
+    + '<label><input type="checkbox" id="so" '+(f.owner_only?"checked":"")+'> ສະເພາະເຈົ້າຂອງເບິ່ງໄດ້</label>'
+    + '<label><input type="checkbox" id="sr" '+(f.staff_readonly?"checked":"")+'> ພະນັກງານເບິ່ງໄດ້ຢ່າງດຽວ (ແກ້ໄຂບໍ່ໄດ້)</label>'
+    + '<div style="margin-top:10px;font-weight:700">ຍ້ອນກັບເວີຊັນ</div>'
+    + (backups.length ? backups.slice(0,15).map(b=>'<div class="bk"><span>'+esc(fmtTime(b.at))+' · '+esc(b.by||"")+' ('+esc(b.reason==="daily"?"ສຳຮອງປະຈຳວັນ":b.reason==="replace"?"ກ່ອນນຳເຂົ້າ":b.reason||"")+')</span><button data-bk="'+b.id+'">ຍ້ອນກັບ</button></div>').join("") : '<div style="color:#777;padding:4px 0">ຍັງບໍ່ມີການສຳຮອງ (ຈະສ້າງໃຫ້ອັດຕະໂນມັດທຸກວັນທີ່ມີການແກ້ໄຂ)</div>')
+    + '<div class="row"><button class="dng" id="sd">ລົບໄຟລ໌ນີ້</button><span style="flex:1"></span><button id="sc">ປິດ</button><button class="pri" id="ss">ບັນທຶກ</button></div>';
+  const r = await modal(html, (m, close)=>{
+    m.querySelector("#sc").onclick = ()=>close(null);
+    m.querySelector("#ss").onclick = ()=>close({act:"save", name:m.querySelector("#sn").value, owner:m.querySelector("#so").checked, ro:m.querySelector("#sr").checked});
+    m.querySelector("#sd").onclick = ()=>close({act:"del"});
+    m.querySelectorAll("[data-bk]").forEach(b=>b.onclick=()=>close({act:"restore", id:Number(b.dataset.bk)}));
+  });
+  if(!r) return;
+  try{
+    if(r.act==="save"){ await rpc("ms_sheet_set_flags",{p_id:f.id,p_owner_only:r.owner,p_staff_readonly:r.ro,p_name:r.name}); const id=await loadList(f.id); await openSheet(id); }
+    else if(r.act==="del"){ if(await askConfirm("ລົບໄຟລ໌ \""+f.name+"\" ຖາວອນ? ຈະກູ້ຄືນບໍ່ໄດ້.","ລົບ",true)){ await rpc("ms_sheet_delete",{p_id:f.id}); destroyBoot(); S.sheet=null; disconnectChannel(); const id=await loadList(); if(id) await openSheet(id); else { showMsg(emptyMsg()); ["btnExport","btnPull","btnLog","btnSet"].forEach(b=>$(b).disabled=true); } } }
+    else if(r.act==="restore"){ if(await askConfirm("ຍ້ອນກັບໄຟລ໌ໄປເວີຊັນນີ້? ເວີຊັນປັດຈຸບັນຈະຖືກສຳຮອງໄວ້ກ່ອນ.","ຍ້ອນກັບ")){ await rpc("ms_sheet_restore",{p_backup:r.id}); await openSheet(f.id); pingOthers(); } }
+  }catch(e){ alert("ເຮັດບໍ່ສຳເລັດ: "+e.message); }
+};
+function emptyMsg(){ return '<div style="font-size:16px">📗 ຍັງບໍ່ມີໄຟລ໌</div><div>ກົດ "➕ ໄຟລ໌ໃໝ່" ຫຼື "📥 ນຳເຂົ້າ Excel" ເພື່ອເລີ່ມ</div>'; }
+
+/* ======================================================================
+   xlsx <-> tabs (ExcelJS, loaded only when needed)
+   ====================================================================== */
+let exceljsReady = null;
+function ensureExcelJS(){ if(window.ExcelJS) return Promise.resolve(); return exceljsReady || (exceljsReady = loadScript("exceljs.js?v="+VQ)); }
+const THEME = ["FFFFFF","000000","E7E6E6","44546A","4472C4","ED7D31","A5A5A5","FFC000","5B9BD5","70AD47"];
+function tint(hex, t){
+  let r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  const f = x => t<0 ? Math.round(x*(1+t)) : Math.round(x+(255-x)*t);
+  r=f(r); g=f(g); b=f(b);
+  return [r,g,b].map(x=>Math.max(0,Math.min(255,x)).toString(16).padStart(2,"0")).join("").toUpperCase();
+}
+function colorOf(c){
+  if(!c) return null;
+  if(c.argb){ const a = String(c.argb); return "#"+(a.length===8 ? a.slice(2) : a).toUpperCase(); }
+  if(c.theme!=null && THEME[c.theme]){ return "#"+(c.tint ? tint(THEME[c.theme], c.tint) : THEME[c.theme]); }
+  return null;
+}
+const BSTYLE = {thin:1,hair:2,dotted:3,dashed:4,dashDot:5,dashDotDot:6,double:7,medium:8,mediumDashed:9,mediumDashDot:10,mediumDashDotDot:11,slantDashDot:12,thick:13};
+const BSTYLE_R = Object.fromEntries(Object.entries(BSTYLE).map(([k,v])=>[v,k]));
+function xlStyleToUniver(cell){
+  const s = {};
+  const f = cell.font || {};
+  if(f.bold) s.bl = 1; if(f.italic) s.it = 1; if(f.underline) s.ul = {s:1}; if(f.strike) s.st = {s:1};
+  if(f.size) s.fs = f.size; if(f.name) s.ff = f.name;
+  const fc = colorOf(f.color); if(fc && fc!=="#000000") s.cl = {rgb: fc};
+  const fl = cell.fill; if(fl && fl.type==="pattern" && fl.pattern==="solid"){ const bc = colorOf(fl.fgColor); if(bc && bc!=="#FFFFFF") s.bg = {rgb: bc}; }
+  const al = cell.alignment || {};
+  if(al.horizontal){ const h = {left:1,center:2,right:3,centerContinuous:2}[al.horizontal]; if(h) s.ht = h; }
+  if(al.vertical){ const v = {top:1,middle:2,center:2,bottom:3}[al.vertical]; if(v) s.vt = v; }
+  if(al.wrapText) s.tb = 3;
+  const bd = cell.border;
+  if(bd){ const b = {}; [["top","t"],["bottom","b"],["left","l"],["right","r"]].forEach(([k,u])=>{ const e = bd[k]; if(e && e.style){ b[u] = {s: BSTYLE[e.style]||1, cl:{rgb: colorOf(e.color)||"#000000"}}; } }); if(Object.keys(b).length) s.bd = b; }
+  const nf = cell.numFmt; if(nf && nf!=="General") s.n = {pattern: nf};
+  return Object.keys(s).length ? s : null;
+}
+function excelDateToSerial(d){ return d.getTime()/86400000 + 25569; }
+function cellValueOf(cell){
+  const v = cell.value; if(v===null || v===undefined) return null;
+  if(v instanceof Date) return {v: excelDateToSerial(v), dateFmt:true};
+  if(typeof v==="object"){
+    if(v.formula || v.sharedFormula){
+      let f = cell.formula || v.formula; if(!f) return null;
+      const res = v.result; const o = {f:"="+f};
+      return o;
+    }
+    if(v.richText) return {v: v.richText.map(t=>t.text).join("")};
+    if(v.hyperlink) return {v: v.text!=null ? (typeof v.text==="object" && v.text.richText ? v.text.richText.map(t=>t.text).join("") : String(v.text)) : v.hyperlink};
+    if(v.error) return {v: String(v.error)};
+    if(v.text!=null) return {v:String(v.text)};
+    return null;
+  }
+  if(typeof v==="boolean") return {v: v?1:0, t:3};
+  if(typeof v==="string"){ const o={v}; if(NUMLIKE.test(v)) o.t=1; return o; }
+  return {v};
+}
+async function xlsxToTabs(file){
+  const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await file.arrayBuffer());
+  const tabs = {}; let idx = 0;
+  wb.eachSheet(ws=>{
+    const id = "t"+Date.now().toString(36)+(idx+1);
+    const cells = {};
+    ws.eachRow({includeEmpty:true}, (row, rn)=>{
+      row.eachCell({includeEmpty:true}, (cell, cn)=>{
+        const cv = cellValueOf(cell); const st = xlStyleToUniver(cell);
+        if(!cv && !st) return;
+        const o = cv ? {} : {};
+        if(cv){ if(cv.f!=null) o.f = cv.f; if(cv.v!=null) o.v = cv.v; if(cv.t!=null) o.t = cv.t; }
+        if(st){ o.s = st; if(cv && cv.dateFmt && !st.n) o.s = Object.assign({n:{pattern:"yyyy-mm-dd"}}, st); }
+        else if(cv && cv.dateFmt){ o.s = {n:{pattern:"yyyy-mm-dd"}}; }
+        if(Object.keys(o).length) cells[(rn-1)+","+(cn-1)] = o;
+      });
+    });
+    const meta = { name: ws.name, order: idx, rows: Math.max(ws.rowCount+200, DEFAULT_ROWS), cols: Math.max(ws.columnCount+5, DEFAULT_COLS) };
+    const colw = {}; (ws.columns||[]).forEach((c,i)=>{ if(c && c.width) colw[i] = Math.round(c.width*7+5); if(c && c.hidden){ (meta.hcols = meta.hcols||[]).push(i); } });
+    if(Object.keys(colw).length) meta.colw = colw;
+    const rowh = {}; ws.eachRow({includeEmpty:false},(row,rn)=>{ if(row.height && row.customHeight!==false) rowh[rn-1] = Math.round(row.height*4/3); if(row.hidden){ (meta.hrows=meta.hrows||[]).push(rn-1); } });
+    if(Object.keys(rowh).length) meta.rowh = rowh;
+    const v0 = (ws.views||[])[0]; if(v0 && v0.state==="frozen" && (v0.xSplit||v0.ySplit)) meta.freeze = {xSplit:v0.xSplit||0, ySplit:v0.ySplit||0, startRow:v0.ySplit||0, startColumn:v0.xSplit||0};
+    const merges = []; const mm = (ws.model && ws.model.merges) || [];
+    mm.forEach(a=>{ const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(a); if(!m) return; const cn=s=>s.split("").reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0)-1;
+      merges.push({startRow:Number(m[2])-1,endRow:Number(m[4])-1,startColumn:cn(m[1]),endColumn:cn(m[3])}); });
+    if(merges.length) meta.merges = merges;
+    tabs[id] = {meta, cells}; idx++;
+  });
+  if(!idx) throw new Error("ບໍ່ພົບແຜ່ນງານໃນໄຟລ໌");
+  return tabs;
+}
+function univerStyleToXl(s, cellObj){
+  const o = {};
+  if(!s) return o;
+  const font = {};
+  if(s.bl) font.bold = true; if(s.it) font.italic = true; if(s.ul && s.ul.s) font.underline = true; if(s.st && s.st.s) font.strike = true;
+  if(s.fs) font.size = s.fs; if(s.ff) font.name = s.ff; if(s.cl && s.cl.rgb) font.color = {argb:"FF"+s.cl.rgb.replace("#","").toUpperCase()};
+  if(Object.keys(font).length) o.font = font;
+  if(s.bg && s.bg.rgb) o.fill = {type:"pattern",pattern:"solid",fgColor:{argb:"FF"+s.bg.rgb.replace("#","").toUpperCase()}};
+  const al = {}; if(s.ht) al.horizontal = {1:"left",2:"center",3:"right"}[s.ht]; if(s.vt) al.vertical = {1:"top",2:"middle",3:"bottom"}[s.vt]; if(s.tb===3) al.wrapText = true;
+  if(Object.keys(al).length) o.alignment = al;
+  if(s.bd){ const b = {}; [["t","top"],["b","bottom"],["l","left"],["r","right"]].forEach(([u,k])=>{ const e=s.bd[u]; if(e && e.s){ b[k] = {style: BSTYLE_R[e.s]||"thin", color:{argb:"FF"+((e.cl&&e.cl.rgb)||"#000000").replace("#","").toUpperCase()}}; } }); if(Object.keys(b).length) o.border = b; }
+  if(s.n && s.n.pattern) o.numFmt = s.n.pattern;
+  return o;
+}
+async function tabsToXlsx(tabs){
+  const wb = new ExcelJS.Workbook(); wb.creator = (S.me && S.me.name) || "Marketing Studio";
+  const ids = Object.keys(tabs).sort((a,b)=>(tabs[a].meta.order||0)-(tabs[b].meta.order||0));
+  ids.forEach(id=>{
+    const {meta, cells} = tabs[id]; const ws = wb.addWorksheet((meta.name||"Sheet").replace(/[\\/?*\[\]:]/g,"_").slice(0,31));
+    for(const c in (meta.colw||{})) ws.getColumn(Number(c)+1).width = Math.max(1,(meta.colw[c]-5)/7);
+    for(const r in (meta.rowh||{})) ws.getRow(Number(r)+1).height = meta.rowh[r]*0.75;
+    (meta.hcols||[]).forEach(c=>{ ws.getColumn(c+1).hidden = true; }); (meta.hrows||[]).forEach(r=>{ ws.getRow(r+1).hidden = true; });
+    for(const key in cells){
+      const [r,c] = key.split(",").map(Number); const o = cells[key]; const cell = ws.getCell(r+1, c+1);
+      if(o.f) cell.value = {formula: o.f.replace(/^=/,""), result: o.v};
+      else if(o.t===3) cell.value = !!o.v; else if(o.v!==undefined) cell.value = o.v;
+      const st = univerStyleToXl(o.s, o); for(const k in st) cell[k] = st[k];
+    }
+    (meta.merges||[]).forEach(m=>{ try{ ws.mergeCells(m.startRow+1, m.startColumn+1, m.endRow+1, m.endColumn+1); }catch(e){} });
+    if(meta.freeze) ws.views = [{state:"frozen", xSplit:meta.freeze.xSplit||0, ySplit:meta.freeze.ySplit||0}];
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+/* ======================================================================
+   Page events + start
+   ====================================================================== */
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden"){ if(S.dirty) save(true); } else if(S.sheet){ pullRemote(); } });
+window.addEventListener("pagehide", ()=>{ if(S.dirty) save(true); });
+window.addEventListener("beforeunload", e=>{ if(S.dirty){ save(true); e.preventDefault(); e.returnValue=""; } });
+window.addEventListener("message", e=>{ try{ if(e.origin!==location.origin) return; if(e.data==="ms-sheet-show" && S.sheet && !S.dirty) pullRemote(); }catch(_){} });
+window.__msSheet = S;   // for tests / debugging
+
+(async function start(){
+  if(!token()){ showMsg('<div style="font-size:16px">🔒 ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ</div>'); return; }
+  try{
+    const id = await loadList();
+    if(!id){ showMsg(emptyMsg()); return; }
+    await openSheet(id);
+  }catch(e){
+    console.error(e);
+    showMsg('<div>⚠ ເປີດບໍ່ໄດ້: '+esc(/not allowed/i.test(e.message)?"ບັນຊີນີ້ບໍ່ມີສິດ ຫຼື ເຊດຊັນໝົດອາຍຸ — ກະລຸນາເຂົ້າສູ່ລະບົບໃໝ່":e.message)+'</div>');
+  }
+})();
+</script>
+</body>
+</html>

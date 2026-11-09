@@ -131,3 +131,13 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Cause not reproduced live (no staff token): staff page only used the list loaded at login.
 - Fix: `refreshMyAttendance()` re-reads own rows on opening the clock page and before each clock-in; clock-in refused if today's record already exists.
 - If staff still report it: ask for browser console error on the clock page (could be a token/RLS read problem).
+
+## Excel tab (📊 Excel) — v8.64 (2026-11-09)
+- What: Excel-like spreadsheets inside Marketing Studio (replaces the Microsoft 365 subscription for the product/cost-price lists). Page id `sheets`; grid = Univer, bundled in `sheet/` (`univer.js` 12 MB, `univer.css`, `exceljs.js`; no CDN). UI is English (Excel-style ribbon), our own bar/messages are Lao.
+- Wiring: `sheet/index.html` runs in ONE persistent iframe `#ms-sheet-frame` on `document.body` (see `renderSheetsPage` / `syncSheetFrame` in index.html). `render()` never destroys it; it is hidden (not removed) on other pages and removed on logout.
+- DB (project swrijpkkufarddsyqhrh): tables `ms_sheets`, `ms_sheet_changes` (edit log), `ms_sheet_backups`; RLS ON with NO policies; access only via SECURITY DEFINER RPCs `ms_sheet_list/get/create/apply/since/log/replace/backups_list/restore/set_flags/delete` (all check `x-ms-token` -> `ms_sessions`, roles owner/admin only; bot excluded; user name comes from the token). SQL: `supabase/sql/ms_sheets.sql`.
+- Sync (no polling): save = cell-level patch (~1 s debounce) via `ms_sheet_apply`; others get a Realtime broadcast ping on channel `ms-sheet:<id>` (no data in it) and call `ms_sheet_since`. Also pulls on window focus and the 🔄 button. Structural changes (tab add/rename/delete, column width, freeze, merges, row count) make other clients reload the file.
+- Rules in the UI: import .xlsx always creates a NEW file (never overwrites). Daily auto-backup (first edit of the Laos day, keeps 40) + backup before replace; owner can restore in ⚙️. Per file: owner-only, staff read-only (secure, enforced in the RPCs). NOT column-level hiding.
+- Not persisted (v1): filters, conditional formatting, data validation, charts, images (Univer `resources`). Formulas are stored without cached values and recalculated on load.
+- Tested (headless Chrome + mocked RPC, and the real SQL functions in a rolled-back transaction): import of Tar's 2 sample xlsx files (colours, number formats, widths, freeze, merges, formulas), edit -> log (old -> new), two users editing different cells, structural reload, iframe survives re-render. NOT tested against live Realtime broadcast with two real browsers.
+- Rebuild the bundle: see the esbuild entry in this commit message / `sheet/README-build.txt`.

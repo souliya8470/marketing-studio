@@ -1,0 +1,266 @@
+-- Excel-like sheets inside Marketing Studio (v8.64). Idempotent. RLS ON with NO policies:
+-- tables are reachable only through the SECURITY DEFINER functions below, which all check the staff
+-- session token (x-ms-token header -> ms_sessions) and derive the user name server-side (cannot be forged).
+create table if not exists public.ms_sheets (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  tabs jsonb not null default '{}'::jsonb,   -- {tabId:{meta:{name,order,rows,cols,colw,rowh,freeze},cells:{"r,c":{v,f,s}}}}
+  version bigint not null default 0,
+  owner_only boolean not null default false,     -- only role=owner can see/open it
+  staff_readonly boolean not null default false, -- staff (admin role) can only view
+  created_by text, created_at timestamptz not null default now(),
+  updated_by text, updated_at timestamptz not null default now()
+);
+create table if not exists public.ms_sheet_changes (
+  id bigserial primary key,
+  sheet_id uuid not null references public.ms_sheets(id) on delete cascade,
+  version bigint not null,
+  tab_id text, tab_name text,
+  cell_key text, cell_ref text,
+  old_text text, new_text text,
+  new_cell jsonb,
+  kind text not null default 'cell',   -- cell (shown in log) | sync (catch-up only, hidden) | bulk (summary, shown) | meta (shown, others reload)
+  user_id text, user_name text,
+  changed_at timestamptz not null default now()
+);
+create index if not exists ms_sheet_changes_sheet_ver on public.ms_sheet_changes(sheet_id, version);
+create table if not exists public.ms_sheet_backups (
+  id bigserial primary key,
+  sheet_id uuid not null references public.ms_sheets(id) on delete cascade,
+  version bigint not null,
+  tabs jsonb not null,
+  reason text, created_by text,
+  created_at timestamptz not null default now()
+);
+create index if not exists ms_sheet_backups_sheet on public.ms_sheet_backups(sheet_id, created_at desc);
+alter table public.ms_sheets enable row level security;
+alter table public.ms_sheet_changes enable row level security;
+alter table public.ms_sheet_backups enable row level security;
+revoke all on public.ms_sheets, public.ms_sheet_changes, public.ms_sheet_backups from anon, authenticated;
+
+create or replace function public.ms_sheet_a1(r int, c int) returns text language plpgsql immutable as $$
+declare s text := ''; n int := c + 1;
+begin
+  while n > 0 loop s := chr(65 + ((n - 1) % 26)) || s; n := (n - 1) / 26; end loop;
+  return s || (r + 1)::text;
+end $$;
+
+-- who is calling (from the session token header). Returns null row when invalid or role not owner/admin.
+create or replace function public.ms_sheet_actor(out o_id text, out o_name text, out o_role text)
+language sql stable security definer set search_path to 'public','extensions' as $$
+  select s.user_id, s.user_name, s.role from public.ms_sessions s
+  where s.token_hash = encode(digest(coalesce(nullif(current_setting('request.headers', true),'')::json->>'x-ms-token',''),'sha256'),'hex')
+    and s.expires_at > now() and s.role in ('owner','admin')
+  order by s.created_at desc limit 1
+$$;
+
+create or replace function public.ms_sheet_cell_text(c jsonb) returns text language sql immutable as $$
+  select case when c is null or c = 'null'::jsonb then null when c ? 'f' and coalesce(c->>'f','')<>'' then c->>'f' else c->>'v' end
+$$;
+
+create or replace function public.ms_sheet_list() returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; res jsonb;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'version',version,'owner_only',owner_only,'staff_readonly',staff_readonly,'updated_by',updated_by,'updated_at',updated_at) order by created_at),'[]'::jsonb)
+    into res from public.ms_sheets where (a.o_role='owner' or not owner_only);
+  return jsonb_build_object('me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role), 'sheets', res);
+end $$;
+
+create or replace function public.ms_sheet_get(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only);
+  if s.id is null then raise exception 'not found'; end if;
+  return jsonb_build_object('id',s.id,'name',s.name,'tabs',s.tabs,'version',s.version,'owner_only',s.owner_only,'staff_readonly',s.staff_readonly,
+    'can_edit', (a.o_role='owner' or not s.staff_readonly), 'me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role));
+end $$;
+
+create or replace function public.ms_sheet_create(p_name text, p_tabs jsonb default '{}'::jsonb, p_owner_only boolean default false) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  insert into public.ms_sheets(name,tabs,version,owner_only,created_by,updated_by) values (left(coalesce(nullif(trim(p_name),''),'Untitled'),120), coalesce(p_tabs,'{}'::jsonb), 1, coalesce(p_owner_only,false) and a.o_role='owner', a.o_name, a.o_name) returning * into s;
+  insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,1,'meta','ສ້າງໄຟລ໌ໃໝ່',a.o_id,a.o_name);
+  return jsonb_build_object('id',s.id,'version',s.version);
+end $$;
+
+-- Cell-level merge. patch = {"tabs":{"<tabId>":{"del":true} | {"meta":{...},"cells":{"r,c":{...}|null}}}}
+create or replace function public.ms_sheet_apply(p_id uuid, p_patch jsonb) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets; ver bigint; v_tabs jsonb; t_id text; tp jsonb; ocells jsonb; ncells jsonb; k text; c jsonb;
+  nulls text[]; nn int := 0; total int := 0; cr int; cc int; bulk boolean; tname text; structural boolean := false;
+  parts text[]; otxt text; ntxt text;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only) for update;
+  if s.id is null then raise exception 'not found'; end if;
+  if s.staff_readonly and a.o_role <> 'owner' then raise exception 'read only'; end if;
+  -- daily backup (Laos date) before the first change of the day
+  if not exists (select 1 from public.ms_sheet_backups b where b.sheet_id = s.id and (b.created_at at time zone 'Asia/Vientiane')::date = (now() at time zone 'Asia/Vientiane')::date) then
+    insert into public.ms_sheet_backups(sheet_id,version,tabs,reason,created_by) values (s.id,s.version,s.tabs,'daily',a.o_name);
+    delete from public.ms_sheet_backups where sheet_id = s.id and id not in (select id from public.ms_sheet_backups where sheet_id = s.id order by created_at desc limit 40);
+  end if;
+  ver := s.version + 1; v_tabs := s.tabs;
+  -- count cells to decide log style
+  for t_id, tp in select * from jsonb_each(coalesce(p_patch->'tabs','{}'::jsonb)) loop
+    if tp ? 'cells' then total := total + (select count(*) from jsonb_object_keys(tp->'cells')); end if;
+  end loop;
+  bulk := total > 400;
+  for t_id, tp in select * from jsonb_each(coalesce(p_patch->'tabs','{}'::jsonb)) loop
+    if coalesce(tp->>'del','') = 'true' then
+      tname := v_tabs->t_id->'meta'->>'name';
+      v_tabs := v_tabs - t_id; structural := true;
+      insert into public.ms_sheet_changes(sheet_id,version,tab_id,tab_name,kind,new_text,user_id,user_name) values (s.id,ver,t_id,tname,'meta','ລົບແຜ່ນງານ',a.o_id,a.o_name);
+      continue;
+    end if;
+    if not (v_tabs ? t_id) then
+      v_tabs := jsonb_set(v_tabs, array[t_id], jsonb_build_object('meta','{}'::jsonb,'cells','{}'::jsonb));
+      structural := true;
+      insert into public.ms_sheet_changes(sheet_id,version,tab_id,tab_name,kind,new_text,user_id,user_name) values (s.id,ver,t_id,tp#>>'{meta,name}','meta','ເພີ່ມແຜ່ນງານ',a.o_id,a.o_name);
+    end if;
+    if tp ? 'meta' then
+      if (v_tabs->t_id->'meta'->>'name') is distinct from (tp#>>'{meta,name}') and (tp#>>'{meta,name}') is not null and (v_tabs->t_id->'meta'->>'name') is not null then
+        insert into public.ms_sheet_changes(sheet_id,version,tab_id,tab_name,kind,old_text,new_text,user_id,user_name) values (s.id,ver,t_id,tp#>>'{meta,name}','meta',v_tabs->t_id->'meta'->>'name',tp#>>'{meta,name}',a.o_id,a.o_name);
+      end if;
+      v_tabs := jsonb_set(v_tabs, array[t_id,'meta'], coalesce(v_tabs->t_id->'meta','{}'::jsonb) || (tp->'meta'));
+      structural := true; -- column widths / freeze / rename: other people reload (cheap, rare)
+    end if;
+    if tp ? 'cells' then
+      tname := v_tabs->t_id->'meta'->>'name';
+      ocells := coalesce(v_tabs->t_id->'cells','{}'::jsonb);
+      nulls := array[]::text[]; ncells := '{}'::jsonb;
+      for k, c in select * from jsonb_each(tp->'cells') loop
+        if c = 'null'::jsonb then nulls := nulls || k; else ncells := ncells || jsonb_build_object(k, c); end if;
+        otxt := public.ms_sheet_cell_text(ocells->k);
+        ntxt := public.ms_sheet_cell_text(c);
+        if otxt is distinct from ntxt then
+          parts := string_to_array(k, ',');
+          insert into public.ms_sheet_changes(sheet_id,version,tab_id,tab_name,cell_key,cell_ref,old_text,new_text,new_cell,kind,user_id,user_name)
+            values (s.id,ver,t_id,tname,k,public.ms_sheet_a1(parts[1]::int,parts[2]::int),left(otxt,500),left(ntxt,500),c,case when bulk then 'sync' else 'cell' end,a.o_id,a.o_name);
+          nn := nn + 1;
+        else
+          -- style-only change: still must reach other people
+          insert into public.ms_sheet_changes(sheet_id,version,tab_id,tab_name,cell_key,cell_ref,new_cell,kind,user_id,user_name)
+            values (s.id,ver,t_id,tname,k,null,c,'sync',a.o_id,a.o_name);
+        end if;
+      end loop;
+      ocells := (ocells || ncells);
+      if array_length(nulls,1) is not null then ocells := ocells - nulls; end if;
+      v_tabs := jsonb_set(v_tabs, array[t_id,'cells'], ocells);
+    end if;
+  end loop;
+  if bulk then
+    insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,ver,'bulk','ແກ້ໄຂຫຼາຍຊ່ອງພ້ອມກັນ ('||nn||' ຊ່ອງ)',a.o_id,a.o_name);
+  end if;
+  if structural then
+    insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,ver,'meta','ປ່ຽນໂຄງສ້າງ/ຮູບແບບຕາຕະລາງ',a.o_id,a.o_name);
+  end if;
+  update public.ms_sheets set tabs = v_tabs, version = ver, updated_by = a.o_name, updated_at = now() where id = s.id;
+  return jsonb_build_object('version', ver, 'structural', structural);
+end $$;
+
+-- Changes by others since a version. full=true => client must reload everything (structure changed or too many).
+create or replace function public.ms_sheet_since(p_id uuid, p_since bigint) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets; res jsonb; cnt int;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only);
+  if s.id is null then raise exception 'not found'; end if;
+  if s.version = p_since then return jsonb_build_object('version',s.version,'full',false,'changes','[]'::jsonb); end if;
+  if exists (select 1 from public.ms_sheet_changes where sheet_id = p_id and version > p_since and kind = 'meta') then
+    return jsonb_build_object('version',s.version,'full',true);
+  end if;
+  select count(*) into cnt from public.ms_sheet_changes where sheet_id = p_id and version > p_since and cell_key is not null;
+  if cnt > 4000 then return jsonb_build_object('version',s.version,'full',true); end if;
+  select coalesce(jsonb_agg(jsonb_build_object('tab',tab_id,'key',cell_key,'cell',new_cell,'by',user_name)),'[]'::jsonb) into res
+  from (select distinct on (tab_id, cell_key) tab_id, cell_key, new_cell, user_name from public.ms_sheet_changes
+        where sheet_id = p_id and version > p_since and cell_key is not null order by tab_id, cell_key, version desc) x;
+  return jsonb_build_object('version',s.version,'full',false,'changes',res);
+end $$;
+
+create or replace function public.ms_sheet_log(p_id uuid, p_limit int default 200, p_before bigint default null) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; res jsonb;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  if not exists (select 1 from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only)) then raise exception 'not found'; end if;
+  select coalesce(jsonb_agg(to_jsonb(x) order by x.id desc),'[]'::jsonb) into res from (
+    select id, version, tab_name, cell_ref, old_text, new_text, kind, user_name, changed_at from public.ms_sheet_changes
+    where sheet_id = p_id and kind in ('cell','bulk','meta') and (p_before is null or id < p_before)
+    order by id desc limit least(coalesce(p_limit,200),500)) x;
+  return res;
+end $$;
+
+-- Replace the whole content (xlsx import). Backs up first. Everyone else reloads.
+create or replace function public.ms_sheet_replace(p_id uuid, p_tabs jsonb, p_label text default 'ນຳເຂົ້າໄຟລ໌') returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets; ver bigint;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and (a.o_role='owner' or not owner_only) for update;
+  if s.id is null then raise exception 'not found'; end if;
+  if s.staff_readonly and a.o_role <> 'owner' then raise exception 'read only'; end if;
+  insert into public.ms_sheet_backups(sheet_id,version,tabs,reason,created_by) values (s.id,s.version,s.tabs,'replace',a.o_name);
+  delete from public.ms_sheet_backups where sheet_id = s.id and id not in (select id from public.ms_sheet_backups where sheet_id = s.id order by created_at desc limit 40);
+  ver := s.version + 1;
+  update public.ms_sheets set tabs = p_tabs, version = ver, updated_by = a.o_name, updated_at = now() where id = s.id;
+  insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (s.id,ver,'meta',left(p_label,200),a.o_id,a.o_name);
+  return jsonb_build_object('version', ver);
+end $$;
+
+create or replace function public.ms_sheet_backups_list(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null or a.o_role <> 'owner' then raise exception 'not allowed'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('id',id,'version',version,'reason',reason,'by',created_by,'at',created_at) order by created_at desc) from public.ms_sheet_backups where sheet_id = p_id),'[]'::jsonb);
+end $$;
+
+create or replace function public.ms_sheet_restore(p_backup bigint) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record; b public.ms_sheet_backups; ver bigint;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null or a.o_role <> 'owner' then raise exception 'not allowed'; end if;
+  select * into b from public.ms_sheet_backups where id = p_backup;
+  if b.id is null then raise exception 'not found'; end if;
+  insert into public.ms_sheet_backups(sheet_id,version,tabs,reason,created_by) select id,version,tabs,'before-restore',a.o_name from public.ms_sheets where id = b.sheet_id;
+  update public.ms_sheets set tabs = b.tabs, version = version + 1, updated_by = a.o_name, updated_at = now() where id = b.sheet_id returning version into ver;
+  insert into public.ms_sheet_changes(sheet_id,version,kind,new_text,user_id,user_name) values (b.sheet_id,ver,'meta','ຍ້ອນກັບໄປເວີຊັນຂອງ '||to_char(b.created_at at time zone 'Asia/Vientiane','DD/MM/YYYY HH24:MI'),a.o_id,a.o_name);
+  return jsonb_build_object('version', ver);
+end $$;
+
+create or replace function public.ms_sheet_set_flags(p_id uuid, p_owner_only boolean, p_staff_readonly boolean, p_name text default null) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null or a.o_role <> 'owner' then raise exception 'not allowed'; end if;
+  update public.ms_sheets set owner_only = coalesce(p_owner_only,owner_only), staff_readonly = coalesce(p_staff_readonly,staff_readonly), name = coalesce(nullif(trim(p_name),''),name) where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.ms_sheet_delete(p_id uuid) returns jsonb
+language plpgsql security definer set search_path to 'public','extensions' as $$
+declare a record;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null or a.o_role <> 'owner' then raise exception 'not allowed'; end if;
+  delete from public.ms_sheets where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+grant execute on function public.ms_sheet_actor(), public.ms_sheet_list(), public.ms_sheet_get(uuid), public.ms_sheet_create(text,jsonb,boolean), public.ms_sheet_apply(uuid,jsonb), public.ms_sheet_since(uuid,bigint), public.ms_sheet_log(uuid,int,bigint), public.ms_sheet_replace(uuid,jsonb,text), public.ms_sheet_backups_list(uuid), public.ms_sheet_restore(bigint), public.ms_sheet_set_flags(uuid,boolean,boolean,text), public.ms_sheet_delete(uuid) to anon, authenticated;
