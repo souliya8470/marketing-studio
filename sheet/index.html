@@ -51,6 +51,17 @@
   .bk{display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;padding:5px 0;font-size:12.5px;}
   .bk span{flex:1;}
   input[type=file]{display:none;}
+/* Bigger, easier-to-read ribbon icons (Excel-like) */
+[class*="h-[73px]"]{ height:100px !important; }
+[class*="h-[73px]"] [class*="grid-rows-"]{ grid-template-rows:repeat(2,2.4rem) !important; }
+[class*="h-[73px]"] svg.univerjs-icon{ font-size:24px !important; }
+[class*="h-[73px]"] svg.univerjs-icon-more-down-icon{ font-size:14px !important; }
+[class*="h-[73px]"] button.univer-h-6{ height:34px !important; min-width:34px !important; }
+[class*="h-[73px]"] button, [class*="h-[73px]"] span{ font-size:13px; }
+[class*="h-[73px]"] [class*="flex-col"] > svg.univerjs-icon{ width:36px !important; height:36px !important; font-size:36px !important; }
+[class*="h-[73px]"] .univer-toolbar-selector-root[class*="flex-col"]{ min-width:64px !important; gap:4px !important; font-size:13px !important; }
+[class*="h-[73px]"] svg.univerjs-icon{ color:#323130; }
+[class*="h-[73px]"] [class*="grid-rows-"] > div{ padding:0 2px; }
 </style>
 </head>
 <body>
