@@ -472,3 +472,14 @@ begin
     into res from public.ms_sheets where public.ms_sheet_vis(ms_sheets,a.o_id,a.o_name,a.o_role);
   return jsonb_build_object('me', jsonb_build_object('id',a.o_id,'name',a.o_name,'role',a.o_role), 'files', res);
 end $$;
+
+-- ===== v8.73: stale-grid guard (two people editing the same file; row delete "bounced back") =====
+-- Client sends p_patch->'base' (the version its grid is based on). If someone else made a structural/bulk change after that
+-- (row/col insert-delete, bulk edit, widths...), cell coordinates in the patch are stale: refuse it ({conflict:true}), client reloads.
+-- rename / trash / access log rows carry tab_id '__info' and are NOT structural. Applied live as migration ms_sheet_conflict_guard_v1
+-- (text-patched via pg_get_functiondef): in ms_sheet_apply, before "-- daily backup":
+--   if (p_patch ? 'base') and exists (select 1 from public.ms_sheet_changes c where c.sheet_id = s.id and c.version > (p_patch->>'base')::bigint
+--         and c.kind in ('meta','bulk') and c.tab_id is distinct from '__info') then
+--     return jsonb_build_object('conflict', true, 'version', s.version);
+--   end if;
+-- in ms_sheet_since: "kind in ('meta','bulk') and tab_id is distinct from '__info'"; ms_sheet_rename/trash/access_set insert tab_id '__info'.

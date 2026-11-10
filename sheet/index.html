@@ -412,7 +412,7 @@ function describeStruct(cid, p){
   return null;
 }
 function noteStruct(cid, p){
-  if(S.applyingRemote || !S.canEdit) return;
+  if(S.applyingRemote || S.loading || !S.canEdit) return;
   let t = null; try{ t = describeStruct(cid, p); }catch(e){ console.error(e); }
   if(!t) return;
   let tab = ""; try{ tab = S.boot.univerAPI.getActiveWorkbook().getSheetBySheetId(p.subUnitId).getSheetName(); }catch(e){}
@@ -421,7 +421,7 @@ function noteStruct(cid, p){
   if(S.notes.length < 60) S.notes.push({t:t.slice(0,600), tab:tab});
 }
 function markDirty(){
-  if(!S.canEdit || S.applyingRemote) return;
+  if(!S.canEdit || S.applyingRemote || S.loading) return;      // loading: grid is being (re)built, its own start-up commands are not user edits
   if(!S.dirty){ S.dirty = true; S.firstDirtyAt = Date.now(); }
   setStatus("dirty","● ຍັງບໍ່ໄດ້ບັນທຶກ");
   clearTimeout(S.timer);
@@ -439,6 +439,8 @@ async function saveNow(){   // Save button / Ctrl+S: save immediately and say wh
 }
 async function save(keepalive){
   if(!S.sheet || !S.canEdit) return true;
+  if(S.loading) return false;
+  if(S.conflict) return false;                       // stale grid: wait for the reload, never write it back
   if(S.saving){ S.saveAgain = true; return false; }
   clearTimeout(S.timer);
   let cur;
@@ -452,12 +454,15 @@ async function save(keepalive){
   const mine = {}; for(const id in patch.tabs){ const t=patch.tabs[id]; if(t.cells) for(const k in t.cells) mine[id+"|"+k]=1; }
   try{
     let res = null;
-    let first = true;
+    let first = true, base = before;
     for(const part of chunkPatch(patch, 3000)){
-      res = await rpc("ms_sheet_apply", {p_id: sheetId, p_patch: first && notes.length ? {tabs: part.tabs, notes} : {tabs: part.tabs}}, keepalive ? {keepalive:true} : null);
-      first = false;
+      // base = the server version this grid is built on; the server refuses the patch if someone changed the structure after it
+      res = await rpc("ms_sheet_apply", {p_id: sheetId, p_patch: first && notes.length ? {tabs: part.tabs, notes, base} : {tabs: part.tabs, base}}, keepalive ? {keepalive:true} : null);
+      if(res && res.conflict) break;
+      base = res.version; first = false;
     }
     if(!S.sheet || S.sheet.id !== sheetId) { S.saving=false; return true; }
+    if(res && res.conflict){ onConflict(sheetId); return false; }
     S.baseline = cur; S.version = res.version; S.retry = 0;
     S.dirty = false; S.saving = false;
     setStatus("","✓ ບັນທຶກແລ້ວ "+nowTxt());
@@ -485,6 +490,27 @@ function toCellData(o){
   cd.s = o.s ? o.s : null;
   return cd;
 }
+// Is the user in the middle of something a grid swap would destroy (dragging a selection / fill handle, typing in a cell)?
+function userBusy(){
+  if(S.mouseDown && Date.now()-S.mouseDown < 8000) return true;
+  try{ return S.boot.univerAPI.getActiveWorkbook().isCellEditing(); }catch(e){ return false; }
+}
+document.addEventListener("pointerdown", ()=>{ S.mouseDown = Date.now(); }, true);
+["pointerup","pointercancel","dragend"].forEach(ev=>window.addEventListener(ev, ()=>{ S.mouseDown = 0; }, true));
+window.addEventListener("blur", ()=>{ S.mouseDown = 0; });
+function warnBar(msg){
+  let b = $("warnBar");
+  if(!b){ b = document.createElement("div"); b.id="warnBar"; b.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:min(680px,94vw);background:#fff4ce;color:#5c3d00;border:1px solid #e0b84a;border-radius:6px;padding:10px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;display:flex;gap:12px;align-items:flex-start"; document.body.appendChild(b); }
+  b.innerHTML = '<div style="flex:1">'+esc(msg)+'</div><button style="border:1px solid #c8a24a;background:#fff;border-radius:4px;padding:3px 10px;cursor:pointer">ຕົກລົງ</button>';
+  b.querySelector("button").onclick = ()=>b.remove();
+}
+// Server refused our save because someone else changed the structure (insert/delete row or column...) after our grid was loaded.
+function onConflict(sheetId){
+  S.saving = false; S.conflict = true; S.dirty = false; clearTimeout(S.timer); S.notes = [];
+  setStatus("bad","⚠ ມີຄົນອື່ນປ່ຽນໂຄງສ້າງຕາຕະລາງ — ກຳລັງໂຫຼດໃໝ່");
+  warnBar("⚠ ຄົນອື່ນຫາກໍປ່ຽນໂຄງສ້າງຕາຕະລາງ (ລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ). ການແກ້ໄຂຫຼ້າສຸດຂອງທ່ານບໍ່ໄດ້ຖືກບັນທຶກ ເພື່ອບໍ່ໃຫ້ຂໍ້ມູນປົນກັນ. ລະບົບໂຫຼດຂໍ້ມູນຫຼ້າສຸດໃຫ້ແລ້ວ ກະລຸນາເຮັດຄືນ.");
+  pullRemote();
+}
 async function pullRemote(skipKeys, sinceOverride){
   if(!S.sheet) return;
   clearTimeout(S.pullTimer);
@@ -494,9 +520,8 @@ async function pullRemote(skipKeys, sinceOverride){
   try{ res = await rpc("ms_sheet_since", {p_id: sheetId, p_since: since}); }catch(e){ console.error(e); return; }
   if(!S.sheet || S.sheet.id!==sheetId) return;
   if(res.full){
-    // never swap the grid under someone who is typing in a cell: try again in a moment
-    let typing = false; try{ typing = S.boot.univerAPI.getActiveWorkbook().isCellEditing(); }catch(e){}
-    if(typing){ S.pullTimer = setTimeout(()=>pullRemote(), 1500); return; }
+    // never swap the grid under someone who is dragging or typing: try again in a moment (pullRemote saves their edit first)
+    if(userBusy()){ S.pullTimer = setTimeout(()=>pullRemote(), 1000); return; }
     await openSheet(sheetId, true, true); return;
   }
   if(res.version > S.version) S.version = res.version;
@@ -857,7 +882,7 @@ async function openSheet(id, keepActiveTab, soft){
   if(!soft) showMsg('<div class="spin"></div><div>ກຳລັງເປີດໄຟລ໌...</div>');
   let row;
   try{ await ensureUniver(); row = await rpc("ms_sheet_get", {p_id:id}); }
-  catch(e){ console.error(e); if(soft){ setStatus("err","⚠ ອັບເດດບໍ່ໄດ້: "+e.message); return; } showMsg('<div>⚠ ເປີດໄຟລ໌ບໍ່ໄດ້: '+esc(e.message)+'</div>'); return; }
+  catch(e){ console.error(e); if(soft){ S.conflict=false; setStatus("bad","⚠ ອັບເດດບໍ່ໄດ້: "+e.message); return; } showMsg('<div>⚠ ເປີດໄຟລ໌ບໍ່ໄດ້: '+esc(e.message)+'</div>'); return; }
   if(soft && S.sheet.id!==id) return;
   let activeId = null, keepSel = null, keepScroll = null;
   if(keepActiveTab && S.boot){ try{ activeId = S.boot.univerAPI.getActiveWorkbook().getActiveSheet().getSheetId(); }catch(e){} }
@@ -865,7 +890,7 @@ async function openSheet(id, keepActiveTab, soft){
     try{ const sh = S.boot.univerAPI.getActiveWorkbook().getActiveSheet(); const rg = sh.getSelection && sh.getSelection() && sh.getSelection().getActiveRange(); if(rg) keepSel = rg.getA1Notation(); }catch(e){}
     try{ const sh = S.boot.univerAPI.getActiveWorkbook().getActiveSheet(); keepScroll = sh.getScrollState(); }catch(e){}
   }
-  clearTimeout(S.timer); S.dirty=false; S.saving=false; S.saveAgain=false; S.retry=0;
+  clearTimeout(S.timer); S.dirty=false; S.saving=false; S.saveAgain=false; S.retry=0; S.conflict=false; S.loading=true;
   let old = null;
   if(soft){ old = {boot:S.boot, off:S.offCmd, el:S.hostEl}; S.boot=null; S.offCmd=null; S.hostEl=null; }
   else { destroyBoot(); disconnectChannel(); }
@@ -902,6 +927,7 @@ async function openSheet(id, keepActiveTab, soft){
     try{ old.el && old.el.remove(); }catch(e){}
   }
   S.baseline = extract(snapshot(), false);
+  S.loading = false; S.dirty = false; clearTimeout(S.timer);
   // a brand-new/empty file: make the default tab exist on the server too
   if(!Object.keys(row.tabs||{}).length && S.canEdit) markDirty();
   setStatus("", S.canEdit ? "✓ ບັນທຶກແລ້ວ" : "🔒 ເບິ່ງໄດ້ຢ່າງດຽວ");
