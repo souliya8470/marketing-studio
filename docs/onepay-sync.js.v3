@@ -1,0 +1,196 @@
+// onepay-sync.js (2026-11-10) -- AUTOMATIC feed of BCEL OnePay Shop money-received list -> Supabase table onepay_transactions.
+// Usage: node onepay-sync.js <onepayPort=9225> [backfill]
+//   READS ONLY from the OnePay Shop web app (logged-in Chrome profile on CDP port 9225). It never reloads that page, never types,
+//   and only clicks the two plain navigation labels ("ຮັບເງິນ" -> "ລາຍການ") to make the app re-fetch its own list. It cannot move money.
+//   The list comes from the app's own POST https://bcel.la:8667/app/paymenthistory responses ({histories:[...],hasMore}).
+//   'backfill' mode additionally scrolls the list to the bottom up to 15 times so older pages load too (first run / catch-up).
+// WRITES go through the already-logged-in Marketing Studio tab on CDP port 9222 (window.sb, same session the COD uploader uses),
+//   so no keys/tokens are stored in this file. Rows: ref = ticket (= "ເລກອ້າງອີງ 1" printed on the customer's BCEL slip), fallback fccref.
+//   Same shape as the manual Excel import in Marketing Studio v8.51, with source = 'auto_9225'. Upsert by ref, so re-runs are safe.
+//   Voided rows (isVoid != 0) are skipped (and removed if they were stored earlier).
+// v2 (2026-11-10): also stores fccref (the 15-digit "ເລກໃບບິນ" -- the only number other-bank slips show) in column onepay_transactions.fccref.
+// Status: table onepay_sync_status row id 'main' (last_ok_at / last_data_at / last_error) -- the app shows it.
+// Exit code 0 = ok, 1 = error. stdout = one JSON line (n8n reads it). Logged-out OnePay -> error ONEPAY_LOGGED_OUT.
+const { chromium } = require('playwright-core');
+const fs = require('fs');
+
+const MS_PORT = 9222;
+const MS_URL_SUBSTRING = 'marketing.touktashop.online';
+const API_MATCH = '/app/paymenthistory';
+const LOG = 'C:\\n8n-data\\onepay-sync-last.json';
+
+function laosIso(txtime) {
+  // "2026-11-10 15:54:44" (Laos time) -> "2026-11-10T15:54:44+07:00"
+  const s = String(txtime || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s)) return null;
+  return s.replace(' ', 'T').slice(0, 19) + '+07:00';
+}
+
+async function clickLabel(page, label) {
+  const loc = page.getByText(label, { exact: true });
+  const n = await loc.count();
+  if (!n) return false;
+  await loc.last().evaluate(e => (e.closest('a,button,[role=button],li') || e).click());
+  return true;
+}
+
+async function scrollListToBottom(page) {
+  return page.evaluate(() => {
+    let best = null, bestH = 0;
+    for (const el of document.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 20 && el.scrollHeight > bestH) { best = el; bestH = el.scrollHeight; }
+    }
+    const t = best || document.scrollingElement || document.body;
+    t.scrollTo(0, t.scrollHeight);
+    window.scrollTo(0, document.body.scrollHeight);
+    return bestH;
+  });
+}
+
+async function getMsPage(browser) {
+  const context = browser.contexts()[0];
+  const page = context.pages().find(p => p.url().includes(MS_URL_SUBSTRING));
+  if (!page) throw new Error('MS_TAB_NOT_FOUND (Marketing Studio is not open on port 9222)');
+  return page;
+}
+
+async function msWrite(page, payload) {
+  return page.evaluate(async ({ rows, voidRefs, status }) => {
+    try {
+      if (!window.sb) return { ok: false, error: 'MS_SB_MISSING' };
+      let upserted = 0;
+      for (let i = 0; i < rows.length; i += 200) {
+        const { error } = await window.sb.from('onepay_transactions').upsert(rows.slice(i, i + 200), { onConflict: 'ref' });
+        if (error) return { ok: false, error: 'upsert: ' + (error.message || JSON.stringify(error)) };
+        upserted += Math.min(200, rows.length - i);
+      }
+      let removed = 0;
+      if (voidRefs.length) {
+        const { data, error } = await window.sb.from('onepay_transactions').delete().in('ref', voidRefs).select('ref');
+        if (!error) removed = (data || []).length;
+      }
+      const { error: e2 } = await window.sb.from('onepay_sync_status').upsert(status, { onConflict: 'id' });
+      if (e2) return { ok: false, error: 'status: ' + (e2.message || JSON.stringify(e2)), upserted, removed };
+      return { ok: true, upserted, removed };
+    } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+  }, payload);
+}
+
+async function msStatusError(browser, msg) {
+  try {
+    const page = await getMsPage(browser);
+    await page.evaluate(async (m) => {
+      try { await window.sb.from('onepay_sync_status').upsert({ id: 'main', last_error: m, updated_at: new Date().toISOString() }, { onConflict: 'id' }); } catch (e) {}
+    }, String(msg).slice(0, 300));
+  } catch (e) {}
+}
+
+(async () => {
+  const port = process.argv[2] || 9225;
+  const FLAG = 'C:\\n8n-data\\onepay-full.flag'; // if this file exists, the next scheduled run pulls ALL history, then deletes the flag
+  const flagged = fs.existsSync(FLAG);
+  const full = process.argv[3] === 'full' || flagged; // v3 (2026-11-10): scroll until the app says hasMore=false (ALL history, no fixed cap)
+  const backfill = process.argv[3] === 'backfill' || full;
+  const out = { status: 'error', when: new Date().toISOString(), port, mode: full ? 'full' : (backfill ? 'backfill' : 'normal'), fetched: 0, pages: 0, hasMore: null, request: null };
+  let msBrowser = null;
+  try {
+    // --- 1. connect to MS first (so we can always report errors) ---
+    msBrowser = await chromium.connectOverCDP(`http://localhost:${MS_PORT}`);
+    const msPage = await getMsPage(msBrowser);
+
+    // --- 2. read the OnePay list ---
+    const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
+    const ctx = browser.contexts()[0];
+    const page = ctx.pages().find(p => p.url().includes('onepayshop'));
+    if (!page) throw new Error('NO_ONEPAY_PAGE');
+    const body0 = await page.evaluate(() => (document.body.innerText || '').slice(0, 12000));
+    if (/ເຂົ້າສູ່ລະບົບ/.test(body0) || !/ລາຍການ/.test(body0)) {
+      out.error = 'ONEPAY_LOGGED_OUT';
+      await msStatusError(msBrowser, 'OnePay Shop ຖືກອອກຈາກລະບົບ — ຕ້ອງລັອກອິນໃໝ່ທີ່ Chrome 9225');
+      throw new Error('ONEPAY_LOGGED_OUT');
+    }
+
+    const all = new Map(); // id -> row
+    let hasMore = null;
+    const onResp = async (resp) => {
+      try {
+        if (!resp.url().includes(API_MATCH)) return;
+        const j = JSON.parse(await resp.text());
+        if (!out.request) {
+          const rq = resp.request();
+          let pk = null; try { const pd = rq.postData(); pk = pd ? Object.keys(JSON.parse(pd)) : null; } catch (e) { pk = 'non-json'; }
+          out.request = { method: rq.method(), postKeys: pk };
+        }
+        out.pages++;
+        hasMore = j.hasMore;
+        for (const h of (j.histories || [])) all.set(h.id, h);
+      } catch (e) {}
+    };
+    page.on('response', onResp);
+
+    // make the app re-fetch its list: go to "ຮັບເງິນ" then back to "ລາຍການ" (plain navigation)
+    await clickLabel(page, 'ຮັບເງິນ').catch(() => {});
+    await page.waitForTimeout(1200);
+    await clickLabel(page, 'ລາຍການ').catch(() => {});
+    for (let i = 0; i < 24 && all.size === 0; i++) await page.waitForTimeout(500);
+    if (all.size === 0) throw new Error('NO_LIST_RESPONSE (list did not load -- maybe logged out or app changed)');
+    await page.waitForTimeout(800);
+
+    if (full) {
+      let stable = 0, last = all.size;
+      for (let i = 0; i < 600 && stable < 4; i++) {
+        await scrollListToBottom(page);
+        await page.waitForTimeout(1800);
+        if (hasMore === false) { await page.waitForTimeout(800); break; }
+        if (all.size === last) stable++; else { stable = 0; last = all.size; }
+      }
+    } else if (backfill) {
+      let stable = 0, last = all.size;
+      for (let i = 0; i < 15 && stable < 2; i++) {
+        await scrollListToBottom(page);
+        await page.waitForTimeout(1800);
+        if (all.size === last) stable++; else { stable = 0; last = all.size; }
+      }
+    }
+    page.off('response', onResp);
+    out.hasMore = hasMore;
+    out.fetched = all.size;
+    await browser.close().catch(() => {});
+
+    // --- 3. build rows ---
+    const rows = [], voidRefs = [];
+    let newest = null;
+    for (const h of all.values()) {
+      const ref = String(h.ticket || h.fccref || '').trim();
+      const paid = laosIso(h.txtime);
+      const amt = Math.round(Number(h.amount));
+      if (!ref || !paid || !(amt > 0)) continue;
+      if (Number(h.isVoid || 0) !== 0) { voidRefs.push(ref); continue; }
+      rows.push({
+        ref, fccref: String(h.fccref || '').trim() || null, paid_at: paid,
+        customer_masked: [h.name, h.phone].filter(Boolean).join(' '),
+        payment_type: String(h.type || ''),
+        amount_kip: amt, status: 'completed', source: 'auto_9225', imported_by: 'n8n',
+      });
+      if (!newest || paid > newest) newest = paid;
+    }
+    out.rows = rows.length; out.voided = voidRefs.length; out.newest = newest;
+    if (!rows.length) throw new Error('NO_ROWS_PARSED');
+
+    // --- 4. write via Marketing Studio ---
+    const now = new Date().toISOString();
+    const w = await msWrite(msPage, { rows, voidRefs, status: { id: 'main', last_ok_at: now, last_data_at: newest, last_error: null, updated_at: now } });
+    out.write = w;
+    if (!w.ok) throw new Error('WRITE_FAILED: ' + w.error);
+    out.status = 'ok';
+    if (flagged) { try { fs.unlinkSync(FLAG); } catch (e) {} }
+  } catch (e) {
+    out.status = 'error';
+    out.error = out.error || String(e && e.message || e);
+    if (msBrowser && out.error !== 'ONEPAY_LOGGED_OUT') await msStatusError(msBrowser, out.error);
+  }
+  try { fs.writeFileSync(LOG, JSON.stringify(out, null, 1)); } catch (e) {}
+  console.log(JSON.stringify(out));
+  process.exit(out.status === 'ok' ? 0 : 1);
+})();

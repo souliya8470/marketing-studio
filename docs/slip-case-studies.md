@@ -23,7 +23,7 @@ Source: all `online_orders` (non-test) + `onepay_transactions`, read-only SQL. W
 8. **13 BCEL "no QR found" / 14 "QR not OneProof"** — mostly non-BCEL slips (APB, LDB, others) or screenshots. Need per-bank handling: APB (reference LAP…), LDB (FT…/FQR…, destination LDB account), BCEL OneProof.
 
 ## Improvement list (priority)
-A. Backfill `onepay_transactions` before 09/11 13:15 (data, n8n on server PC).
+A. DONE 2026-11-10 17:15: full pull ran (onepay-sync.js v3, flag file mode). `onepay_transactions` now 9,702 rows from 2024-09-05; all 66 confirmed BCEL-ticket orders are found in it (0 missing). Normal 5-min runs still fetch only the latest 100 (fine for ~60/day).
 B. UI: neutral message instead of red for LDB slips and for orders older than the first imported row.
 C. Matching: exact passes first for all orders; no cross-bank fuzzy; OCR the LAP… reference for APB; run OCR also when current match is weak.
 D. Relax "transfer before order" rule (case 5).

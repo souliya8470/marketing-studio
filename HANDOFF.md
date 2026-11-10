@@ -195,3 +195,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 
 ## Slip case-study file (2026-11-10)
 - Full analysis of all confirmed online orders is in `docs/slip-case-studies.md` (8 cases + priority list A–F). The slip-feature chat should read it before changing matching. Add new real cases there first.
+
+## OnePay full pull (2026-11-10)
+- `C:\n8n-data\onepay-sync.js` v3: mode `full` (scroll until hasMore=false) and flag file `onepay-full.flag` (next scheduled run does a full pull, then deletes the flag). Backup `onepay-sync.js.bak-20261110`. Copy of v3 in docs/onepay-sync.js.v3.
+- Result: 9,702 rows (2024-09-05 → now). Red 'not seen' warnings on older BCEL orders should now disappear. App loads only last 21 days (limit 5000).
