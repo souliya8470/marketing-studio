@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.77"; // v8.77 FIX (Tar 2026-11-10: "when I copy a formula in the Excel tab by dragging the fill handle down, the formula does not come"): ROOT CAUSE found with a real mouse drag in Playwright: Univer stores a formula that is filled/copied down as a SHARED formula - only the first new cell has `f`, the others carry just `si` (+ the computed value) - and sheet/index.html extract() read only `cell.f`, so every filled cell below the first was saved as a plain number (formula lost on the server and for other accounts). FIX: extract() now asks the live workbook for the formula text of any `si`-only cell (liveFormula -> getRange().getFormula()). Verified: E6 formula dragged to E9 now saves f on all four rows. Formulas lost before this fix stay values (re-fill them). Only /sheet/ changed; this index.html edit only bumps APP_VERSION.
+const APP_VERSION = "8.78"; // v8.78 NEW (Tar 2026-11-10, "ອ່ານເລກບິນ 15 ຫຼັກຈາກສະລິບແບບດຽວກັບບິນຂົນສົ່ງ"): online orders whose slip has NO readable QR (slips from OTHER banks paying into the BCEL account, e.g. L00259) are now matched to the real money received by the BILL NUMBER printed on the slip ("ເລກບິນ", 13-15 digits starting with the date, e.g. 202611096116237) = column fccref of onepay_transactions (filled automatically every 5 min by the n8n job onepay-sync). The slip image is read in the browser with Tesseract (digits only, same library as the courier bills); the number must start with the transfer date (YYYYMMDD within 1 day of the order) or it is ignored. If OCR is off by 1-2 digits the match is still accepted when the amount is equal and exactly ONE transaction fits (shown with a note). Also: LDB slips match by their LDB reference (slip_check.ldb_ref = ref of the LAPNET row) when the amount is equal. Display only - staff still press confirm. Result of the OCR is cached in localStorage (ms_slip_bill_v1) so each slip is read once.
+// (previous text of this slot, kept) v8.77 FIX (Tar 2026-11-10: "when I copy a formula in the Excel tab by dragging the fill handle down, the formula does not come"): ROOT CAUSE found with a real mouse drag in Playwright: Univer stores a formula that is filled/copied down as a SHARED formula - only the first new cell has `f`, the others carry just `si` (+ the computed value) - and sheet/index.html extract() read only `cell.f`, so every filled cell below the first was saved as a plain number (formula lost on the server and for other accounts). FIX: extract() now asks the live workbook for the formula text of any `si`-only cell (liveFormula -> getRange().getFormula()). Verified: E6 formula dragged to E9 now saves f on all four rows. Formulas lost before this fix stay values (re-fill them). Only /sheet/ changed; this index.html edit only bumps APP_VERSION.
 // (previous text of this slot, kept) // v8.76 NEW (Tar 2026-11-10: "adopt the Excel 365 co-authoring principle, because working in Excel never had this problem"): two people deleting/inserting rows or columns at the same moment are now MERGED like Excel 365 instead of one losing the edit. sheet/index.html (no SQL change) transforms our own row/column operations through the ones saved by others since our grid version (operational transform: xformOp/rebaseOps, delete-vs-delete, delete-vs-insert, insert-vs-insert), then on conflict loads the latest grid, REPLAYS our insert/delete on it with Univer itself (so formulas are re-pointed by Univer, never by our code) and re-applies only the real cell edits (diff against the saved state moved through our own operations: shiftBaseline/shiftTabState/shiftFormula) at the right positions via the v8.75 rebase path. Safety: aborts to the v8.74 warning when the merge is impossible (insert inside a range we delete), someone changed structure again meanwhile (ms_sheet_ops_since re-checked after the reload), the user did sort/move-rows/sheet add-delete, more than 60 structural notes, or more than 200 residual edits. Server unchanged (a server-side OT experiment was built and rolled back: it cannot re-point formulas). Only /sheet/ changed; this index.html edit only bumps APP_VERSION.
 // (previous text of this slot, kept) // v8.75 NEW (Tar 2026-11-10: "staff in different departments do not know what the other is doing, and in the end my work is not saved - how do we make this not happen?"): edits are no longer thrown away when someone else inserts/deletes rows or columns at the same moment. sheet/index.html records every structural action as a machine-readable op (opOf: rr/ir = remove/insert rows, rc/ic = columns, x = layout only) in the notes sent to ms_sheet_apply (stored in ms_sheet_changes.new_cell, tab_id = sheet id). When the server refuses a stale save (v8.73 guard), onConflict() asks ms_sheet_ops_since(base) for the operations that happened meanwhile; if they are all known inserts/deletes (safe=true) the user's pending CELL edits are re-mapped through them (xformCells), the grid is reloaded, the edits are re-applied at the right place (applyRebase) and autosaved, and a green note explains it ("nothing to do"); only cells that sat inside a deleted row/column are dropped and counted. Falls back to the v8.74 yellow warning when: the user's own save contained a structural change, more than one chunk, or someone did something without a recorded op (sort, move rows, add/delete sheet, an old client). SQL applied live (ms_sheet_ops_rebase_v1, ms_sheet_ops_since_null_fix) and mirrored in supabase/sql/ms_sheets.sql. Only /sheet/ + SQL changed; this index.html edit only bumps APP_VERSION.
 // (previous text of this slot, kept) // v8.74 CHANGE (Tar 2026-11-10: "I do not understand the yellow warning, what must staff do?"): the conflict warning bar in sheet/index.html is rewritten in plain Lao: what happened (someone else inserted/deleted rows or columns), WHO did WHAT (taken from the file history, e.g. "Larnoy — ລຶບແຖວ 624"), that the last edit was not saved and the grid was reloaded, and the exact action (look at the table, retype only what is missing; if the row you wanted to delete is already gone, do nothing). Button text "ຕົກລົງ ເຂົ້າໃຈແລ້ວ". No change to the save/conflict logic. Only /sheet/ changed; this index.html edit only bumps APP_VERSION.
@@ -1619,7 +1620,7 @@ const APP_VERSION = "8.77"; // v8.77 FIX (Tar 2026-11-10: "when I copy a formula
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.76"; // (v8.76 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.77"; // (v8.77 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.73 slot:  (v8.73 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.71 slot:  (v8.71 text kept in the history comment lines of APP_VERSION above)
@@ -1726,7 +1727,7 @@ const APP_VERSION_PREV = "8.76"; // (v8.76 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.75"; // (v8.75 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.76"; // (v8.76 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.71 slot:  (v8.71 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.70 slot:  (v8.70 text kept in the history comment lines above)
@@ -12939,27 +12940,108 @@ function autoCheckOnlineSlips(){
 function computeOnlinePaymentMatches(orders, txns){
   const out = {}; const claimed = {};
   const byRef = {}; (txns||[]).forEach(t=>{ byRef[t.ref]=t; });
+  const byBill = {}; (txns||[]).forEach(t=>{ if(t.fccref) byBill[String(t.fccref)]=t; });
   const list = (orders||[]).filter(o=>o.paymentMethod!=="cod" && o.status!=="cancelled");
+  const amtOf = (o)=>Math.round(Number(o.totalKip)||0);
   // 1) exact: reference equals the BCEL slip ticket checked by online-slip-verify
   list.forEach(o=>{
     const tk = o.slipCheck && (o.slipCheck.ticket || (o.slipCheck.bcel && o.slipCheck.bcel.ticket));
     if(tk && byRef[tk] && !claimed[tk]){ out[o.id] = {level:"exact", tx:byRef[tk]}; claimed[tk]=o.id; }
   });
+  // 1b) v8.63: LDB slip reference (LAPNET row of the same amount carries the LDB reference as its ref)
+  list.forEach(o=>{
+    if(out[o.id]) return;
+    const lr = o.slipCheck && o.slipCheck.ldb_ref;
+    const t = lr && byRef[lr];
+    if(t && !claimed[t.ref] && Number(t.amount_kip)===amtOf(o)){ out[o.id] = {level:"exact", tx:t, via:"ldb"}; claimed[t.ref]=o.id; }
+  });
+  // 1c) v8.63: bill number read from the slip image (fccref of the OnePay Shop list)
+  const bills = STATE.slipBillCache || {};
+  list.forEach(o=>{
+    if(out[o.id]) return;
+    const bn = bills[o.id]; if(!bn) return;
+    const t = byBill[bn];
+    if(t && !claimed[t.ref] && Number(t.amount_kip)===amtOf(o)){ out[o.id] = {level:"exact", tx:t, via:"bill"}; claimed[t.ref]=o.id; }
+  });
+  // 1d) v8.63: OCR may be off by 1-2 digits -> accept only when the amount is equal and exactly ONE unclaimed transaction fits
+  const hamming = (x,y)=>{ if(x.length!==y.length) return 99; let d=0; for(let i=0;i<x.length;i++) if(x[i]!==y[i]) d++; return d; };
+  list.forEach(o=>{
+    if(out[o.id]) return;
+    const bn = bills[o.id]; if(!bn) return;
+    const c = new Date(o.createdAt).getTime();
+    const cands = (txns||[]).filter(t=>t.fccref && !claimed[t.ref] && Number(t.amount_kip)===amtOf(o) && hamming(String(t.fccref), bn)<=2
+      && new Date(t.paid_at).getTime()>=c-3*3600000 && new Date(t.paid_at).getTime()<=c+24*3600000);
+    if(cands.length===1){ out[o.id] = {level:"exact", tx:cands[0], via:"bill", fuzzy:true}; claimed[cands[0].ref]=o.id; }
+  });
   // 2) amount + time (oldest orders first, closest unclaimed transaction after the order time)
   list.slice().sort((x,y)=>String(x.createdAt).localeCompare(String(y.createdAt))).forEach(o=>{
     if(out[o.id]) return;
-    const c = new Date(o.createdAt).getTime(); const amt = Math.round(Number(o.totalKip)||0);
+    const c = new Date(o.createdAt).getTime(); const amt = amtOf(o);
     const cands = (txns||[]).filter(t=>!claimed[t.ref] && Number(t.amount_kip)===amt && new Date(t.paid_at).getTime()>=c-10*60000 && new Date(t.paid_at).getTime()<=c+24*3600000)
       .sort((x,y)=>new Date(x.paid_at)-new Date(y.paid_at));
     if(cands.length){ out[o.id] = {level:"amount", tx:cands[0], count:cands.length}; claimed[cands[0].ref]=o.id; }
   });
   return out;
 }
+// v8.63: read the bill number ("ເລກບິນ") printed on a slip image that has no QR. Browser Tesseract (digits), cached per order.
+function slipBillCacheLoad(){
+  if(STATE.slipBillCache) return;
+  STATE.slipBillCache = {}; STATE.slipBillTried = {};
+  try{ const j = JSON.parse(localStorage.getItem("ms_slip_bill_v1")||"{}"); if(j && typeof j==="object"){ STATE.slipBillCache = j.ok||{}; STATE.slipBillTried = j.tried||{}; } }catch(e){}
+}
+function slipBillCacheSave(){
+  try{ localStorage.setItem("ms_slip_bill_v1", JSON.stringify({ok:STATE.slipBillCache, tried:STATE.slipBillTried})); }catch(e){}
+}
+function slipBillValid(num, orderCreatedAt){
+  // must be 13-15 digits and start with a date (YYYYMMDD) within 1 day of the order (Laos time)
+  if(!/^20\d{11,13}$/.test(num)) return false;
+  const d = Date.UTC(+num.slice(0,4), +num.slice(4,6)-1, +num.slice(6,8));
+  const c = new Date(new Date(orderCreatedAt).getTime()+7*3600000);
+  const cd = Date.UTC(c.getUTCFullYear(), c.getUTCMonth(), c.getUTCDate());
+  return Math.abs(cd-d) <= 86400000;
+}
+async function ocrSlipBillNo(o){
+  await window.ensureTesseractLib();
+  const img = await new Promise((ok,bad)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>ok(im); im.onerror=()=>bad(new Error("slip image load failed")); im.src=o.paymentSlipUrl; });
+  const sc = img.naturalWidth < 1400 ? 2 : 1;
+  const cv = document.createElement("canvas"); cv.width = img.naturalWidth*sc; cv.height = img.naturalHeight*sc;
+  cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+  if(!STATE.slipOcrWorker) STATE.slipOcrWorker = await window.Tesseract.createWorker("eng");
+  const r = await STATE.slipOcrWorker.recognize(cv);
+  const text = String((r && r.data && r.data.text) || "");
+  const cands = (text.match(/\d[\d ]{11,17}\d/g)||[]).map(x=>x.replace(/ /g,"")).concat(text.match(/\d{13,15}/g)||[]);
+  return cands.find(n=>slipBillValid(n, o.createdAt)) || null;
+}
+// Runs in the background after the payment list is loaded: pending online orders with a slip, no QR ticket, no match yet.
+function autoOcrSlipBills(){
+  slipBillCacheLoad();
+  if(STATE.slipOcrRunning) return;
+  const todo = (STATE.data.onlineOrders||[]).filter(o=>o.status==="pending_review" && o.paymentMethod!=="cod" && o.paymentSlipUrl
+    && !(o.slipCheck && (o.slipCheck.ticket || (o.slipCheck.bcel && o.slipCheck.bcel.ticket) || o.slipCheck.ldb_ref))
+    && !(STATE.onlinePayMatches||{})[o.id] && !STATE.slipBillCache[o.id] && !STATE.slipBillTried[o.id]);
+  if(!todo.length) return;
+  STATE.slipOcrRunning = true;
+  (async()=>{
+    try{
+      for(const o of todo.slice(0,8)){
+        let bn = null;
+        try{ bn = await ocrSlipBillNo(o); }catch(e){ console.warn("slip bill OCR failed", o.orderNo, e); continue; }
+        if(bn) STATE.slipBillCache[o.id] = bn;
+        STATE.slipBillTried[o.id] = Date.now(); slipBillCacheSave();
+        STATE.onlinePayMatches = computeOnlinePaymentMatches(STATE.data.onlineOrders||[], STATE.onlinePayTxns||[]);
+        render();
+      }
+    } finally {
+      STATE.slipOcrRunning = false;
+      try{ if(STATE.slipOcrWorker){ await STATE.slipOcrWorker.terminate(); STATE.slipOcrWorker = null; } }catch(e){}
+    }
+  })();
+}
 function renderOnlinePaymentLine(o){
   if(o.paymentMethod==="cod" || o.status==="cancelled") return "";
   const m = (STATE.onlinePayMatches||{})[o.id];
   const when = (iso)=>esc(fmtOnlineOrderDateTime(iso));
-  if(m && m.level==="exact") return `<div style="flex-basis:100%; padding:6px 10px; border-radius:8px; background:#EAF3DE; color:#2f6a1c; font-weight:700;">💰 ເງິນເຂົ້າບັນຊີຮ້ານແລ້ວ (OnePay Shop) <span style="font-weight:400;">— ${fmt(m.tx.amount_kip)} ກີບ · ${when(m.tx.paid_at)} · ອ້າງອີງ ${esc(m.tx.ref)}</span></div>`;
+  if(m && m.level==="exact") return `<div style="flex-basis:100%; padding:6px 10px; border-radius:8px; background:#EAF3DE; color:#2f6a1c; font-weight:700;">💰 ເງິນເຂົ້າບັນຊີຮ້ານແລ້ວ (OnePay Shop) <span style="font-weight:400;">— ${fmt(m.tx.amount_kip)} ກີບ · ${when(m.tx.paid_at)} · ${m.via==="bill" ? "ເລກບິນ "+esc(m.tx.fccref||"")+(m.fuzzy?" (ອ່ານຮູບຄາດເຄື່ອນເລັກນ້ອຍ ແຕ່ຍອດກົງ ແລະມີຄູ່ດຽວ — ກວດດ້ວຍຕາ)":"") : "ອ້າງອີງ "+esc(m.tx.ref)}</span></div>`;
   if(m && m.level==="amount") return `<div style="flex-basis:100%; padding:6px 10px; border-radius:8px; background:#FAEEDA; color:#854F0B;">🟡 ພົບເງິນເຂົ້າຍອດຕົງກັນ (ຈັບຄູ່ຈາກຍອດ+ເວລາ ບໍ່ແມ່ນເລກອ້າງອີງ) — ${fmt(m.tx.amount_kip)} ກີບ · ${when(m.tx.paid_at)} · ${esc(m.tx.payment_type||"")} ${esc(m.tx.customer_masked||"")}${m.count>1?` · ມີ ${m.count} ລາຍການຍອດເທົ່ານີ້ ກວດດ້ວຍຕາ`:""}</div>`;
   const last = STATE.onlinePayLastDataAt;
   if(!last) return `<div style="flex-basis:100%;" class="small-muted">💰 ຍັງບໍ່ມີຂໍ້ມູນ OnePay Shop — ກົດ "📥 ອັບໂຫຼດ Excel OnePay Shop"</div>`;
@@ -12977,9 +13059,11 @@ async function loadOnlinePayments(){
     STATE.onlinePayTxns = tx.data||[];
     STATE.onlinePayLastDataAt = (STATE.onlinePayTxns[0] && STATE.onlinePayTxns[0].paid_at) || null;
     STATE.onlinePaySync = st.data||null;
+    slipBillCacheLoad();
     STATE.onlinePayMatches = computeOnlinePaymentMatches(STATE.data.onlineOrders||[], STATE.onlinePayTxns);
   }catch(e){ console.error("loadOnlinePayments failed:", e); }
   render();
+  try{ autoOcrSlipBills(); }catch(e){ console.warn("autoOcrSlipBills failed", e); }
 }
 async function importOnePayExcel(file){
   try{
