@@ -483,3 +483,28 @@ end $$;
 --     return jsonb_build_object('conflict', true, 'version', s.version);
 --   end if;
 -- in ms_sheet_since: "kind in ('meta','bulk') and tab_id is distinct from '__info'"; ms_sheet_rename/trash/access_set insert tab_id '__info'.
+
+-- ===== v8.75: automatic re-mapping of a stale client's cell edits (applied live: ms_sheet_ops_rebase_v1, ms_sheet_ops_since_null_fix) =====
+-- ms_sheet_apply: each note {t,tab,sub,op} is stored as a 'meta' row with tab_id = note.sub and new_cell = note.op  (op = {k:'rr'|'ir'|'rc'|'ic'|'x', a, n}).
+--   (text-patched: insert into ms_sheet_changes(sheet_id,version,tab_id,tab_name,kind,new_text,new_cell,user_id,user_name) values (..., nullif(left(nt->>'sub',100),''), ..., case when jsonb_typeof(nt->'op')='object' then nt->'op' else null end, ...))
+-- ms_sheet_ops_since(p_id, p_since) -> {version, safe, ops:[{v,tab,k,a,n}]}: safe=false if any structural row after p_since has no recorded op
+--   (sort, move rows, add/delete sheet, generic structural change, old clients). Use coalesce() around jsonb "?" / "in": NULL made "not (...)" NULL.
+create or replace function public.ms_sheet_ops_since(p_id uuid, p_since bigint) returns jsonb
+language plpgsql stable security definer set search_path to 'public','extensions' as $$
+declare a record; s public.ms_sheets; unsafe boolean; ops jsonb;
+begin
+  select * into a from public.ms_sheet_actor();
+  if a.o_id is null then raise exception 'not allowed'; end if;
+  select * into s from public.ms_sheets where id = p_id and public.ms_sheet_vis(ms_sheets,a.o_id,a.o_name,a.o_role) and deleted_at is null;
+  if s.id is null then raise exception 'not found'; end if;
+  select exists (
+    select 1 from public.ms_sheet_changes c
+    where c.sheet_id = p_id and c.version > p_since and c.kind in ('meta','bulk') and c.tab_id is distinct from '__info'
+      and not ( (c.kind = 'meta' and coalesce(c.new_cell ? 'k', false))
+             or (c.kind = 'bulk' and exists (select 1 from public.ms_sheet_changes d where d.sheet_id = c.sheet_id and d.version = c.version and d.kind = 'meta' and coalesce(d.new_cell->>'k' in ('rr','ir','rc','ic'), false))) )
+  ) into unsafe;
+  select coalesce(jsonb_agg(jsonb_build_object('v',c.version,'tab',c.tab_id,'k',c.new_cell->>'k','a',(c.new_cell->>'a')::int,'n',(c.new_cell->>'n')::int) order by c.id),'[]'::jsonb) into ops
+    from public.ms_sheet_changes c where c.sheet_id = p_id and c.version > p_since and c.kind = 'meta' and coalesce(c.new_cell->>'k' in ('rr','ir','rc','ic'), false);
+  return jsonb_build_object('version', s.version, 'safe', not unsafe, 'ops', ops);
+end $$;
+grant execute on function public.ms_sheet_ops_since(uuid,bigint) to anon, authenticated;

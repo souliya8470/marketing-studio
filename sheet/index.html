@@ -411,14 +411,27 @@ function describeStruct(cid, p){
   }
   return null;
 }
+// machine-readable form of a structural action: rr/ir = remove/insert rows, rc/ic = remove/insert columns (a = first index, n = count),
+// x = changes layout but moves no cells. Other accounts re-map their pending cell edits through these (see rebaseEdits).
+function opOf(cid, p){
+  if(!p || cid.indexOf("sheet.mutation.")!==0) return null;
+  const g = p.range, k = cid.slice(15);
+  if(k==="remove-rows" && g) return {k:"rr", a:g.startRow, n:g.endRow-g.startRow+1};
+  if(k==="insert-row" && g) return {k:"ir", a:g.startRow, n:g.endRow-g.startRow+1};
+  if(k==="remove-col" && g) return {k:"rc", a:g.startColumn, n:g.endColumn-g.startColumn+1};
+  if(k==="insert-col" && g) return {k:"ic", a:g.startColumn, n:g.endColumn-g.startColumn+1};
+  if(/^(set-worksheet-row-height|set-worksheet-col-width|set-row-hidden|set-row-visible|set-col-hidden|set-col-visible|add-worksheet-merge|remove-worksheet-merge|set-frozen)$/.test(k)) return {k:"x"};
+  return null;      // move-rows, move-range ...: moves cells without a recorded operation
+}
 function noteStruct(cid, p){
   if(S.applyingRemote || S.loading || !S.canEdit) return;
   let t = null; try{ t = describeStruct(cid, p); }catch(e){ console.error(e); }
   if(!t) return;
   let tab = ""; try{ tab = S.boot.univerAPI.getActiveWorkbook().getSheetBySheetId(p.subUnitId).getSheetName(); }catch(e){}
+  const op = opOf(cid, p);
   const last = S.notes[S.notes.length-1];
-  if(last && last.t===t && last.tab===tab) return;
-  if(S.notes.length < 60) S.notes.push({t:t.slice(0,600), tab:tab});
+  if((!op || op.k==="x") && last && last.t===t && last.tab===tab) return;     // drag noise; row/column insert/delete are never merged
+  if(S.notes.length < 60) S.notes.push({t:t.slice(0,600), tab:tab, sub:p.subUnitId, op:op});
 }
 function markDirty(){
   if(!S.canEdit || S.applyingRemote || S.loading) return;      // loading: grid is being (re)built, its own start-up commands are not user edits
@@ -462,7 +475,7 @@ async function save(keepalive){
       base = res.version; first = false;
     }
     if(!S.sheet || S.sheet.id !== sheetId) { S.saving=false; return true; }
-    if(res && res.conflict){ onConflict(sheetId); return false; }
+    if(res && res.conflict){ onConflict(sheetId, patch, before, notes, chunkPatch(patch,3000).length); return false; }
     S.baseline = cur; S.version = res.version; S.retry = 0;
     S.dirty = false; S.saving = false;
     setStatus("","✓ ບັນທຶກແລ້ວ "+nowTxt());
@@ -498,29 +511,86 @@ function userBusy(){
 document.addEventListener("pointerdown", ()=>{ S.mouseDown = Date.now(); }, true);
 ["pointerup","pointercancel","dragend"].forEach(ev=>window.addEventListener(ev, ()=>{ S.mouseDown = 0; }, true));
 window.addEventListener("blur", ()=>{ S.mouseDown = 0; });
-function warnBar(lines){
+function warnBar(lines, good){
   let b = $("warnBar");
-  if(!b){ b = document.createElement("div"); b.id="warnBar"; b.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:min(560px,94vw);background:#fff4ce;color:#5c3d00;border:1px solid #e0b84a;border-radius:6px;padding:12px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;line-height:1.5"; document.body.appendChild(b); }
-  b.innerHTML = lines.map((t,i)=>'<div style="'+(i===0?"font-weight:700;margin-bottom:4px":"")+'">'+esc(t)+'</div>').join("") + '<div style="text-align:right;margin-top:8px"><button style="border:1px solid #c8a24a;background:#fff;border-radius:4px;padding:4px 14px;cursor:pointer;font:inherit">ຕົກລົງ ເຂົ້າໃຈແລ້ວ</button></div>';
+  if(!b){ b = document.createElement("div"); b.id="warnBar"; document.body.appendChild(b); }
+  b.style.cssText = "position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:min(560px,94vw);border-radius:6px;padding:12px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;line-height:1.5;"
+    + (good ? "background:#e6f4ea;color:#14532d;border:1px solid #86c99a" : "background:#fff4ce;color:#5c3d00;border:1px solid #e0b84a");
+  b.innerHTML = lines.map((t,i)=>'<div style="'+(i===0?"font-weight:700;margin-bottom:4px":"")+'">'+esc(t)+'</div>').join("") + '<div style="text-align:right;margin-top:8px"><button style="border:1px solid #9a9a9a;background:#fff;border-radius:4px;padding:4px 14px;cursor:pointer;font:inherit">ຕົກລົງ ເຂົ້າໃຈແລ້ວ</button></div>';
   b.querySelector("button").onclick = ()=>b.remove();
+  clearTimeout(b._t); if(good) b._t = setTimeout(()=>{ try{ b.remove(); }catch(e){} }, 15000);
+}
+// Move cell coordinates through other people's row/column inserts and deletes (ops are in the order they happened).
+function xformCells(cells, ops){
+  const out = {}; let dropped = 0;
+  for(const k in cells){
+    const rc = k.split(",").map(Number); let r = rc[0], c = rc[1], alive = true;
+    for(const o of ops){
+      if(o.k==="rr"){ if(r>=o.a+o.n) r-=o.n; else if(r>=o.a){ alive=false; break; } }
+      else if(o.k==="ir"){ if(r>=o.a) r+=o.n; }
+      else if(o.k==="rc"){ if(c>=o.a+o.n) c-=o.n; else if(c>=o.a){ alive=false; break; } }
+      else if(o.k==="ic"){ if(c>=o.a) c+=o.n; }
+    }
+    if(alive) out[r+","+c] = cells[k]; else dropped++;
+  }
+  return {out, dropped};
+}
+// Put the re-mapped edits on the freshly loaded grid; the normal autosave then stores them.
+function applyRebase(rb){
+  try{
+    const api = S.boot.univerAPI, wb = api.getActiveWorkbook(), unitId = wb.getId();
+    for(const tab in rb.tabs){
+      if(!wb.getSheetBySheetId(tab)) continue;
+      const cellValue = {};
+      for(const k in rb.tabs[tab]){ const rc = k.split(",").map(Number); (cellValue[rc[0]] = cellValue[rc[0]] || {})[rc[1]] = rb.tabs[tab][k] ? toCellData(rb.tabs[tab][k]) : null; }
+      api.syncExecuteCommand("sheet.mutation.set-range-values", {unitId, subUnitId: tab, cellValue});
+    }
+    markDirty();
+  }catch(e){ console.error("rebase failed", e); warnBar(["⚠ ຍ້າຍຂໍ້ມູນທີ່ທ່ານແກ້ບໍ່ສຳເລັດ","ກະລຸນາພິມຄືນສິ່ງທີ່ທ່ານແກ້ຄັ້ງສຸດທ້າຍ."]); }
 }
 // Server refused our save because someone else changed the structure (insert/delete row or column...) after our grid was loaded.
-async function onConflict(sheetId){
+// If every such change is a known row/column insert/delete, our pending cell edits are re-mapped onto the new layout automatically.
+async function onConflict(sheetId, patch, base, notes, chunks){
   S.saving = false; S.conflict = true; S.dirty = false; clearTimeout(S.timer); S.notes = [];
   setStatus("bad","⚠ ມີຄົນອື່ນປ່ຽນແຖວ/ຖັນ — ກຳລັງໂຫຼດໃໝ່");
-  // say WHO did WHAT (latest structural line of the file history made by somebody else)
+  // WHO did WHAT (latest structural line of the file history made by somebody else)
   let who = "";
   try{
     const log = await rpc("ms_sheet_log", {p_id: sheetId, p_limit: 12});
     const me = S.me && S.me.name;
     const x = (log||[]).find(r=>(r.kind==="meta"||r.kind==="bulk") && r.user_name!==me && r.new_text && !/ຫຼາຍຊ່ອງພ້ອມກັນ/.test(r.new_text)) || (log||[]).find(r=>(r.kind==="meta"||r.kind==="bulk") && r.user_name!==me);
-    if(x) who = "ເຮັດໂດຍ: "+x.user_name+" — "+String(x.new_text||"ປ່ຽນໂຄງສ້າງຕາຕະລາງ").split(" — ")[0].slice(0,80);
+    if(x) who = x.user_name+" — "+String(x.new_text||"ປ່ຽນໂຄງສ້າງຕາຕະລາງ").split(" — ")[0].slice(0,80);
   }catch(e){ console.error(e); }
-  const lines = ["ມີຄົນອື່ນລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ ໃນຂະນະທີ່ທ່ານກຳລັງແກ້"];
-  if(who) lines.push(who);
-  lines.push("ສິ່ງທີ່ທ່ານແກ້ຄັ້ງສຸດທ້າຍ ບໍ່ໄດ້ຖືກບັນທຶກ. ໜ້າຈໍໂຫຼດຂໍ້ມູນຫຼ້າສຸດໃຫ້ແລ້ວ.");
-  lines.push("ສິ່ງທີ່ຕ້ອງເຮັດ: ເບິ່ງຕາຕະລາງກ່ອນ ແລ້ວພິມຄືນສະເພາະສ່ວນທີ່ຍັງຂາດ. ຖ້າແຖວທີ່ທ່ານຢາກລຶບຖືກລຶບແລ້ວ ບໍ່ຕ້ອງລຶບອີກ.");
-  warnBar(lines);
+  // try to keep the user's edits
+  let kept = null, dropped = 0;
+  try{
+    const onlyCells = !notes.length && chunks===1 && Object.keys(patch.tabs).every(id=>{ const t=patch.tabs[id]; return t && t.cells && !t.del && !t.meta; });
+    if(onlyCells){
+      const r = await rpc("ms_sheet_ops_since", {p_id: sheetId, p_since: base});
+      if(r && r.safe){
+        kept = {tabs:{}}; let n = 0;
+        for(const id in patch.tabs){
+          const x = xformCells(patch.tabs[id].cells, (r.ops||[]).filter(o=>o.tab===id));
+          dropped += x.dropped; if(Object.keys(x.out).length){ kept.tabs[id] = x.out; n += Object.keys(x.out).length; }
+        }
+        if(!n) kept = null;
+      }
+    }
+  }catch(e){ console.error("rebase check failed", e); kept = null; }
+  if(kept){
+    S.rebase = kept;
+    const lines = ["ມີຄົນອື່ນລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ ໃນຂະນະທີ່ທ່ານກຳລັງແກ້"];
+    if(who) lines.push("ເຮັດໂດຍ: "+who);
+    lines.push("ລະບົບຍ້າຍສິ່ງທີ່ທ່ານແກ້ ໄປໃສ່ຕຳແໜ່ງທີ່ຖືກຕ້ອງໃຫ້ແລ້ວ ແລະ ກຳລັງບັນທຶກ — ບໍ່ຕ້ອງເຮັດຫຍັງ.");
+    if(dropped) lines.push("ມີ "+dropped+" ຊ່ອງຢູ່ໃນແຖວ/ຖັນທີ່ຖືກລຶບໄປແລ້ວ ຈຶ່ງບໍ່ໄດ້ບັນທຶກ.");
+    warnBar(lines, true);
+  } else {
+    const lines = ["ມີຄົນອື່ນລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ ໃນຂະນະທີ່ທ່ານກຳລັງແກ້"];
+    if(who) lines.push("ເຮັດໂດຍ: "+who);
+    lines.push("ສິ່ງທີ່ທ່ານແກ້ຄັ້ງສຸດທ້າຍ ບໍ່ໄດ້ຖືກບັນທຶກ. ໜ້າຈໍໂຫຼດຂໍ້ມູນຫຼ້າສຸດໃຫ້ແລ້ວ.");
+    lines.push("ສິ່ງທີ່ຕ້ອງເຮັດ: ເບິ່ງຕາຕະລາງກ່ອນ ແລ້ວພິມຄືນສະເພາະສ່ວນທີ່ຍັງຂາດ. ຖ້າແຖວທີ່ທ່ານຢາກລຶບຖືກລຶບແລ້ວ ບໍ່ຕ້ອງລຶບອີກ.");
+    warnBar(lines);
+  }
   pullRemote();
 }
 async function pullRemote(skipKeys, sinceOverride){
@@ -940,6 +1010,7 @@ async function openSheet(id, keepActiveTab, soft){
   }
   S.baseline = extract(snapshot(), false);
   S.loading = false; S.dirty = false; clearTimeout(S.timer);
+  if(S.rebase){ const rb = S.rebase; S.rebase = null; applyRebase(rb); }
   // a brand-new/empty file: make the default tab exist on the server too
   if(!Object.keys(row.tabs||{}).length && S.canEdit) markDirty();
   setStatus("", S.canEdit ? "✓ ບັນທຶກແລ້ວ" : "🔒 ເບິ່ງໄດ້ຢ່າງດຽວ");
