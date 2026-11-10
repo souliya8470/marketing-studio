@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.78"; // v8.78 NEW (Tar 2026-11-10, "ອ່ານເລກບິນ 15 ຫຼັກຈາກສະລິບແບບດຽວກັບບິນຂົນສົ່ງ"): online orders whose slip has NO readable QR (slips from OTHER banks paying into the BCEL account, e.g. L00259) are now matched to the real money received by the BILL NUMBER printed on the slip ("ເລກບິນ", 13-15 digits starting with the date, e.g. 202611096116237) = column fccref of onepay_transactions (filled automatically every 5 min by the n8n job onepay-sync). The slip image is read in the browser with Tesseract (digits only, same library as the courier bills); the number must start with the transfer date (YYYYMMDD within 1 day of the order) or it is ignored. If OCR is off by 1-2 digits the match is still accepted when the amount is equal and exactly ONE transaction fits (shown with a note). Also: LDB slips match by their LDB reference (slip_check.ldb_ref = ref of the LAPNET row) when the amount is equal. Display only - staff still press confirm. Result of the OCR is cached in localStorage (ms_slip_bill_v1) so each slip is read once.
+const APP_VERSION = "8.79"; // v8.79 CHANGE (Tar 2026-11-10, "ຢາກໃຫ້ກວດຍ້ອນຫຼັງໄດ້ ເຊັ່ນ L00259 ທີ່ຢືນຢັນແລ້ວ"): the slip bill-number OCR of v8.78 now also runs for orders that are already CONFIRMED (not only pending), for orders of the last 21 days, up to 15 slips per page load. Nothing else changed.
+// (previous text of this slot, kept) v8.78 NEW (Tar 2026-11-10, "ອ່ານເລກບິນ 15 ຫຼັກຈາກສະລິບແບບດຽວກັບບິນຂົນສົ່ງ"): online orders whose slip has NO readable QR (slips from OTHER banks paying into the BCEL account, e.g. L00259) are now matched to the real money received by the BILL NUMBER printed on the slip ("ເລກບິນ", 13-15 digits starting with the date, e.g. 202611096116237) = column fccref of onepay_transactions (filled automatically every 5 min by the n8n job onepay-sync). The slip image is read in the browser with Tesseract (digits only, same library as the courier bills); the number must start with the transfer date (YYYYMMDD within 1 day of the order) or it is ignored. If OCR is off by 1-2 digits the match is still accepted when the amount is equal and exactly ONE transaction fits (shown with a note). Also: LDB slips match by their LDB reference (slip_check.ldb_ref = ref of the LAPNET row) when the amount is equal. Display only - staff still press confirm. Result of the OCR is cached in localStorage (ms_slip_bill_v1) so each slip is read once.
 // (previous text of this slot, kept) v8.77 FIX (Tar 2026-11-10: "when I copy a formula in the Excel tab by dragging the fill handle down, the formula does not come"): ROOT CAUSE found with a real mouse drag in Playwright: Univer stores a formula that is filled/copied down as a SHARED formula - only the first new cell has `f`, the others carry just `si` (+ the computed value) - and sheet/index.html extract() read only `cell.f`, so every filled cell below the first was saved as a plain number (formula lost on the server and for other accounts). FIX: extract() now asks the live workbook for the formula text of any `si`-only cell (liveFormula -> getRange().getFormula()). Verified: E6 formula dragged to E9 now saves f on all four rows. Formulas lost before this fix stay values (re-fill them). Only /sheet/ changed; this index.html edit only bumps APP_VERSION.
 // (previous text of this slot, kept) // v8.76 NEW (Tar 2026-11-10: "adopt the Excel 365 co-authoring principle, because working in Excel never had this problem"): two people deleting/inserting rows or columns at the same moment are now MERGED like Excel 365 instead of one losing the edit. sheet/index.html (no SQL change) transforms our own row/column operations through the ones saved by others since our grid version (operational transform: xformOp/rebaseOps, delete-vs-delete, delete-vs-insert, insert-vs-insert), then on conflict loads the latest grid, REPLAYS our insert/delete on it with Univer itself (so formulas are re-pointed by Univer, never by our code) and re-applies only the real cell edits (diff against the saved state moved through our own operations: shiftBaseline/shiftTabState/shiftFormula) at the right positions via the v8.75 rebase path. Safety: aborts to the v8.74 warning when the merge is impossible (insert inside a range we delete), someone changed structure again meanwhile (ms_sheet_ops_since re-checked after the reload), the user did sort/move-rows/sheet add-delete, more than 60 structural notes, or more than 200 residual edits. Server unchanged (a server-side OT experiment was built and rolled back: it cannot re-point formulas). Only /sheet/ changed; this index.html edit only bumps APP_VERSION.
 // (previous text of this slot, kept) // v8.75 NEW (Tar 2026-11-10: "staff in different departments do not know what the other is doing, and in the end my work is not saved - how do we make this not happen?"): edits are no longer thrown away when someone else inserts/deletes rows or columns at the same moment. sheet/index.html records every structural action as a machine-readable op (opOf: rr/ir = remove/insert rows, rc/ic = columns, x = layout only) in the notes sent to ms_sheet_apply (stored in ms_sheet_changes.new_cell, tab_id = sheet id). When the server refuses a stale save (v8.73 guard), onConflict() asks ms_sheet_ops_since(base) for the operations that happened meanwhile; if they are all known inserts/deletes (safe=true) the user's pending CELL edits are re-mapped through them (xformCells), the grid is reloaded, the edits are re-applied at the right place (applyRebase) and autosaved, and a green note explains it ("nothing to do"); only cells that sat inside a deleted row/column are dropped and counted. Falls back to the v8.74 yellow warning when: the user's own save contained a structural change, more than one chunk, or someone did something without a recorded op (sort, move rows, add/delete sheet, an old client). SQL applied live (ms_sheet_ops_rebase_v1, ms_sheet_ops_since_null_fix) and mirrored in supabase/sql/ms_sheets.sql. Only /sheet/ + SQL changed; this index.html edit only bumps APP_VERSION.
@@ -1620,7 +1621,7 @@ const APP_VERSION = "8.78"; // v8.78 NEW (Tar 2026-11-10, "ອ່ານເລກ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.77"; // (v8.77 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.78"; // (v8.78 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.73 slot:  (v8.73 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.71 slot:  (v8.71 text kept in the history comment lines of APP_VERSION above)
@@ -1727,7 +1728,7 @@ const APP_VERSION_PREV = "8.77"; // (v8.77 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.76"; // (v8.76 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.77"; // (v8.77 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.71 slot:  (v8.71 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.70 slot:  (v8.70 text kept in the history comment lines above)
@@ -13012,18 +13013,19 @@ async function ocrSlipBillNo(o){
   const cands = (text.match(/\d[\d ]{11,17}\d/g)||[]).map(x=>x.replace(/ /g,"")).concat(text.match(/\d{13,15}/g)||[]);
   return cands.find(n=>slipBillValid(n, o.createdAt)) || null;
 }
-// Runs in the background after the payment list is loaded: pending online orders with a slip, no QR ticket, no match yet.
+// Runs in the background after the payment list is loaded: online orders of the last 21 days (pending AND confirmed) with a slip, no QR ticket, no match yet.
 function autoOcrSlipBills(){
   slipBillCacheLoad();
   if(STATE.slipOcrRunning) return;
-  const todo = (STATE.data.onlineOrders||[]).filter(o=>o.status==="pending_review" && o.paymentMethod!=="cod" && o.paymentSlipUrl
+  const since21 = Date.now()-21*86400000;
+  const todo = (STATE.data.onlineOrders||[]).filter(o=>o.status!=="cancelled" && new Date(o.createdAt).getTime()>=since21 && o.paymentMethod!=="cod" && o.paymentSlipUrl
     && !(o.slipCheck && (o.slipCheck.ticket || (o.slipCheck.bcel && o.slipCheck.bcel.ticket) || o.slipCheck.ldb_ref))
     && !(STATE.onlinePayMatches||{})[o.id] && !STATE.slipBillCache[o.id] && !STATE.slipBillTried[o.id]);
   if(!todo.length) return;
   STATE.slipOcrRunning = true;
   (async()=>{
     try{
-      for(const o of todo.slice(0,8)){
+      for(const o of todo.slice(0,15)){
         let bn = null;
         try{ bn = await ocrSlipBillNo(o); }catch(e){ console.warn("slip bill OCR failed", o.orderNo, e); continue; }
         if(bn) STATE.slipBillCache[o.id] = bn;

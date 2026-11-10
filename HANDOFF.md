@@ -175,3 +175,6 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## v8.78 deployed (2026-11-10, Marketing Studio chat)
 - Uploaded by Tar from another chat: slip bill-number (15 digits) read from slip image, matches OnePay/LDB transactions. Verified: clean superset of main v8.77 (diff = v8.78 only), syntax OK, clock-in fix (refreshMyAttendance) still present.
 - Not live-tested by this chat.
+
+## v8.79 deployed (2026-11-10)
+- From other chat: slip bill-number reading now also covers confirmed orders of the last 21 days (up to 15 per run). Clean superset of v8.78, syntax OK, not live-tested here.
