@@ -498,17 +498,29 @@ function userBusy(){
 document.addEventListener("pointerdown", ()=>{ S.mouseDown = Date.now(); }, true);
 ["pointerup","pointercancel","dragend"].forEach(ev=>window.addEventListener(ev, ()=>{ S.mouseDown = 0; }, true));
 window.addEventListener("blur", ()=>{ S.mouseDown = 0; });
-function warnBar(msg){
+function warnBar(lines){
   let b = $("warnBar");
-  if(!b){ b = document.createElement("div"); b.id="warnBar"; b.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:min(680px,94vw);background:#fff4ce;color:#5c3d00;border:1px solid #e0b84a;border-radius:6px;padding:10px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;display:flex;gap:12px;align-items:flex-start"; document.body.appendChild(b); }
-  b.innerHTML = '<div style="flex:1">'+esc(msg)+'</div><button style="border:1px solid #c8a24a;background:#fff;border-radius:4px;padding:3px 10px;cursor:pointer">ຕົກລົງ</button>';
+  if(!b){ b = document.createElement("div"); b.id="warnBar"; b.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:min(560px,94vw);background:#fff4ce;color:#5c3d00;border:1px solid #e0b84a;border-radius:6px;padding:12px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;line-height:1.5"; document.body.appendChild(b); }
+  b.innerHTML = lines.map((t,i)=>'<div style="'+(i===0?"font-weight:700;margin-bottom:4px":"")+'">'+esc(t)+'</div>').join("") + '<div style="text-align:right;margin-top:8px"><button style="border:1px solid #c8a24a;background:#fff;border-radius:4px;padding:4px 14px;cursor:pointer;font:inherit">ຕົກລົງ ເຂົ້າໃຈແລ້ວ</button></div>';
   b.querySelector("button").onclick = ()=>b.remove();
 }
 // Server refused our save because someone else changed the structure (insert/delete row or column...) after our grid was loaded.
-function onConflict(sheetId){
+async function onConflict(sheetId){
   S.saving = false; S.conflict = true; S.dirty = false; clearTimeout(S.timer); S.notes = [];
-  setStatus("bad","⚠ ມີຄົນອື່ນປ່ຽນໂຄງສ້າງຕາຕະລາງ — ກຳລັງໂຫຼດໃໝ່");
-  warnBar("⚠ ຄົນອື່ນຫາກໍປ່ຽນໂຄງສ້າງຕາຕະລາງ (ລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ). ການແກ້ໄຂຫຼ້າສຸດຂອງທ່ານບໍ່ໄດ້ຖືກບັນທຶກ ເພື່ອບໍ່ໃຫ້ຂໍ້ມູນປົນກັນ. ລະບົບໂຫຼດຂໍ້ມູນຫຼ້າສຸດໃຫ້ແລ້ວ ກະລຸນາເຮັດຄືນ.");
+  setStatus("bad","⚠ ມີຄົນອື່ນປ່ຽນແຖວ/ຖັນ — ກຳລັງໂຫຼດໃໝ່");
+  // say WHO did WHAT (latest structural line of the file history made by somebody else)
+  let who = "";
+  try{
+    const log = await rpc("ms_sheet_log", {p_id: sheetId, p_limit: 12});
+    const me = S.me && S.me.name;
+    const x = (log||[]).find(r=>(r.kind==="meta"||r.kind==="bulk") && r.user_name!==me && r.new_text && !/ຫຼາຍຊ່ອງພ້ອມກັນ/.test(r.new_text)) || (log||[]).find(r=>(r.kind==="meta"||r.kind==="bulk") && r.user_name!==me);
+    if(x) who = "ເຮັດໂດຍ: "+x.user_name+" — "+String(x.new_text||"ປ່ຽນໂຄງສ້າງຕາຕະລາງ").split(" — ")[0].slice(0,80);
+  }catch(e){ console.error(e); }
+  const lines = ["ມີຄົນອື່ນລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ ໃນຂະນະທີ່ທ່ານກຳລັງແກ້"];
+  if(who) lines.push(who);
+  lines.push("ສິ່ງທີ່ທ່ານແກ້ຄັ້ງສຸດທ້າຍ ບໍ່ໄດ້ຖືກບັນທຶກ. ໜ້າຈໍໂຫຼດຂໍ້ມູນຫຼ້າສຸດໃຫ້ແລ້ວ.");
+  lines.push("ສິ່ງທີ່ຕ້ອງເຮັດ: ເບິ່ງຕາຕະລາງກ່ອນ ແລ້ວພິມຄືນສະເພາະສ່ວນທີ່ຍັງຂາດ. ຖ້າແຖວທີ່ທ່ານຢາກລຶບຖືກລຶບແລ້ວ ບໍ່ຕ້ອງລຶບອີກ.");
+  warnBar(lines);
   pullRemote();
 }
 async function pullRemote(skipKeys, sinceOverride){
