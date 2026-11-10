@@ -192,3 +192,6 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - ROOT CAUSE of red "ຍັງບໍ່ເຫັນເງິນເຂົ້າ OnePay Shop" on older orders (e.g. L00244, BCEL slip verified OK, ref BERQJVGQL2QN, 53,000, 09/11 10:43): `onepay_transactions` has only 106 rows, ALL imported by n8n (source auto_9225) from 2026-11-10 16:01, oldest paid_at = 09/11 13:15:44. Nothing before that exists, so every order paid before 09/11 13:15 shows red although the money is real.
 - Fix A (data): backfill the OnePay Shop list for earlier dates (needs the BCEL portal export / n8n run with an earlier start date — n8n is on Tar's server PC).
 - Fix B (UI, v8.80+): if order paid time < earliest row in `onepay_transactions`, show neutral "ຍັງບໍ່ມີຂໍ້ມູນ OnePay ຊ່ວງນີ້" instead of red.
+
+## Slip case-study file (2026-11-10)
+- Full analysis of all confirmed online orders is in `docs/slip-case-studies.md` (8 cases + priority list A–F). The slip-feature chat should read it before changing matching. Add new real cases there first.
