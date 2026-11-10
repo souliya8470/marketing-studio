@@ -431,7 +431,121 @@ function noteStruct(cid, p){
   const op = opOf(cid, p);
   const last = S.notes[S.notes.length-1];
   if((!op || op.k==="x") && last && last.t===t && last.tab===tab) return;     // drag noise; row/column insert/delete are never merged
-  if(S.notes.length < 60) S.notes.push({t:t.slice(0,600), tab:tab, sub:p.subUnitId, op:op});
+  if(S.notes.length < 60) S.notes.push({t:t.slice(0,600), tab:tab, sub:p.subUnitId, op:op}); else S.notesOver = true;
+}
+/* ---------- v8.76: Excel-365-style merge of simultaneous row/column insert/delete ----------
+   When the server refuses a save because someone else inserted/deleted rows or columns in the meantime, our own insert/delete operations are
+   transformed through theirs (operational transform), the latest grid is loaded, our operations are REPLAYED on it (Univer itself re-points the
+   formulas) and only the real cell edits - not the cells that merely slid because of our own delete - are re-applied at their new positions. */
+function shiftIdx(i, o){
+  if(o.k==="rr" || o.k==="rc"){ if(i < o.a) return i; if(i >= o.a+o.n) return i-o.n; return null; }
+  return i >= o.a ? i+o.n : i;
+}
+function colIdx(L){ let n = 0; L = L.toUpperCase(); for(let i=0;i<L.length;i++) n = n*26 + (L.charCodeAt(i)-64); return n-1; }
+// formula references that point at the sheet `opSheet` follow the insert/delete (single refs -> #REF! when deleted, ranges shrink/grow)
+function shiftFormula(f, o, ownSheet, opSheet){
+  if(typeof f!=="string" || f.indexOf("=")!==0) return f;
+  const row = o.k==="rr" || o.k==="ir", del = o.k==="rr" || o.k==="rc";
+  const RE = /((?:'[^']+'|[A-Za-z0-9_຀-໿.]+)!)?(\$?)([A-Za-z]{1,3})(\$?)(\d+)(?::(\$?)([A-Za-z]{1,3})(\$?)(\d+))?(?![A-Za-z0-9_(])/g;
+  const parts = f.split(/("(?:[^"]|"")*")/);
+  for(let pi=0; pi<parts.length; pi+=2){
+    parts[pi] = parts[pi].replace(RE, (m, sh, d1, c1, d2, r1, d3, c2, d4, r2, off, str)=>{
+      if(off>0 && /[A-Za-z0-9_.]/.test(str[off-1])) return m;
+      const refSheet = sh ? sh.slice(0,-1).replace(/^'|'$/g,"") : ownSheet;
+      if(refSheet !== opSheet) return m;
+      const pre = sh || "";
+      const ax = (c, r)=> row ? (+r)-1 : colIdx(c);
+      if(c2===undefined){
+        const ni = shiftIdx(ax(c1, r1), o);
+        if(ni==null) return "#REF!";
+        return pre + (row ? d1+c1+d2+(ni+1) : d1+colName(ni)+d2+r1);
+      }
+      let i1 = ax(c1, r1), i2 = ax(c2, r2);
+      if(i1 > i2){ const t=i1; i1=i2; i2=t; }
+      let n1, n2;
+      if(del){ n1 = i1 < o.a ? i1 : (i1 >= o.a+o.n ? i1-o.n : o.a); n2 = i2 < o.a ? i2 : (i2 >= o.a+o.n ? i2-o.n : o.a-1); if(n2 < n1) return "#REF!"; }
+      else { n1 = i1 >= o.a ? i1+o.n : i1; n2 = i2 >= o.a ? i2+o.n : i2; }
+      return pre + (row ? d1+c1+d2+(n1+1)+":"+d3+c2+d4+(n2+1) : d1+colName(n1)+d2+r1+":"+d3+colName(n2)+d4+r2);
+    });
+  }
+  return parts.join("");
+}
+function shiftTabState(t, o){
+  const row = o.k==="rr" || o.k==="ir", del = o.k==="rr" || o.k==="rc";
+  const cells = {};
+  for(const key in t.cells){
+    const p = key.split(","), r = +p[0], c = +p[1], ni = shiftIdx(row ? r : c, o);
+    if(ni==null) continue;
+    cells[(row ? ni : r)+","+(row ? c : ni)] = t.cells[key];
+  }
+  const m = Object.assign({}, t.meta || {});
+  const ok = row ? "rowh" : "colw", hk = row ? "hrows" : "hcols", cnt = row ? "rows" : "cols", sk = row ? "startRow" : "startColumn", ek = row ? "endRow" : "endColumn";
+  if(m[ok]){ const x = {}; for(const i in m[ok]){ const ni = shiftIdx(+i, o); if(ni!=null) x[ni] = m[ok][i]; } if(Object.keys(x).length) m[ok] = x; else delete m[ok]; }
+  if(m[hk]){ const x = m[hk].map(i=>shiftIdx(i, o)).filter(i=>i!=null).sort((a,b)=>a-b); if(x.length) m[hk] = x; else delete m[hk]; }
+  if(typeof m[cnt]==="number") m[cnt] = Math.max(1, m[cnt] + (del ? -o.n : o.n));
+  if(m.merges){
+    const x = [];
+    for(const g of m.merges){
+      if(g[ek] < o.a) x.push(g);
+      else if(del && g[sk] >= o.a+o.n){ const h = Object.assign({}, g); h[sk] -= o.n; h[ek] -= o.n; x.push(h); }
+      else if(del) continue;
+      else if(g[sk] >= o.a){ const h = Object.assign({}, g); h[sk] += o.n; h[ek] += o.n; x.push(h); }
+      else { const h = Object.assign({}, g); h[ek] += o.n; x.push(h); }
+    }
+    x.sort((a,b)=>a.startRow-b.startRow || a.startColumn-b.startColumn);
+    if(x.length) m.merges = x; else delete m.merges;
+  }
+  return {meta: m, cells};
+}
+// saved state moved through our own operations (what the grid would look like after them, without any real edit)
+function shiftBaseline(base, notes){
+  let out = base;
+  for(const n of notes){
+    const o = n.op; if(!o || !out[n.sub]) continue;
+    const opSheet = out[n.sub].meta && out[n.sub].meta.name, next = {};
+    for(const id in out){
+      let t = id===n.sub ? shiftTabState(out[id], o) : out[id];
+      const own = out[id].meta && out[id].meta.name, cells = {};
+      for(const k in t.cells){ const c = t.cells[k]; if(c && typeof c.f==="string"){ const f2 = shiftFormula(c.f, o, own, opSheet); cells[k] = f2===c.f ? c : Object.assign({}, c, {f:f2}); } else cells[k] = c; }
+      next[id] = {meta: t.meta, cells};
+    }
+    out = next;
+  }
+  return out;
+}
+// transform operation `op` so that it applies after `oth` (null = cannot be merged: insert inside a range we delete)
+function xformOp(op, oth, othFirst){
+  const k = op.k, ok = oth.k;
+  if(op.tab !== oth.tab) return op;
+  if(!((k==="rr"||k==="ir") && (ok==="rr"||ok==="ir") || (k==="rc"||k==="ic") && (ok==="rc"||ok==="ic"))) return op;
+  const a = op.a, n = op.n, b = oth.a, m = oth.n; if(!m) return op;
+  const o = Object.assign({}, op);
+  if(k==="rr" || k==="rc"){
+    if(ok==="rr" || ok==="rc"){
+      const e = a+n, a2 = a <= b ? a : (a >= b+m ? a-m : b), e2 = e <= b ? e : (e >= b+m ? e-m : b);
+      o.a = a2; o.n = e2-a2; return o;
+    }
+    if(b <= a){ o.a = a+m; return o; }
+    if(b >= a+n) return o;
+    return null;
+  }
+  if(ok==="rr" || ok==="rc"){ o.a = a <= b ? a : (a >= b+m ? a-m : b); return o; }
+  if(b < a || (b === a && othFirst)) o.a = a+m;
+  return o;
+}
+// ours = our operations since the base version, theirs = the ones others saved since. -> {ours2: ours on the latest grid, theirs2: theirs seen from our grid}
+function rebaseOps(ours, theirs){
+  const o = ours.map(x=>Object.assign({}, x)), theirs2 = [];
+  for(const t of theirs){
+    let tc = Object.assign({}, t);
+    for(let i=0;i<o.length;i++){
+      const x1 = xformOp(o[i], tc, true), x2 = xformOp(tc, o[i], false);
+      if(!x1 || !x2) return null;
+      o[i] = x1; tc = x2;
+    }
+    theirs2.push(tc);
+  }
+  return {ours2: o, theirs2};
 }
 function markDirty(){
   if(!S.canEdit || S.applyingRemote || S.loading) return;      // loading: grid is being (re)built, its own start-up commands are not user edits
@@ -460,6 +574,7 @@ async function save(keepalive){
   try{ cur = extract(snapshot(), false); }catch(e){ console.error(e); return false; }
   let patch = makePatch(S.baseline, cur);
   const notes = S.notes.splice(0, S.notes.length);
+  const notesOver = S.notesOver; S.notesOver = false;
   if(!patch && !notes.length){ S.dirty = false; setStatus("","✓ ບັນທຶກແລ້ວ "+nowTxt()); return true; }
   if(!patch) patch = {tabs:{}, n:0};
   S.saving = true; setStatus("","ກຳລັງບັນທຶກ...");
@@ -475,7 +590,7 @@ async function save(keepalive){
       base = res.version; first = false;
     }
     if(!S.sheet || S.sheet.id !== sheetId) { S.saving=false; return true; }
-    if(res && res.conflict){ onConflict(sheetId, patch, before, notes, chunkPatch(patch,3000).length); return false; }
+    if(res && res.conflict){ onConflict(sheetId, patch, before, notes, chunkPatch(patch,3000).length, cur, notesOver); return false; }
     S.baseline = cur; S.version = res.version; S.retry = 0;
     S.dirty = false; S.saving = false;
     setStatus("","✓ ບັນທຶກແລ້ວ "+nowTxt());
@@ -484,7 +599,7 @@ async function save(keepalive){
     if(S.saveAgain){ S.saveAgain=false; markDirty(); }
     return true;
   }catch(e){
-    S.saving = false; console.error("save failed", e); S.notes = notes.concat(S.notes).slice(0,60);
+    S.saving = false; console.error("save failed", e); S.notes = notes.concat(S.notes).slice(0,60); if(notesOver) S.notesOver = true;
     if(/read only/i.test(e.message||"")){ setStatus("bad","🔒 ໄຟລ໌ນີ້ເບິ່ງໄດ້ຢ່າງດຽວ"); S.canEdit=false; try{ S.boot.univerAPI.getActiveWorkbook().setEditable(false); }catch(_){} return false; }
     setStatus("bad","⚠ ບັນທຶກບໍ່ສຳເລັດ"+(S.retry<6 ? " — ກຳລັງລອງໃໝ່ ຢ່າປິດໜ້ານີ້" : " — ກົດ 💾 ບັນທຶກ"));
     if(S.retry++ < 6){ clearTimeout(S.timer); S.timer = setTimeout(()=>save(false), Math.min(30000, 4000*S.retry)); }
@@ -536,9 +651,25 @@ function xformCells(cells, ops){
   return {out, dropped};
 }
 // Put the re-mapped edits on the freshly loaded grid; the normal autosave then stores them.
-function applyRebase(rb){
+async function applyRebase(rb){
   try{
-    const api = S.boot.univerAPI, wb = api.getActiveWorkbook(), unitId = wb.getId();
+    const api = S.boot.univerAPI, wb = api.getActiveWorkbook(), unitId = wb.getId(), sheetId = S.sheet && S.sheet.id;
+    if(rb.ops && rb.ops.length){
+      // the grid we merged against must still be the latest one: no other row/column change may have slipped in since
+      const chk = await rpc("ms_sheet_ops_since", {p_id: sheetId, p_since: rb.ver});
+      if(!S.sheet || S.sheet.id!==sheetId) return;
+      if(!chk || !chk.safe || (chk.ops||[]).length){
+        warnBar(["ມີຄົນອື່ນປ່ຽນແຖວ/ຖັນ ຊ້ຳອີກຄັ້ງ","ການລຶບ/ເພີ່ມແຖວຂອງທ່ານຍັງບໍ່ໄດ້ບັນທຶກ. ກະລຸນາເບິ່ງຕາຕະລາງ ແລ້ວເຮັດຄືນ."]);
+        return;
+      }
+      // replay our row/column operations on the latest grid (Univer re-points the formulas itself; they are recorded in the history as ours)
+      for(const o of rb.ops){
+        if(!(o.n>0)) continue;
+        const ws = wb.getSheetBySheetId(o.tab); if(!ws) continue;
+        if(o.k==="rr") ws.deleteRows(o.a, o.n); else if(o.k==="ir") ws.insertRows(o.a, o.n);
+        else if(o.k==="rc") ws.deleteColumns(o.a, o.n); else if(o.k==="ic") ws.insertColumns(o.a, o.n);
+      }
+    }
     for(const tab in rb.tabs){
       if(!wb.getSheetBySheetId(tab)) continue;
       const cellValue = {};
@@ -546,11 +677,11 @@ function applyRebase(rb){
       api.syncExecuteCommand("sheet.mutation.set-range-values", {unitId, subUnitId: tab, cellValue});
     }
     markDirty();
-  }catch(e){ console.error("rebase failed", e); warnBar(["⚠ ຍ້າຍຂໍ້ມູນທີ່ທ່ານແກ້ບໍ່ສຳເລັດ","ກະລຸນາພິມຄືນສິ່ງທີ່ທ່ານແກ້ຄັ້ງສຸດທ້າຍ."]); }
+  }catch(e){ console.error("rebase failed", e); warnBar(["⚠ ຍ້າຍຂໍ້ມູນທີ່ທ່ານແກ້ບໍ່ສຳເລັດ","ກະລຸນາກວດຕາຕະລາງ ແລ້ວເຮັດຄືນສິ່ງທີ່ທ່ານແກ້ຄັ້ງສຸດທ້າຍ."]); }
 }
 // Server refused our save because someone else changed the structure (insert/delete row or column...) after our grid was loaded.
 // If every such change is a known row/column insert/delete, our pending cell edits are re-mapped onto the new layout automatically.
-async function onConflict(sheetId, patch, base, notes, chunks){
+async function onConflict(sheetId, patch, base, notes, chunks, cur, notesOver){
   S.saving = false; S.conflict = true; S.dirty = false; clearTimeout(S.timer); S.notes = [];
   setStatus("bad","⚠ ມີຄົນອື່ນປ່ຽນແຖວ/ຖັນ — ກຳລັງໂຫຼດໃໝ່");
   // WHO did WHAT (latest structural line of the file history made by somebody else)
@@ -561,19 +692,31 @@ async function onConflict(sheetId, patch, base, notes, chunks){
     const x = (log||[]).find(r=>(r.kind==="meta"||r.kind==="bulk") && r.user_name!==me && r.new_text && !/ຫຼາຍຊ່ອງພ້ອມກັນ/.test(r.new_text)) || (log||[]).find(r=>(r.kind==="meta"||r.kind==="bulk") && r.user_name!==me);
     if(x) who = x.user_name+" — "+String(x.new_text||"ປ່ຽນໂຄງສ້າງຕາຕະລາງ").split(" — ")[0].slice(0,80);
   }catch(e){ console.error(e); }
-  // try to keep the user's edits
-  let kept = null, dropped = 0;
+  // try to keep the user's edits (and our own row/column inserts/deletes: Excel-365-style merge)
+  let kept = null, dropped = 0, merged = false;
   try{
     const onlyCells = !notes.length && chunks===1 && Object.keys(patch.tabs).every(id=>{ const t=patch.tabs[id]; return t && t.cells && !t.del && !t.meta; });
-    if(onlyCells){
+    const opsOnly = notes.length>0 && !notesOver && cur && notes.every(n=>n.op && /^(rr|ir|rc|ic)$/.test(n.op.k) && n.op.n>0 && S.baseline[n.sub]);
+    if(onlyCells || opsOnly){
       const r = await rpc("ms_sheet_ops_since", {p_id: sheetId, p_since: base});
       if(r && r.safe){
-        kept = {tabs:{}}; let n = 0;
-        for(const id in patch.tabs){
-          const x = xformCells(patch.tabs[id].cells, (r.ops||[]).filter(o=>o.tab===id));
-          dropped += x.dropped; if(Object.keys(x.out).length){ kept.tabs[id] = x.out; n += Object.keys(x.out).length; }
+        let theirs = (r.ops||[]).map(o=>({tab:o.tab,k:o.k,a:o.a,n:o.n})), ours2 = [], cellPatch = onlyCells ? patch : null;
+        if(opsOnly){
+          const rb = rebaseOps(notes.map(n=>({tab:n.sub,k:n.op.k,a:n.op.a,n:n.op.n})), theirs);
+          if(rb){
+            const p2 = makePatch(shiftBaseline(S.baseline, notes), cur);   // only the real edits, not the cells that slid because of our own delete
+            if(!p2 || (p2.n <= 200 && Object.keys(p2.tabs).every(id=>S.baseline[id] && !p2.tabs[id].del))){ cellPatch = p2 || {tabs:{}}; ours2 = rb.ours2; theirs = rb.theirs2; merged = true; }
+          }
         }
-        if(!n) kept = null;
+        if(cellPatch){
+          kept = {tabs:{}, ops: ours2.filter(o=>o.n>0), ver: r.version}; let n = 0;
+          for(const id in cellPatch.tabs){
+            if(!cellPatch.tabs[id].cells) continue;
+            const x = xformCells(cellPatch.tabs[id].cells, theirs.filter(o=>o.tab===id));
+            dropped += x.dropped; if(Object.keys(x.out).length){ kept.tabs[id] = x.out; n += Object.keys(x.out).length; }
+          }
+          if(!n && !kept.ops.length && !merged) kept = null;
+        }
       }
     }
   }catch(e){ console.error("rebase check failed", e); kept = null; }
@@ -581,7 +724,7 @@ async function onConflict(sheetId, patch, base, notes, chunks){
     S.rebase = kept;
     const lines = ["ມີຄົນອື່ນລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ ໃນຂະນະທີ່ທ່ານກຳລັງແກ້"];
     if(who) lines.push("ເຮັດໂດຍ: "+who);
-    lines.push("ລະບົບຍ້າຍສິ່ງທີ່ທ່ານແກ້ ໄປໃສ່ຕຳແໜ່ງທີ່ຖືກຕ້ອງໃຫ້ແລ້ວ ແລະ ກຳລັງບັນທຶກ — ບໍ່ຕ້ອງເຮັດຫຍັງ.");
+    lines.push(merged ? "ລະບົບລວມການລຶບ/ເພີ່ມແຖວ ຫຼື ຖັນ ຂອງທ່ານ ກັບຂອງຄົນອື່ນໃຫ້ແລ້ວ ແລະ ກຳລັງບັນທຶກ — ບໍ່ຕ້ອງເຮັດຫຍັງ." : "ລະບົບຍ້າຍສິ່ງທີ່ທ່ານແກ້ ໄປໃສ່ຕຳແໜ່ງທີ່ຖືກຕ້ອງໃຫ້ແລ້ວ ແລະ ກຳລັງບັນທຶກ — ບໍ່ຕ້ອງເຮັດຫຍັງ.");
     if(dropped) lines.push("ມີ "+dropped+" ຊ່ອງຢູ່ໃນແຖວ/ຖັນທີ່ຖືກລຶບໄປແລ້ວ ຈຶ່ງບໍ່ໄດ້ບັນທຶກ.");
     warnBar(lines, true);
   } else {
