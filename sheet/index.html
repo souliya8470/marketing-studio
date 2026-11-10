@@ -300,6 +300,10 @@ function richText(p){
   try{ const ds = p && p.body && p.body.dataStream; if(typeof ds!=="string") return null; return ds.replace(/\r\n$/,"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/\u0000/g,""); }catch(e){ return null; }
 }
 const NUMLIKE = /^\s*[-+]?[\d.,]+\s*$/;
+// formula text of one cell asked from the live workbook (used for shared-formula cells that carry only `si` in the snapshot)
+function liveFormula(sheetId, r, c){
+  try{ const f = S.boot.univerAPI.getActiveWorkbook().getSheetBySheetId(sheetId).getRange(r, c).getFormula(); return f && f.charAt(0)==='=' ? f : null; }catch(e){ return null; }
+}
 // snapshot (Univer) -> {tabs:{id:{meta,cells:{key:{...}}}}, order:[ids]}
 function extract(snap, keepFormulaValue){
   const out = {}; const order = snap.sheetOrder || Object.keys(snap.sheets);
@@ -319,7 +323,9 @@ function extract(snap, keepFormulaValue){
     for(const r in cd){ for(const c in cd[r]){
       const cell = cd[r][c]; if(!cell) continue; const o = {};
       let v = cell.v; if((v===undefined || v===null || v==="") && cell.p){ const t = richText(cell.p); if(t) v = t; }
-      if(cell.f){ o.f = cell.f; if(keepFormulaValue && v!=null && v!=="") o.v = v; }
+      // v8.77: a formula filled/copied down is stored by Univer as a SHARED formula: only the first cell has `f`, the others have `si` alone
+      const fm = cell.f || (cell.si ? liveFormula(id, +r, +c) : null);
+      if(fm){ o.f = fm; if(keepFormulaValue && v!=null && v!=="") o.v = v; }
       else if(v!==undefined && v!==null && v!==""){
         o.v = v;
         if(cell.t===3) o.t = 3; else if(cell.t===1 && typeof v==="string" && NUMLIKE.test(v)) o.t = 1;
