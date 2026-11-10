@@ -178,3 +178,10 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 
 ## v8.79 deployed (2026-11-10)
 - From other chat: slip bill-number reading now also covers confirmed orders of the last 21 days (up to 15 per run). Clean superset of v8.78, syntax OK, not live-tested here.
+
+## Slip match finding — L00254 (2026-11-10, for the chat that owns the slip-reading feature)
+- Order L00254 (49,000, 09/11 16:10), APB Meporm slip. Shows YELLOW "amount+time" match to a 19:03 ONEPAY tx (BE7FCPPL5NSN) — that looks WRONG.
+- Correct tx exists in `onepay_transactions`: ref `LAPU8N0H9XYX9ZBR`, 49,000, 16:10:17, fccref `202611093664471`.
+- The slip prints "ລະຫັດອ້າງອີງ LAPU8N0H9XYX9ZBR" (= the tx ref) and a different "ລະຫັດທຸລະກຳ 20261109824423" (NOT the fccref). So the 15-digit-bill-number path can never match this slip type.
+- Also: `autoOcrSlipBills` skips orders that already have ANY match (even the yellow weak one), so OCR never runs to upgrade it.
+- Suggested fix: OCR the reference code (regex LAP[A-Z0-9]{13}) and match `byRef`; run OCR also when the current match is only weak/amount+time; check why the weak match skipped the 16:10:17 tx (claimed by another order?).
