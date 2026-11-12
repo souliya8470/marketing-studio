@@ -205,3 +205,8 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - pancake-send-bill-image:9224 breaker open since 13:06 Laos: sender fails even after Chrome relaunch (stderr not in bridge log; cause not yet known — suspect Pancake page logged out / UI changed). 214 bills pending; courier_bill_import_pages send_status counts: pending 4599, failed 325, last `sent` row created 08/11 17:00. Needs a look at the Pancake Chrome (9224) window.
 - Bridge /health reachable from the Claude browser pane at http://127.0.0.1:7890/health (shows openCircuits).
 - 2026-11-12 onepay-sync.js v4: after a Chrome (re)launch OnePay Shop shows splash "ຄລິກເພື່ອເລີ່ມຮັບເງິນ" (login is kept). Script now clicks it (up to 3 tries) before checking login, then continues with ຮັບເງິນ → ລາຍການ as before. Previously this splash was misread as logged-out. Copy: docs/onepay-sync.js.v4. Backup of v3 on server: none extra (see onepay-sync.js.bak-20261110 = v1).
+
+## v8.80 — revert button + L00294 fix (2026-11-12)
+- Data: L00294 (duplicate of L00295, same customer Kame, same 4 items) cancelled by Claude on Tar's order: POS bill cancelled through cancel-pos-bill-by-label (4 sale rows + 4 cancel rows, stock restored), online_orders L00294 → cancelled, shipping label lb1794447250250 → status 6. L00295 untouched.
+- Code v8.80: `revertOnlineOrderToReview()` + button "↩️ ເອີ້ນກັບໄປກວດສະລິບ" on confirmed and cancelled tabs. Confirmed → cancels POS bill (restock), renames old bill to Lxxxxx-X<6 digits> (unique (shop_id, transaction_no)), label → 0, order → pending_review. Blocked if label status not in 0/1/7. Not live-tested.
+- Idea not built: warn on confirm when the same phone has another recent order with identical items.
