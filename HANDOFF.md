@@ -210,3 +210,6 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Data: L00294 (duplicate of L00295, same customer Kame, same 4 items) cancelled by Claude on Tar's order: POS bill cancelled through cancel-pos-bill-by-label (4 sale rows + 4 cancel rows, stock restored), online_orders L00294 → cancelled, shipping label lb1794447250250 → status 6. L00295 untouched.
 - Code v8.80: `revertOnlineOrderToReview()` + button "↩️ ເອີ້ນກັບໄປກວດສະລິບ" on confirmed and cancelled tabs. Confirmed → cancels POS bill (restock), renames old bill to Lxxxxx-X<6 digits> (unique (shop_id, transaction_no)), label → 0, order → pending_review. Blocked if label status not in 0/1/7. Not live-tested.
 - Idea not built: warn on confirm when the same phone has another recent order with identical items.
+
+## v8.81 — LDB-to-LDB orders: no red "money not seen" box (2026-11-12)
+- Orders with payment_bank_name = LDB (customer paid into the shop's LDB account) now show a grey line "ໂອນເຂົ້າ LDB ຂອງຮ້ານ — ກວດໃນແອັບ LDB" instead of the red OnePay warning (renderOnlinePaymentLine). BCEL-destination orders unchanged. Not live-tested. Edited only that function + mapOnlineOrderRow.
