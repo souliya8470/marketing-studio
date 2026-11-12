@@ -104,6 +104,17 @@ async function msStatusError(browser, msg) {
     const ctx = browser.contexts()[0];
     const page = ctx.pages().find(p => p.url().includes('onepayshop'));
     if (!page) throw new Error('NO_ONEPAY_PAGE');
+    // v4 (2026-11-12): after Chrome is (re)launched OnePay Shop shows a splash "ຄລິກເພື່ອເລີ່ມຮັບເງິນ" (click to start receiving money).
+    // The login is still saved; ONE click on the splash opens the normal menu (ຮັບເງິນ / ລາຍການ). Click it, then wait for the menu.
+    const SPLASH = 'ຄລິກເພື່ອເລີ່ມຮັບເງິນ';
+    for (let i = 0; i < 3; i++) {
+      const txt = await page.evaluate(() => (document.body.innerText || '').slice(0, 3000));
+      if (!txt.includes(SPLASH)) break;
+      try { await page.getByText(SPLASH, { exact: false }).first().click({ timeout: 4000 }); }
+      catch (e) { try { const vp = page.viewportSize() || { width: 800, height: 600 }; await page.mouse.click(vp.width / 2, vp.height / 2); } catch (e2) {} }
+      for (let j = 0; j < 16; j++) { await page.waitForTimeout(500); const t2 = await page.evaluate(() => (document.body.innerText || '').slice(0, 3000)); if (!t2.includes(SPLASH)) break; }
+      await page.waitForTimeout(1000);
+    }
     const body0 = await page.evaluate(() => (document.body.innerText || '').slice(0, 12000));
     if (/ເຂົ້າສູ່ລະບົບ/.test(body0) || !/ລາຍການ/.test(body0)) {
       out.error = 'ONEPAY_LOGGED_OUT';
