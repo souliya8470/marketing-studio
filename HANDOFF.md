@@ -199,3 +199,8 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## OnePay full pull (2026-11-10)
 - `C:\n8n-data\onepay-sync.js` v3: mode `full` (scroll until hasMore=false) and flag file `onepay-full.flag` (next scheduled run does a full pull, then deletes the flag). Backup `onepay-sync.js.bak-20261110`. Copy of v3 in docs/onepay-sync.js.v3.
 - Result: 9,702 rows (2024-09-05 → now). Red 'not seen' warnings on older BCEL orders should now disappear. App loads only last 21 days (limit 5000).
+
+## Watchdog alerts 2026-11-12 (Claude, Marketing Studio chat)
+- onepay-sync:9225 breaker open since 10:15 Laos: Chrome 9225 answered CDP websocket but hung (connectOverCDP Timeout). Bridge self-heal only covered 9222/9223/9224, so 9225 never relaunched. Patched `C:\n8n-data\bridge-server.js` (backup `.bak-20261112`): added 9225 to CHROME_LAUNCH_BY_PORT (dataDir OnePayData, profile Default, url onepayshop.la) + to connect-timeout relaunch; excluded 9225 from tab-heal. NEEDS bridge restart (restart-bridge.bat) to take effect; restart also clears in-memory breakers. Caveat: relaunch may drop the OnePay login (then script reports ONEPAY_LOGGED_OUT; Tar logs in by hand).
+- pancake-send-bill-image:9224 breaker open since 13:06 Laos: sender fails even after Chrome relaunch (stderr not in bridge log; cause not yet known — suspect Pancake page logged out / UI changed). 214 bills pending; courier_bill_import_pages send_status counts: pending 4599, failed 325, last `sent` row created 08/11 17:00. Needs a look at the Pancake Chrome (9224) window.
+- Bridge /health reachable from the Claude browser pane at http://127.0.0.1:7890/health (shows openCircuits).
