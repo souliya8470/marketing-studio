@@ -213,3 +213,9 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 
 ## v8.81 — LDB-to-LDB orders: no red "money not seen" box (2026-11-12)
 - Orders with payment_bank_name = LDB (customer paid into the shop's LDB account) now show a grey line "ໂອນເຂົ້າ LDB ຂອງຮ້ານ — ກວດໃນແອັບ LDB" instead of the red OnePay warning (renderOnlinePaymentLine). BCEL-destination orders unchanged. Not live-tested. Edited only that function + mapOnlineOrderRow.
+
+## Finding for the checkout.html chat — L00245 paid but order never submitted (2026-11-12, docs only)
+- Order number L00245 was reserved at 2026-11-09 04:51Z (online_order_no_reservations, used_at NULL) and the customer paid LDB 37,000 at 04:52Z (slip note "L00245"), but NO online_orders row exists. ~30 numbers in L00200–L00300 are reserved-never-used (some are just abandoned QRs).
+- Likely cause (Tar): checkout has two presses (pay/QR step, then a final "submit order" press); customers think one press is enough and the order is never placed.
+- Tar's request: make it ONE press (submit the order automatically, no "press again" warning), guard against double submit. Live checkout.html is deployed to Cloudflare by direct upload and is NOT in GitHub (souliya8470/onlineshop is stale) — ask Tar for the current file. Idea: also list "reserved but unused numbers with a paid slip" in 🛒 ອໍເດີອອນລາຍ.
+- Status: not done by this chat. L00245 customer (NOUPHONE VATSANA, LDB 0320…2049) must be contacted manually.
