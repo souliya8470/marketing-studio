@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.82"; // v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ່ມຈັບເວລາ ໄວ້ໃສ່ກໍລະນີຟິດເນັດ ຫຼັງຈົບແຕ່ລະເຊັດ ກົດເບິ່ງວ່າພັກເທົ່າໃດ"): 🕒 ໂມງ page gets a rest stopwatch — ▶ ເລີ່ມພັກ starts, ■ ຈົບພັກ stops and logs "ເຊັດທີ N · ພັກ mm:ss" (newest first, with total + average rest), ລ້າງທັງໝົດ clears. Uses Date.now() so time stays right while the page is left and reopened (STATE.swStart / STATE.swLog, in memory only). Display refreshes with a self-rescheduling setTimeout (100 ms, only while running and only on this page, DOM-only, no render(), no setInterval, no network).
+const APP_VERSION = "8.83"; // v8.83 CHANGE (Tar 2026-11-13, "ເພີ່ມຂະໜາດປຸ່ມເລີ່ມພັກ/ຈົບພັກ ໃຫ້ກົດງ່າຍຂຶ້ນ"): 🕒 ໂມງ page — the ▶ ເລີ່ມພັກ / ■ ຈົບພັກ button is now full-width and tall (min 70px, big text, red outline while running) so it is easy to tap between sets; ລ້າງທັງໝົດ stays small below it. CSS only.
+// (previous text of this slot, kept) v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ່ມຈັບເວລາ ໄວ້ໃສ່ກໍລະນີຟິດເນັດ ຫຼັງຈົບແຕ່ລະເຊັດ ກົດເບິ່ງວ່າພັກເທົ່າໃດ"): 🕒 ໂມງ page gets a rest stopwatch — ▶ ເລີ່ມພັກ starts, ■ ຈົບພັກ stops and logs "ເຊັດທີ N · ພັກ mm:ss" (newest first, with total + average rest), ລ້າງທັງໝົດ clears. Uses Date.now() so time stays right while the page is left and reopened (STATE.swStart / STATE.swLog, in memory only). Display refreshes with a self-rescheduling setTimeout (100 ms, only while running and only on this page, DOM-only, no render(), no setInterval, no network).
 // (previous text of this slot, kept) v8.81 CHANGE (Tar 2026-11-12, "ຖ້າໂອນເຂົ້າ LDB ຂອງຮ້ານ ບໍ່ຢາກໃຫ້ຂຶ້ນກ່ອງສີແດງ ຍັງບໍ່ເຫັນເງິນເຂົ້າ; ຖ້າ LDB ໂອນຫາ BCEL ໃຫ້ຂຶ້ນໄດ້"): in renderOnlinePaymentLine, orders whose payment bank (online_orders.payment_bank_name) is LDB now show a neutral grey line instead of the red "not seen in OnePay Shop" box, because that money never passes BCEL OnePay Shop. Orders paid into BCEL (even from an LDB customer account) keep the old green/yellow/red logic. mapOnlineOrderRow now carries paymentBankName. Nothing else changed.
 // (previous text of this slot, kept) // v8.80 NEW (Tar 2026-11-12, orders L00294/L00295 were the same customer ordering twice and staff confirmed both, so stock was cut twice; also staff may reject a slip by mistake): new button "↩️ ເອີ້ນກັບໄປກວດສະລິບ" on the ✅ confirmed and ❌ rejected tabs of ອໍເດີອອນລາຍ (revertOnlineOrderToReview). From rejected: just back to ⏳ pending review. From confirmed: first cancels the POS bill with the existing cancel-pos-bill-by-label function (restocks, writes pos_stock_movements cancel rows + activity log), frees the bill number (old cancelled bill renamed Lxxxxx-X<time>, because (shop_id, transaction_no) is unique and re-confirming needs the same number), sets the shipping label back to ໃໝ່ (blocked if the label already moved past ຢືນຢັນແລ້ວ/ສົ່ງບິນແລ້ວ), then the order goes back to pending review. Nothing else changed.
 // (previous text of this slot, kept) // v8.79 CHANGE (Tar 2026-11-10, "ຢາກໃຫ້ກວດຍ້ອນຫຼັງໄດ້ ເຊັ່ນ L00259 ທີ່ຢືນຢັນແລ້ວ"): the slip bill-number OCR of v8.78 now also runs for orders that are already CONFIRMED (not only pending), for orders of the last 21 days, up to 15 slips per page load. Nothing else changed.
@@ -1624,7 +1625,8 @@ const APP_VERSION = "8.82"; // v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.81"; // (v8.81 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.82"; // (v8.82 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) (v8.81 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.78 slot:  (v8.78 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.73 slot:  (v8.73 text kept in the history comment lines of APP_VERSION above)
@@ -1733,7 +1735,8 @@ const APP_VERSION_PREV = "8.81"; // (v8.81 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.80"; // (v8.80 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.81"; // (v8.81 text kept in the history comment lines above)
+// (previous text of this slot, kept) (v8.80 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.79 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.77 slot:  (v8.77 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines above)
@@ -36087,7 +36090,8 @@ function renderClockPage(){
       .ck-swread .ck-colon{height:calc(var(--swk)*1.733);gap:calc(var(--swk)*.45)}
       .ck-swread .ck-colon i{width:calc(var(--swk)*.12);height:calc(var(--swk)*.12);animation:none}
       .ck-swds{color:var(--ck-on);text-shadow:0 0 8px var(--ck-glow);font-weight:700;font-size:calc(var(--swk)*.5);min-width:2ch;text-align:left;padding-bottom:2px}
-      .ck-big{font-size:clamp(16px,2.8vw,22px);padding:10px 28px}
+      .ck-big{flex:1 1 100%;max-width:560px;min-height:clamp(70px,16vw,100px);font-size:clamp(22px,5.5vw,36px);font-weight:700;border-radius:20px;padding:14px 20px}
+      .ck-big:not(.on){border:3px solid var(--ck-on);color:var(--ck-on);background:#2a0a0a}
       .ck-swlist{max-width:420px;margin:14px auto 0;text-align:left}
       .ck-swrow{display:flex;justify-content:space-between;padding:6px 4px;border-bottom:1px solid #2b2d31;font-size:clamp(14px,2.2vw,17px)}
       .ck-swrow b{color:var(--ck-on);font-variant-numeric:tabular-nums}
