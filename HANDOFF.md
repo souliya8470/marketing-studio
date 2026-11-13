@@ -219,3 +219,5 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Likely cause (Tar): checkout has two presses (pay/QR step, then a final "submit order" press); customers think one press is enough and the order is never placed.
 - Tar's request: make it ONE press (submit the order automatically, no "press again" warning), guard against double submit. Live checkout.html is deployed to Cloudflare by direct upload and is NOT in GitHub (souliya8470/onlineshop is stale) — ask Tar for the current file. Idea: also list "reserved but unused numbers with a paid slip" in 🛒 ອໍເດີອອນລາຍ.
 - Status: not done by this chat. L00245 customer (NOUPHONE VATSANA, LDB 0320…2049) must be contacted manually.
+
+- v8.82 (2026-11-13): 🕒 ໂມງ page also has a rest stopwatch (ເລີ່ມພັກ / ຈົບພັກ, per-set log, total + average). STATE.swStart / STATE.swLog, in memory only.

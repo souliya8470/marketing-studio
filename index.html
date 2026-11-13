@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.81"; // v8.81 CHANGE (Tar 2026-11-12, "ຖ້າໂອນເຂົ້າ LDB ຂອງຮ້ານ ບໍ່ຢາກໃຫ້ຂຶ້ນກ່ອງສີແດງ ຍັງບໍ່ເຫັນເງິນເຂົ້າ; ຖ້າ LDB ໂອນຫາ BCEL ໃຫ້ຂຶ້ນໄດ້"): in renderOnlinePaymentLine, orders whose payment bank (online_orders.payment_bank_name) is LDB now show a neutral grey line instead of the red "not seen in OnePay Shop" box, because that money never passes BCEL OnePay Shop. Orders paid into BCEL (even from an LDB customer account) keep the old green/yellow/red logic. mapOnlineOrderRow now carries paymentBankName. Nothing else changed.
+const APP_VERSION = "8.82"; // v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ່ມຈັບເວລາ ໄວ້ໃສ່ກໍລະນີຟິດເນັດ ຫຼັງຈົບແຕ່ລະເຊັດ ກົດເບິ່ງວ່າພັກເທົ່າໃດ"): 🕒 ໂມງ page gets a rest stopwatch — ▶ ເລີ່ມພັກ starts, ■ ຈົບພັກ stops and logs "ເຊັດທີ N · ພັກ mm:ss" (newest first, with total + average rest), ລ້າງທັງໝົດ clears. Uses Date.now() so time stays right while the page is left and reopened (STATE.swStart / STATE.swLog, in memory only). Display refreshes with a self-rescheduling setTimeout (100 ms, only while running and only on this page, DOM-only, no render(), no setInterval, no network).
+// (previous text of this slot, kept) v8.81 CHANGE (Tar 2026-11-12, "ຖ້າໂອນເຂົ້າ LDB ຂອງຮ້ານ ບໍ່ຢາກໃຫ້ຂຶ້ນກ່ອງສີແດງ ຍັງບໍ່ເຫັນເງິນເຂົ້າ; ຖ້າ LDB ໂອນຫາ BCEL ໃຫ້ຂຶ້ນໄດ້"): in renderOnlinePaymentLine, orders whose payment bank (online_orders.payment_bank_name) is LDB now show a neutral grey line instead of the red "not seen in OnePay Shop" box, because that money never passes BCEL OnePay Shop. Orders paid into BCEL (even from an LDB customer account) keep the old green/yellow/red logic. mapOnlineOrderRow now carries paymentBankName. Nothing else changed.
 // (previous text of this slot, kept) // v8.80 NEW (Tar 2026-11-12, orders L00294/L00295 were the same customer ordering twice and staff confirmed both, so stock was cut twice; also staff may reject a slip by mistake): new button "↩️ ເອີ້ນກັບໄປກວດສະລິບ" on the ✅ confirmed and ❌ rejected tabs of ອໍເດີອອນລາຍ (revertOnlineOrderToReview). From rejected: just back to ⏳ pending review. From confirmed: first cancels the POS bill with the existing cancel-pos-bill-by-label function (restocks, writes pos_stock_movements cancel rows + activity log), frees the bill number (old cancelled bill renamed Lxxxxx-X<time>, because (shop_id, transaction_no) is unique and re-confirming needs the same number), sets the shipping label back to ໃໝ່ (blocked if the label already moved past ຢືນຢັນແລ້ວ/ສົ່ງບິນແລ້ວ), then the order goes back to pending review. Nothing else changed.
 // (previous text of this slot, kept) // v8.79 CHANGE (Tar 2026-11-10, "ຢາກໃຫ້ກວດຍ້ອນຫຼັງໄດ້ ເຊັ່ນ L00259 ທີ່ຢືນຢັນແລ້ວ"): the slip bill-number OCR of v8.78 now also runs for orders that are already CONFIRMED (not only pending), for orders of the last 21 days, up to 15 slips per page load. Nothing else changed.
 // (previous text of this slot, kept) v8.78 NEW (Tar 2026-11-10, "ອ່ານເລກບິນ 15 ຫຼັກຈາກສະລິບແບບດຽວກັບບິນຂົນສົ່ງ"): online orders whose slip has NO readable QR (slips from OTHER banks paying into the BCEL account, e.g. L00259) are now matched to the real money received by the BILL NUMBER printed on the slip ("ເລກບິນ", 13-15 digits starting with the date, e.g. 202611096116237) = column fccref of onepay_transactions (filled automatically every 5 min by the n8n job onepay-sync). The slip image is read in the browser with Tesseract (digits only, same library as the courier bills); the number must start with the transfer date (YYYYMMDD within 1 day of the order) or it is ignored. If OCR is off by 1-2 digits the match is still accepted when the amount is equal and exactly ONE transaction fits (shown with a note). Also: LDB slips match by their LDB reference (slip_check.ldb_ref = ref of the LAPNET row) when the amount is equal. Display only - staff still press confirm. Result of the OCR is cached in localStorage (ms_slip_bill_v1) so each slip is read once.
@@ -1623,7 +1624,8 @@ const APP_VERSION = "8.81"; // v8.81 CHANGE (Tar 2026-11-12, "ຖ້າໂອນ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.80"; // (v8.80 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.81"; // (v8.81 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) (v8.80 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.78 slot:  (v8.78 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.73 slot:  (v8.73 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines of APP_VERSION above)
@@ -1731,7 +1733,8 @@ const APP_VERSION_PREV = "8.80"; // (v8.80 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.79"; // (v8.79 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.80"; // (v8.80 text kept in the history comment lines above)
+// (previous text of this slot, kept) (v8.79 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.77 slot:  (v8.77 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.72 slot:  (v8.72 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.71 slot:  (v8.71 text kept in the history comment lines above)
@@ -36021,15 +36024,18 @@ const CLOCK_TXT = {
   lo:{ hour:"ຊົ່ວໂມງ", minute:"ນາທີ", second:"ວິນາທີ",
        days:["ວັນອາທິດ","ວັນຈັນ","ວັນອັງຄານ","ວັນພຸດ","ວັນພະຫັດ","ວັນສຸກ","ວັນເສົາ"],
        months:["ມັງກອນ","ກຸມພາ","ມີນາ","ເມສາ","ພຶດສະພາ","ມິຖຸນາ","ກໍລະກົດ","ສິງຫາ","ກັນຍາ","ຕຸລາ","ພະຈິກ","ທັນວາ"],
-       be:true, beLabel:"ພ.ສ.", ceLabel:"ຄ.ສ.", f24:"24 ຊມ.", f12:"12 ຊມ.", name:"ລາວ" },
+       be:true, beLabel:"ພ.ສ.", ceLabel:"ຄ.ສ.", f24:"24 ຊມ.", f12:"12 ຊມ.", name:"ລາວ",
+       swTitle:"⏱️ ຈັບເວລາພັກ", swHint:"ຈົບແຕ່ລະເຊັດແລ້ວ ກົດ “ເລີ່ມພັກ” ແລະ ກົດ “ຈົບພັກ” ເມື່ອຈະເລີ່ມເຊັດຕໍ່ໄປ", swStart:"▶ ເລີ່ມພັກ", swStop:"■ ຈົບພັກ", swReset:"ລ້າງທັງໝົດ", swSet:"ເຊັດທີ", swRest:"ພັກ", swTotal:"ລວມເວລາພັກ", swAvg:"ສະເລ່ຍ", swEmpty:"ຍັງບໍ່ມີປະຫວັດ" },
   th:{ hour:"ชั่วโมง", minute:"นาที", second:"วินาที",
        days:["วันอาทิตย์","วันจันทร์","วันอังคาร","วันพุธ","วันพฤหัสบดี","วันศุกร์","วันเสาร์"],
        months:["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"],
-       be:true, beLabel:"พ.ศ.", ceLabel:"ค.ศ.", f24:"24 ชม.", f12:"12 ชม.", name:"ไทย" },
+       be:true, beLabel:"พ.ศ.", ceLabel:"ค.ศ.", f24:"24 ชม.", f12:"12 ชม.", name:"ไทย",
+       swTitle:"⏱️ จับเวลาพัก", swHint:"จบแต่ละเซ็ตแล้วกด “เริ่มพัก” และกด “จบพัก” เมื่อจะเริ่มเซ็ตต่อไป", swStart:"▶ เริ่มพัก", swStop:"■ จบพัก", swReset:"ล้างทั้งหมด", swSet:"เซ็ตที่", swRest:"พัก", swTotal:"รวมเวลาพัก", swAvg:"เฉลี่ย", swEmpty:"ยังไม่มีประวัติ" },
   en:{ hour:"Hours", minute:"Minutes", second:"Seconds",
        days:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
        months:["January","February","March","April","May","June","July","August","September","October","November","December"],
-       be:false, f24:"24 h", f12:"12 h", name:"English" }
+       be:false, f24:"24 h", f12:"12 h", name:"English",
+       swTitle:"⏱️ Rest timer", swHint:"After each set tap “Start rest”, then tap “End rest” when you begin the next set", swStart:"▶ Start rest", swStop:"■ End rest", swReset:"Clear all", swSet:"Set", swRest:"Rest", swTotal:"Total rest", swAvg:"Average", swEmpty:"No history yet" }
 };
 const CLOCK_WEEKDAY_IDX = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
 let CLOCK_TOKEN = 0;
@@ -36073,6 +36079,19 @@ function renderClockPage(){
       .ck-btn{font:inherit;font-size:14px;color:#d6dbe2;background:#17191d;border:1px solid #3a3f47;border-radius:999px;padding:6px 16px;cursor:pointer}
       .ck-btn:hover{border-color:var(--ck-on)}
       .ck-btn.on{color:#2a0000;background:var(--ck-on);border-color:var(--ck-on);font-weight:600}
+      .ck-sw{--swk:calc(var(--ckw)*.62);margin-top:clamp(16px,3vw,28px);padding-top:clamp(12px,2vw,20px);border-top:1px solid #34363b;text-align:center}
+      .ck-swtitle{font-size:clamp(16px,2.6vw,22px);font-weight:700}
+      .ck-swhint{font-size:clamp(12px,1.9vw,15px);color:#9aa0a8;margin:2px 0 12px}
+      .ck-swread{display:flex;justify-content:center;align-items:flex-end;gap:calc(var(--swk)*.12)}
+      .ck-swread .ck-digit{width:var(--swk)}
+      .ck-swread .ck-colon{height:calc(var(--swk)*1.733);gap:calc(var(--swk)*.45)}
+      .ck-swread .ck-colon i{width:calc(var(--swk)*.12);height:calc(var(--swk)*.12);animation:none}
+      .ck-swds{color:var(--ck-on);text-shadow:0 0 8px var(--ck-glow);font-weight:700;font-size:calc(var(--swk)*.5);min-width:2ch;text-align:left;padding-bottom:2px}
+      .ck-big{font-size:clamp(16px,2.8vw,22px);padding:10px 28px}
+      .ck-swlist{max-width:420px;margin:14px auto 0;text-align:left}
+      .ck-swrow{display:flex;justify-content:space-between;padding:6px 4px;border-bottom:1px solid #2b2d31;font-size:clamp(14px,2.2vw,17px)}
+      .ck-swrow b{color:var(--ck-on);font-variant-numeric:tabular-nums}
+      .ck-swsum{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 4px 0;color:#d6dbe2;font-size:clamp(13px,2vw,16px)}
     </style>
     <div class="ck-panel" id="ck-root">
       <div class="ck-clock">
@@ -36090,6 +36109,21 @@ function renderClockPage(){
       <div class="ck-ctl">
         ${langBtns}
         <button class="ck-btn${clockIs24()?"":" on"}" id="ck-fmt">${esc(clockIs24()?t.f24:t.f12)}</button>
+      </div>
+      <div class="ck-sw">
+        <div class="ck-swtitle">${esc(t.swTitle)}</div>
+        <div class="ck-swhint">${esc(t.swHint)}</div>
+        <div class="ck-swread">
+          <div class="ck-digits" id="ck-sw-mm"></div>
+          <div class="ck-colon"><i></i><i></i></div>
+          <div class="ck-digits" id="ck-sw-ss"></div>
+          <div class="ck-swds" id="ck-sw-ds">.0</div>
+        </div>
+        <div class="ck-ctl">
+          <button class="ck-btn ck-big${STATE.swStart?"":" on"}" id="ck-sw-toggle">${esc(STATE.swStart ? t.swStop : t.swStart)}</button>
+          <button class="ck-btn" id="ck-sw-reset">${esc(t.swReset)}</button>
+        </div>
+        ${clockSwListHtml(t)}
       </div>
     </div>`;
 }
@@ -36140,6 +36174,28 @@ function clockPageTick(token, cells){
   }
   setTimeout(()=>clockPageTick(token, cells), 1000 - (Date.now()%1000) + 5);
 }
+let SW_TOKEN = 0;
+function clockSwFmt(ms){
+  const s = Math.floor(ms/1000), m = Math.floor(s/60), p = (x)=> x<10 ? "0"+x : ""+x;
+  return p(m)+":"+p(s%60);
+}
+function clockSwListHtml(t){
+  const log = STATE.swLog || [];
+  if(!log.length) return `<div class="ck-swlist"><div class="ck-swhint" style="text-align:center">${esc(t.swEmpty)}</div></div>`;
+  const total = log.reduce((a,b)=>a+b,0);
+  const rows = log.map((ms,i)=>`<div class="ck-swrow"><span>${esc(t.swSet)} ${i+1}</span><b>${esc(t.swRest)} ${clockSwFmt(ms)}</b></div>`).reverse().join("");
+  return `<div class="ck-swlist">${rows}<div class="ck-swsum"><span>${esc(t.swTotal)}: <b>${clockSwFmt(total)}</b></span><span>${esc(t.swAvg)}: <b>${clockSwFmt(total/log.length)}</b></span></div></div>`;
+}
+function clockSwTick(token, cells){
+  if(token!==SW_TOKEN) return;
+  if(STATE.page!=="clockPage" || !document.getElementById("ck-sw-ds")) return; // page left → stop
+  const ms = STATE.swStart ? Math.max(0, Date.now()-STATE.swStart) : 0;
+  const s = Math.floor(ms/1000), m = Math.floor(s/60)%100, sec = s%60;
+  clockSetDigit(cells.mm[0], Math.floor(m/10)); clockSetDigit(cells.mm[1], m%10);
+  clockSetDigit(cells.ss[0], Math.floor(sec/10)); clockSetDigit(cells.ss[1], sec%10);
+  document.getElementById("ck-sw-ds").textContent = "." + Math.floor((ms%1000)/100);
+  if(STATE.swStart) setTimeout(()=>clockSwTick(token, cells), 100); // only while running
+}
 function attachClockPageEvents(){
   const token = ++CLOCK_TOKEN;
   const cells = {};
@@ -36155,6 +36211,22 @@ function attachClockPageEvents(){
   const f = document.getElementById("ck-fmt");
   if(f) f.addEventListener("click", ()=>{ STATE.clock24 = !clockIs24(); render(); });
   if(cells.hh) clockPageTick(token, cells);
+  // rest stopwatch (v8.82)
+  const swToken = ++SW_TOKEN;
+  const swCells = { mm:[clockMakeDigit(), clockMakeDigit()], ss:[clockMakeDigit(), clockMakeDigit()] };
+  const swMm = document.getElementById("ck-sw-mm"), swSs = document.getElementById("ck-sw-ss");
+  if(swMm && swSs){
+    swCells.mm.forEach(s=>swMm.appendChild(s)); swCells.ss.forEach(s=>swSs.appendChild(s));
+    const tg = document.getElementById("ck-sw-toggle");
+    if(tg) tg.addEventListener("click", ()=>{
+      if(!STATE.swStart){ STATE.swStart = Date.now(); }
+      else { (STATE.swLog = STATE.swLog || []).push(Date.now()-STATE.swStart); STATE.swStart = null; }
+      render();
+    });
+    const rs = document.getElementById("ck-sw-reset");
+    if(rs) rs.addEventListener("click", ()=>{ STATE.swLog = []; STATE.swStart = null; render(); });
+    clockSwTick(swToken, swCells);
+  }
 }
 
 /* ====================== EDITED PRODUCT IMAGES (🖼️ ຮູບສິນຄ້າ) — v8.52 ======================
