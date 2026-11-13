@@ -221,3 +221,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Status: not done by this chat. L00245 customer (NOUPHONE VATSANA, LDB 0320…2049) must be contacted manually.
 
 - v8.82 (2026-11-13): 🕒 ໂມງ page also has a rest stopwatch (ເລີ່ມພັກ / ຈົບພັກ, per-set log, total + average). STATE.swStart / STATE.swLog, in memory only.
+
+## hal-cod:9222 breaker 2026-11-13 (n8n side, no index.html change)
+- Breaker hal-cod:9222 opened 17:00 Laos after 3 hourly failures `SAVE_FAILED saveAs: ENOENT copyfile` (Playwright temp download vanishes; same error burst nearly every day 05–13 Nov, self-heals later). Chrome 9222 itself was fine. Today's COD file (1 row) had already been saved 14:00 → no data lost.
+- Fix on PC `C:\n8n-data\hal-cod-export.js` (backup `.bak-20261113`, copy in docs/hal-cod-export.js.v2026-11-13): (1) skip run when row count unchanged vs marker `.hal-cod-<phone>-rows.json` and today's file exists; (2) export+save retried up to 3x (4 s apart). Breaker reset via /reset-circuit?script=hal-cod&port=9222. NOT yet proven on a real failure; check log after 18:00 Laos run. Fixed Chrome download folder NOT done (CDP download behavior would conflict with Playwright's download event).

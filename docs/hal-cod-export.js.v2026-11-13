@@ -1,0 +1,300 @@
+// [cleanup 2026-09-27] delete stale Playwright temp dirs (GUID-named download copies in %TEMP%) older than 30 min
+(function(){try{var f=require('fs'),p=require('path'),t=require('os').tmpdir(),n=Date.now();f.readdirSync(t).forEach(function(d){if(d.indexOf('playwright-artifacts-')!==0)return;var q=p.join(t,d);try{if(n-f.statSync(q).mtimeMs>1800000)f.rmSync(q,{recursive:true,force:true});}catch(e){}});}catch(e){}})();
+// [diag 2026-10-07] mirror console output to C:\n8n-data\script-output-log.txt so failures are readable (hal-cod used to log nothing, only "Command failed" reached Telegram)
+(function(){try{var f=require('fs'),L='C:\\n8n-data\\script-output-log.txt',w=function(k,a){try{f.appendFileSync(L,'['+new Date().toISOString()+'] hal-cod '+(process.argv[2]||'')+' '+k+' '+a.map(String).join(' ')+'\n');}catch(e){}},ol=console.log,oe=console.error;console.log=function(){w('OUT',[].slice.call(arguments));ol.apply(console,arguments);};console.error=function(){w('ERR',[].slice.call(arguments));oe.apply(console,arguments);};}catch(e){}})();
+const { chromium } = require('playwright-core');
+// v(2026-09-30, tab-pileup fix) Chrome profiles were accumulating duplicate tabs over the day --
+// per Tar, this was slowing down / freezing the automation PC. Root cause: a few scripts create a
+// fresh tab via newPage() only when no existing tab matches yet, but if a race (two scripts on two
+// different ports both reaching into the SAME shared Marketing-Studio tab at once) or a past Chrome
+// relaunch ever left more than one tab matching the same site open at the same time, every later
+// find() just keeps grabbing whichever one happens to match first -- the other sits there
+// forgotten forever. dedupTabs() is a drop-in replacement for `context.pages().find(...)`: same
+// match, but if MORE than one tab already matches, it closes every extra one and keeps only the
+// oldest (first-opened) survivor, so duplicates never build up and any already-existing leftover
+// duplicates get cleaned up the next time each script runs. Never closes the sole survivor, and
+// never touches a tab of any OTHER site.
+function dedupTabs(ctx, matchFn) {
+  const matches = ctx.pages().filter(matchFn);
+  for (let i = 1; i < matches.length; i++) matches[i].close().catch(() => {});
+  return matches[0] || null;
+}
+const fs = require('fs');
+const path = require('path');
+// v(2026-09-25): per-day subfolder (D:\CourierBills\YYYY-MM-DD\) instead of one flat folder --
+// see anousith-cod-export.js's BASE_DIR comment for the full reasoning.
+const BASE_DIR = 'D:\\CourierBills';
+
+// v(2026-09-25) 01:00 catch-up round: pass mode === 'yesterday' (process.argv[3]) to target
+// YESTERDAY's date instead of today throughout this script, since by the time this runs it's
+// already the new day.
+function targetDate(mode) {
+  const d = new Date();
+  const tz = new Date(d.getTime() + 7 * 3600 * 1000);
+  if (mode === 'yesterday') tz.setUTCDate(tz.getUTCDate() - 1);
+  return tz;
+}
+function todayDMY(mode) {
+  const tz = targetDate(mode);
+  const dd = String(tz.getUTCDate()).padStart(2, '0');
+  const mm = String(tz.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = tz.getUTCFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+function todayISO(mode) {
+  return targetDate(mode).toISOString().slice(0, 10);
+}
+
+const PORT_TO_PHONE = { '9222': '52906969', '9223': '55279515' };
+
+// Auto-closes the daily checklist ("ບໍ່ມີມື້ນີ້") on Marketing Studio when this script itself
+// confirms zero rows on the courier's own site for today — but only on the LAST scheduled run of
+// the day (19:00/20:00 Laos time), never on an early-morning/midday run, since data can still
+// arrive later in the day and marking too early would hide a real pending upload. Always connects
+// to the Marketing-Studio-logged-in profile (port 9222) regardless of which phone/port this
+// download itself ran on, same convention as ms-upload-cod.js/ms-upload-returns.js. Never throws —
+// a failure here must not break the download script's own exit status.
+async function markNoActivityIfLate(itemType, phone, courierLao) {
+  try {
+    const tzNow = new Date(Date.now() + 7 * 3600 * 1000);
+    const hour = tzNow.getUTCHours();
+    if (hour !== 23) return { skipped: 'not_23_round' };
+    const msBrowser = await chromium.connectOverCDP('http://localhost:9222');
+    const msCtx = msBrowser.contexts()[0];
+    let msPage = dedupTabs(msCtx, p => p.url().includes('marketing.touktashop.online'));
+    if (!msPage) {
+      msPage = await msCtx.newPage();
+      await msPage.goto('https://marketing.touktashop.online/', { waitUntil: 'networkidle', timeout: 30000 });
+    }
+    const deadline = Date.now() + 15000;
+    let ready = false;
+    while (Date.now() < deadline) {
+      ready = await msPage.evaluate(() => typeof window.markNoActivityToday === 'function');
+      if (ready) break;
+      await msPage.waitForTimeout(500);
+    }
+    if (!ready) return { error: 'MS_APP_NOT_READY' };
+    return await msPage.evaluate(async ({ itemType, phone, courierLao }) => {
+      try { await window.markNoActivityToday(itemType, phone, courierLao); return { ok: true }; }
+      catch (e) { return { ok: false, error: e.message }; }
+    }, { itemType, phone, courierLao });
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+async function realClick(page, el) {
+  const r = await el.boundingBox();
+  if (!r) throw new Error('NO_BOUNDING_BOX');
+  await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+}
+
+(async () => {
+  const port = process.argv[2] || 9222;
+  const mode = process.argv[3] || '';
+  const phone = PORT_TO_PHONE[String(port)] || `port${port}`;
+  const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
+  const context = browser.contexts()[0];
+  let page = dedupTabs(context, p => p.url().includes('halexpress.la'));
+  if (!page) { console.log(JSON.stringify({ status: 'error', error: 'NO_HAL_PAGE' })); process.exit(1); }
+  await page.bringToFront();
+
+  const today = todayDMY(mode);
+
+  await page.goto('https://www.halexpress.la/cod/summary', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.waitForTimeout(1500);
+
+  // click the "ໂອນສຳເລັດ" (transfer completed) tab
+  const tabClicked = await page.evaluate(() => {
+    const tabEls = Array.from(document.querySelectorAll('[role="tab"], .ant-tabs-tab'));
+    const target = tabEls.find(el => el.innerText && el.innerText.trim() === 'ໂອນສຳເລັດ');
+    if (!target) return false;
+    target.click();
+    return true;
+  });
+  if (!tabClicked) { console.log(JSON.stringify({ status: 'error', error: 'TAB_NOT_FOUND' })); process.exit(1); }
+  await page.waitForTimeout(1500);
+
+  // set start date input to today
+  const dateInputs = await page.$$('input[placeholder="ມື້ເລີ່ມຕົ້ນ"], input[placeholder="ມື້ສິ້ນສຸດ"]');
+  const startInput = await page.$('input[placeholder="ມື້ເລີ່ມຕົ້ນ"]');
+  const endInput = await page.$('input[placeholder="ມື້ສິ້ນສຸດ"]');
+  if (!startInput || !endInput) {
+    console.log(JSON.stringify({ status: 'error', error: 'DATE_INPUTS_NOT_FOUND' }));
+    process.exit(1);
+  }
+
+  // v(2026-09-26) per Tar's exact confirmed technique for ຮຸ່ງອາລຸນ's date filter: (1) clear the
+  // END date field first and leave it EMPTY (do not type into it yet), (2) click the START date
+  // field and set it to the target date, (3) only AFTER that, go back and set the END date field
+  // to the same target date. Doing it in this order avoids the site's quirk where the two inputs
+  // can otherwise fight each other / auto-clear.
+  await realClick(page, endInput);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(500);
+
+  await realClick(page, startInput);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(today);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+
+  await realClick(page, endInput);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(today);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+
+  // click search
+  const searchClicked = await page.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll('button'));
+    const t = btns.find(b => b.innerText && b.innerText.trim() === 'ຄົ້ນຫາ');
+    if (!t) return false;
+    t.click();
+    return true;
+  });
+  console.log('search clicked:', searchClicked);
+  await page.waitForTimeout(2000);
+  // [2026-10-07] wait for the table spinner to finish. Since 2026-10-05 the afternoon runs for 52906969 saw
+  // rowCount=2 with EMPTY text (only AntD's hidden measure/placeholder rows, no empty-text element) and then
+  // tried to export an empty list -> no download -> hung 5 min every hour. Wait up to 25 s for loading to end.
+  for (let i = 0; i < 25; i++) {
+    const loading = await page.evaluate(() => !!document.querySelector('.ant-spin-spinning, .ant-spin-blur'));
+    if (!loading) break;
+    await page.waitForTimeout(1000);
+  }
+  await page.waitForTimeout(500);
+
+  // check row count
+  const rowCount = await page.evaluate(() => {
+    return document.querySelectorAll('.ant-table-tbody tr').length;
+  });
+  console.log('rowCount:', rowCount);
+
+  const emptyText = await page.evaluate(() => {
+    const el = document.querySelector('.ant-empty-description, .ant-table-placeholder');
+    return el ? el.innerText.trim() : null;
+  });
+
+  // real data rows only (non-empty text, not AntD's measure/placeholder rows)
+  const dataRows = await page.evaluate(() => Array.from(document.querySelectorAll('.ant-table-tbody tr')).filter(tr =>
+    !tr.classList.contains('ant-table-measure-row') && !tr.classList.contains('ant-table-placeholder') &&
+    tr.getAttribute('aria-hidden') !== 'true' && (tr.innerText || '').trim().length > 0).length);
+  const stillLoading = await page.evaluate(() => !!document.querySelector('.ant-spin-spinning, .ant-spin-blur'));
+  console.log('dataRows:', dataRows, 'stillLoading:', stillLoading);
+  if (dataRows === 0 && stillLoading) {
+    // never conclude "nothing today" (it feeds the no-activity checklist) while the list is still loading
+    console.log(JSON.stringify({ status: 'error', error: 'LIST_STILL_LOADING', rowCount, emptyText }));
+    process.exit(1);
+  }
+
+  if (dataRows === 0 || emptyText) {
+    const noActResult = await markNoActivityIfLate('cod', phone, 'ຮຸ່ງອາລຸນ');
+    console.log(JSON.stringify({ status: 'none_today', emptyText, noActResult }));
+    process.exit(0);
+  }
+
+  const isoDate = todayISO(mode);
+  const DIR = path.join(BASE_DIR, isoDate, 'COD');
+  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+
+  // v(2026-11-13) skip when nothing changed since the last good export today (no new COD row) -> no pointless download that can fail
+  const _sp = path.join(DIR, `hal-cod-${phone}-${isoDate}.xlsx`), _mk = path.join(DIR, `.hal-cod-${phone}-rows.json`);
+  try { const mk = JSON.parse(fs.readFileSync(_mk, 'utf8')); if (mk.dataRows === dataRows && fs.existsSync(_sp) && fs.statSync(_sp).size > 0) { console.log(JSON.stringify({ status: 'ok', file: _sp, rowCount, skipped: 'unchanged_rows' })); process.exit(0); } } catch (e) {}
+
+  // v(2026-11-13) retry the whole export up to 3 times: the Playwright temp download file sometimes vanishes (ENOENT, hal-cod:9222 breaker opened 2026-11-13 17:00 Laos)
+  const fname = `hal-cod-${phone}-${isoDate}.xlsx`;
+  const savePath = path.join(DIR, fname);
+  let _lastErr = null, _done = false;
+  for (let _a = 1; _a <= 3 && !_done; _a++) {
+    try {
+      const downloadPromise = page.waitForEvent('download', { timeout: 90 * 1000 }); // was 5 min; 2026-10-07: a 52906969 run hung the whole 9222 queue 5 min every hour
+
+      const exportBtn = await page.evaluate(() => {
+        const btns = Array.from(document.querySelectorAll('button'));
+        const t = btns.find(b => b.innerText && b.innerText.trim() === 'ສົ່ງອອກ Excel');
+        return !!t;
+      });
+      if (!exportBtn) throw new Error('EXPORT_BUTTON_NOT_FOUND');
+
+      const exportBtnHandle = await page.$('button:has-text("ສົ່ງອອກ Excel")');
+      // [2026-10-07] on the 52906969 Chrome (narrow window) the coordinate click (realClick) never reached the
+      // export button once a data row exists, so no download ever started. Scroll it into view and use a real
+      // Playwright click (it hit-tests the element); if still no download after 25 s, fall back to a DOM click.
+      try { console.log('viewport:', JSON.stringify(await page.evaluate(() => ({ w: innerWidth, h: innerHeight, sy: scrollY }))), 'btnBox:', JSON.stringify(await exportBtnHandle.boundingBox())); } catch (e) {}
+      await exportBtnHandle.scrollIntoViewIfNeeded().catch(() => {});
+      await page.waitForTimeout(500);
+      await exportBtnHandle.click({ timeout: 10000 }).catch((e) => console.log('playwright click failed:', String(e.message).slice(0, 120)));
+      const _first = await Promise.race([downloadPromise.then(() => 'dl').catch(() => 'dlerr'), new Promise((r) => setTimeout(() => r('wait'), 25000))]);
+      if (_first === 'wait') {
+        console.log('no download 25 s after click -- trying DOM click');
+        await page.evaluate(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.innerText && x.innerText.trim() === 'ສົ່ງອອກ Excel'); if (b) b.click(); });
+      }
+
+      const download = await downloadPromise.catch(e => ({ error: e.message }));
+      if (download && download.error) {
+        // [2026-10-07] record WHY: what the page looked like after clicking export (modal/toast/disabled button/rows)
+        let diag = null;
+        try {
+          diag = await page.evaluate(() => {
+            const txt = (el) => (el && el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText && b.innerText.trim() === 'ສົ່ງອອກ Excel');
+            return {
+              url: location.href,
+              exportBtn: btn ? { disabled: !!btn.disabled, cls: String(btn.className).slice(0, 80) } : null,
+              modal: txt(document.querySelector('.ant-modal-content, .ant-modal-wrap')),
+              notice: txt(document.querySelector('.ant-message, .ant-notification')),
+              rows: document.querySelectorAll('.ant-table-tbody tr').length,
+              firstRow: txt(document.querySelector('.ant-table-tbody tr')),
+              pager: txt(document.querySelector('.ant-pagination')),
+            };
+          });
+        } catch (e) { diag = { diagError: String(e.message).slice(0, 100) }; }
+        try {
+          const dd = path.join(BASE_DIR, '_diag'); if (!fs.existsSync(dd)) fs.mkdirSync(dd, { recursive: true });
+          await page.screenshot({ path: path.join(dd, `hal-cod-fail-${phone}-${Date.now()}.png`) });
+        } catch (e) {}
+        console.log('attempt failed, diag:', JSON.stringify(diag));
+        throw new Error('EXPORT_NO_DOWNLOAD: ' + download.error);
+      }
+
+      await safeSave(download, page, savePath);
+      try { fs.writeFileSync(_mk, JSON.stringify({ dataRows, at: new Date().toISOString() })); } catch (e) {}
+      _done = true;
+    } catch (e) {
+      _lastErr = e; console.log('export attempt ' + _a + ' failed:', String(e.message).slice(0, 160));
+      if (_a < 3) await page.waitForTimeout(4000);
+    }
+  }
+  if (!_done) throw _lastErr;
+
+  console.log(JSON.stringify({ status: 'ok', file: savePath, rowCount }));
+  process.exit(0);
+})().catch(e => {
+  console.log(JSON.stringify({ status: 'error', error: e.message }));
+  process.exit(1);
+});
+
+
+// v(2026-09-27) Save a Playwright download robustly. With a real Chrome over CDP the temp copy can
+// vanish (ENOENT). Fallbacks: saveAs -> stream -> in-page fetch(url) -> newest .xls/.xlsx in Downloads.
+async function safeSave(download, page, savePath) {
+  const ok = () => fs.existsSync(savePath) && fs.statSync(savePath).size > 0;
+  const t0 = Date.now() - 180000, why = [];
+  try { await download.saveAs(savePath); if (ok()) return; } catch (e) { why.push('saveAs:' + e.message.slice(0, 60)); }
+  try {
+    const st = await download.createReadStream();
+    if (st) { await new Promise((res, rej) => { const w = fs.createWriteStream(savePath); st.pipe(w); w.on('finish', res); w.on('error', rej); st.on('error', rej); }); if (ok()) return; }
+  } catch (e) { why.push('stream:' + e.message.slice(0, 60)); }
+  try {
+    const b64 = await page.evaluate(async (u) => { const r = await fetch(u); const b = new Uint8Array(await r.arrayBuffer()); let s = ''; for (let k = 0; k < b.length; k += 8192) s += String.fromCharCode.apply(null, b.subarray(k, k + 8192)); return btoa(s); }, download.url());
+    if (b64) { fs.writeFileSync(savePath, Buffer.from(b64, 'base64')); if (ok()) return; }
+  } catch (e) { why.push('fetch:' + e.message.slice(0, 60)); }
+  try {
+    const dl = path.join(process.env.USERPROFILE || 'C:\\Users\\INTEL', 'Downloads');
+    const c = fs.readdirSync(dl).filter(f => /\.xlsx?$/i.test(f)).map(f => ({ f, t: fs.statSync(path.join(dl, f)).mtimeMs })).filter(x => x.t >= t0).sort((a, b) => b.t - a.t);
+    if (c.length) { fs.copyFileSync(path.join(dl, c[0].f), savePath); if (ok()) return; }
+  } catch (e) { why.push('dl:' + e.message.slice(0, 60)); }
+  throw new Error('SAVE_FAILED ' + why.join(' | '));
+}
