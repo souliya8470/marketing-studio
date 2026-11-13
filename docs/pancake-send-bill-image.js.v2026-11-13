@@ -1,0 +1,1757 @@
+// [new 2026-09-28] "Send the REAL bill image via Pancake, like an admin attaching it by hand"
+// (Tar's request, replacing the text-link-only send that send-courier-bill-pancake's API route is
+// stuck with -- confirmed in that function's own comments that Pancake's reply_inbox API cannot
+// embed a real image). This drives the real Pancake web UI instead, the same technique already
+// proven for anousith-arrival-tag.js's text sends -- but attaches a real file instead of typing.
+//
+// Found via pancake-attach-diag.js (read-only DOM inspection, 2026-09-28): the real attach target
+// is a single hidden file input, `#uploadFileInput` (multiple, accept includes .gif/.pdf/.docx/
+// etc but not explicitly image/jpg/png -- that accept list only gates the OS file-picker dialog,
+// which Playwright's setInputFiles() bypasses entirely; confirmed working live 2026-09-28 -- a
+// .png attaches fine and shows a "FILE" card in the composer).
+//
+// [update 2026-09-28] mode=live send button: confirmed via a real preview run (row
+// cbp_1790575601386mrubu, test override phone) that after attaching, a toolbar row appears BELOW
+// the composer (not within +/-250px of the composer's PRE-attach top, which is why the old
+// afterAttach scan never saw it) with emoji/image/gif icons plus a blue paper-plane SEND button at
+// the far right. This version scans a much wider band (composer top -400px to bottom +400px) to
+// reliably reach that shifted-down row, tags every visible button candidate with a data attribute,
+// and picks the send button using the "new-reply-box-btn" className heuristic (see pickSendCandidate).
+//
+// [update 2026-09-28, round 2] First real live send worked (confirmed by Tar -- the image did
+// arrive), but Tar pointed out via screenshot that the file-input attach method shows a generic
+// "FILE" card in Pancake's composer, not a real image thumbnail -- likely because that upload path
+// treats it as a document attachment rather than an inline photo, which may still read as
+// "something to download" to a wary customer. Tar's own suggestion: put the image on the Windows
+// clipboard and paste it (Ctrl+V) into the composer instead, the same way a human admin would --
+// most chat UIs treat a pasted image specially and render a real inline thumbnail. This version
+// adds that as a selectable method (see `useClipboard` below) alongside the original file-input
+// method, so both can be compared before deciding which one to keep.
+//
+// SAFETY DESIGN (per Tar: "ອໍເດີທີ່ຈະສົ່ງແທ້ ຂ້ອຍຈະບອກຫຼັງເຈົ້າຂຽນລະບົບແລ້ວ" -- he picks the real
+// order to test with once this is built):
+//  - Takes a courier_bill_import_pages row id, not a phone number, so no PII ever travels through
+//    bridge-server.js's URL querystring (the phone is looked up here, server-side, from Supabase).
+//  - mode="preview" (default): searches the customer, opens the conversation, attaches the real
+//    image file into #uploadFileInput, screenshots the result, dumps every candidate send-button
+//    element it can see, and STOPS -- does not click any send control and does not press Enter.
+//    Nothing reaches the customer in this mode.
+//  - mode="live": does everything preview mode does, then clicks the button it identifies as the
+//    real send control (see heuristic above), waits, screenshots the result, and reports what it
+//    clicked (so a human can verify from the screenshot that a real send happened) -- but does NOT
+//    yet mark the Supabase row as sent (left as a manual/explicit next step until a live send has
+//    been visually confirmed at least once).
+//  - Never run mode=live against a real customer until a live test run (override phone) has been
+//    visually confirmed by Tar.
+(function(){try{var f=require('fs'),L='C:\\n8n-data\\script-output-log.txt',w=function(k,a){try{f.appendFileSync(L,'['+new Date().toISOString()+'] pancake-send-bill-image '+(process.argv[2]||'')+' '+k+' '+a.map(String).join(' ')+'\n');}catch(e){}},ol=console.log,oe=console.error;console.log=function(){w('OUT',[].slice.call(arguments));ol.apply(console,arguments);};console.error=function(){w('ERR',[].slice.call(arguments));oe.apply(console,arguments);};}catch(e){}})();
+const { chromium } = require('playwright-core');
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+// [new 2026-09-30, Tar's "jimp ກວດເນື້ອຫາຮູບ"] Content check: after the trailing-src check proves SOME new
+// image appeared in the chat, also prove it is THE bill we meant to send (compare the new chat image
+// with the local bill file via bill-image-match.js / jimp). LOG-ONLY by default: the similarity is
+// logged as CONTENT_VERIFY on every send but never changes the outcome, until Tar has seen real
+// scores and turned enforcement on with env BILL_IMAGE_MATCH_ENFORCE=1 (threshold: env
+// BILL_IMAGE_MATCH_THRESHOLD, default 0.97 -- measured: same bill recompressed ~0.99, different
+// bills <=0.93). Every failure inside (jimp missing, download failed...) is swallowed into the log
+// and NEVER blocks or crashes a send.
+let compareImages = null;
+try { compareImages = require('./bill-image-match.js').compareImages; } catch (e) { console.log('CONTENT_VERIFY_UNAVAILABLE ' + String(e && e.message || e)); }
+const BILL_IMAGE_MATCH_ENFORCE = process.env.BILL_IMAGE_MATCH_ENFORCE === '1';
+const BILL_IMAGE_MATCH_THRESHOLD = parseFloat(process.env.BILL_IMAGE_MATCH_THRESHOLD || '0.97');
+async function verifyNewImageContent(page, newSrcs, localImagePath) {
+  if (!compareImages) return { ok: false, error: 'bill-image-match.js not loaded' };
+  try {
+    const localBuf = fs.readFileSync(localImagePath);
+    let best = null;
+    for (const src of (newSrcs || []).slice(0, 3)) {
+      try {
+        const res = await page.request.get(src, { timeout: 20000 });
+        if (!res.ok()) { best = best || { ok: false, error: 'download status ' + res.status() }; continue; }
+        const cmp = await compareImages(localBuf, await res.body());
+        if (cmp.ok && (!best || !best.ok || cmp.similarity > best.similarity)) best = cmp;
+        else if (!cmp.ok && !best) best = cmp;
+      } catch (e) { best = best || { ok: false, error: String(e && e.message || e) }; }
+    }
+    return best || { ok: false, error: 'no candidate images' };
+  } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+}
+
+// [new 2026-09-29, per Tar: "ກວດ Chrome ພ້ອມກ່ອນລອງສົ່ງທຸກຄັ້ງ"] Cheap pre-flight check against
+// Chrome's own CDP endpoint (the same one chromium.connectOverCDP hits later) -- lets the script
+// fail fast, BEFORE picking or touching any DB row, with a clearly distinguishable
+// stage:"chrome_not_ready" the bridge-server.js circuit breaker can recognize, instead of the
+// generic ECONNREFUSED that used to surface deep inside connectOverCDP after a row was already
+// auto-picked.
+function checkChromeReady(port, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const req = http.get({ hostname: 'localhost', port, path: '/json/version', timeout: timeoutMs }, (res) => {
+      let body = '';
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => resolve({ ready: res.statusCode === 200, statusCode: res.statusCode }));
+    });
+    req.on('error', (e) => resolve({ ready: false, error: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ ready: false, error: 'timeout' }); });
+  });
+}
+
+// Puts a local image file onto the Windows clipboard as a real image (not a file-path text
+// string), the same as a human doing "copy image" -- so a subsequent Ctrl+V in the browser pastes
+// an actual picture into the chat composer, same as Tar suggested.
+function setClipboardImage(imagePath) {
+  const psScript = [
+    'Add-Type -AssemblyName System.Windows.Forms',
+    'Add-Type -AssemblyName System.Drawing',
+    `$img = [System.Drawing.Image]::FromFile('${imagePath.replace(/'/g, "''")}')`,
+    '[System.Windows.Forms.Clipboard]::SetImage($img)',
+  ].join('; ');
+  execFileSync('powershell.exe', ['-NoProfile', '-STA', '-Command', psScript], { timeout: 15000 });
+}
+
+const SUPABASE_HOST = 'swrijpkkufarddsyqhrh.supabase.co';
+// Same read-only-capable anon key already embedded in bridge-server.js for the Telegram summary
+// query (RLS is off on these tables, same key the Marketing Studio SPA itself uses client-side).
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3cmlqcGtrdWZhcmRkc3lxaHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDQ4ODYsImV4cCI6MjA5ODQ4MDg4Nn0.GoGsR4Z4u4UiCJ03-jZkJAgjJtjD8J4MosiBh4cpths';
+const MS_BOT_TOKEN = '6daa795e5d328a784713b941a6007d597c8b0d5f791c94e7188ee2c0c9859656'; // [2026-11-05 security] session token header x-ms-token, read by DB policy ms_ok()
+
+function sbGet(pathAndQuery) {
+  return new Promise((resolve, reject) => {
+    https.get({
+      hostname: SUPABASE_HOST, path: pathAndQuery,
+      headers: { apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    }, (res) => {
+      let body = '';
+      res.on('data', (d) => (body += d));
+      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
+    }).on('error', reject);
+  });
+}
+
+// [added 2026-09-28, controlled-trial rollout] PATCH courier_bill_import_pages after a live send
+// -- this was the missing piece flagged before wiring this into ANY repeated/automated trigger:
+// without it, send_status stayed "ready_to_send" forever, so a second run (manual retrigger, or
+// later a 30s auto-poll) would pick the SAME row again and re-send the SAME image to the SAME
+// customer with no limit. Uses the anon key (RLS off on this table, same as sbGet/the rest of
+// this file) -- fine for this internal server-side script, matches the trust level already used
+// everywhere else in it.
+function sbPatch(pathAndQuery, bodyObj) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = JSON.stringify(bodyObj);
+    const req = https.request({
+      hostname: SUPABASE_HOST, path: pathAndQuery, method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr),
+        Prefer: 'return=minimal',
+      },
+    }, (res) => {
+      let body = '';
+      res.on('data', (d) => (body += d));
+      res.on('end', () => resolve({ statusCode: res.statusCode, body }));
+    });
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+// [new 2026-09-29c, duplicate-send fix] Same as sbPatch but with Prefer: return=representation,
+// so the caller can tell an ATOMIC CLAIM apart from a no-op: PostgREST applies the URL's WHERE
+// filter (including our own send_status re-check) server-side as part of the single UPDATE
+// statement, so if two runs race for the same row, only the one whose filter still matched when
+// the database actually executed the write gets a row back -- the loser gets an empty array, not
+// an error, and must never treat that as "nothing to claim, we're done" (see AUTO_PICKED_ROW below
+// for why that distinction matters). This is the same compare-and-swap trick a "SELECT ... FOR
+// UPDATE" row lock gives you, but expressed as a plain PostgREST PATCH since this script has no
+// direct DB connection.
+function sbPatchClaim(pathAndQuery, bodyObj) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = JSON.stringify(bodyObj);
+    const req = https.request({
+      hostname: SUPABASE_HOST, path: pathAndQuery, method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr),
+        Prefer: 'return=representation',
+      },
+    }, (res) => {
+      let body = '';
+      res.on('data', (d) => (body += d));
+      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
+    });
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+// [new 2026-09-29] Generic PostgREST INSERT (POST), sibling to sbPatch -- used for writing
+// label_status_history rows the same way index.html's dbInsertLabelStatusHistory does.
+function sbInsert(pathAndQuery, bodyObj) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = JSON.stringify(bodyObj);
+    const req = https.request({
+      hostname: SUPABASE_HOST, path: pathAndQuery, method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr),
+        Prefer: 'return=minimal',
+      },
+    }, (res) => {
+      let body = '';
+      res.on('data', (d) => (body += d));
+      res.on('end', () => resolve({ statusCode: res.statusCode, body }));
+    });
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+// [new 2026-09-29] Calls a Supabase Edge Function (POST, JSON in/out) -- used for the post-send
+// tag-pancake-bill-sent call. verify_jwt is on for that function, so the same anon key used for
+// sbGet/sbPatch works here too (Authorization: Bearer, matching what the Marketing Studio SPA
+// itself sends client-side).
+function sbFunctionPost(slug, bodyObj) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = JSON.stringify(bodyObj);
+    const req = https.request({
+      hostname: SUPABASE_HOST, path: `/functions/v1/${slug}`, method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr),
+      },
+    }, (res) => {
+      let body = '';
+      res.on('data', (d) => (body += d));
+      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { resolve({ ok: false, stage: 'parse', raw: body }); } });
+    });
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+// [fixed 2026-09-29, after the WhatsApp-duplicate incident] Tar's own correction to the first fix
+// attempted here: filtering to Facebook-only rows and refusing on >1 match is STILL wrong, because a
+// real customer can legitimately have several Facebook-page conversations (multiple orders, multiple
+// shop pages) *and* a WhatsApp conversation, all matching the same phone number -- refusing every time
+// that happens makes the automation useless for exactly the customers it needs to handle. The actual
+// text+link sender (send-courier-bill-pancake, the one already live and proven correct in production)
+// never searches by phone at all: it resolves the ONE exact conversation via
+// crm_purchases.conversation_link, a direct https://pancake.vn/<page_id>?customer_id=<uuid> link that
+// is unique per order/page -- no ambiguity possible because it isn't a search, it's a lookup by id.
+// This mirrors that exact chain (matched_crm_purchase_id -> crm_purchases row -> conversation_link,
+// falling back to the same phone+either-amount match send-courier-bill-pancake uses when no
+// crm_purchase_id was captured) so the image sender reaches the same conversation the text sender
+// already reaches correctly, with no phone-based list search or platform guessing when this succeeds.
+// Returns null (never throws) when no crm_purchases match can be found -- callers fall back to the
+// old phone-search-in-UI path in that case, kept as a safety net for rows with no CRM link at all.
+async function resolveConversationLink(bill) {
+  let purchase = null;
+  if (bill.matched_crm_purchase_id) {
+    const rows = await sbGet(`/rest/v1/crm_purchases?id=eq.${encodeURIComponent(bill.matched_crm_purchase_id)}&select=id,conversation_link`).catch(() => null);
+    if (Array.isArray(rows) && rows[0] && rows[0].conversation_link) {
+      purchase = { ...rows[0], matchMethod: 'by_id' };
+    }
+  }
+  if (!purchase && bill.matched_customer_phone) {
+    const digits = String(bill.matched_customer_phone).replace(/\D/g, '');
+    const last8 = digits.length >= 8 ? digits.slice(-8) : digits;
+    if (last8) {
+      const hintDate = bill.matched_order_date ? new Date(bill.matched_order_date) : new Date();
+      const sinceDate = new Date(hintDate.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString();
+      const candidates = await sbGet(
+        `/rest/v1/crm_purchases?customer_phone=ilike.*${encodeURIComponent(last8)}&order_date=gte.${encodeURIComponent(sinceDate)}&conversation_link=not.is.null&select=id,customer_phone,amount,conversation_link,order_date`
+      ).catch(() => null);
+      const codNum = bill.cod_amount != null ? Number(bill.cod_amount) : null;
+      const totalNum = bill.total_amount != null ? Number(bill.total_amount) : null;
+      const found = (Array.isArray(candidates) ? candidates : []).find((c) => {
+        const cDigits = String(c.customer_phone || '').replace(/\D/g, '');
+        const cLast8 = cDigits.length >= 8 ? cDigits.slice(-8) : cDigits;
+        if (cLast8 !== last8) return false;
+        const amt = Number(c.amount);
+        return (codNum != null && amt === codNum) || (totalNum != null && amt === totalNum);
+      });
+      if (found) purchase = { ...found, matchMethod: 'phone_and_either_amount' };
+    }
+  }
+  if (!purchase) return null;
+  const m = /pancake\.vn\/([^?]+)\?customer_id=([a-f0-9-]+)/i.exec(purchase.conversation_link || '');
+  if (!m) return null;
+  return { pageId: m[1], customerId: m[2], crmPurchaseId: purchase.id, matchMethod: purchase.matchMethod, conversationLink: purchase.conversation_link };
+}
+
+// [new 2026-09-30] Same "shift real time by +7h and read it back with UTC getters" trick already
+// used in anousith-arrival-tag.js's laosNow() -- keeps this file's local-time math consistent with
+// the rest of the codebase without pulling in a timezone library.
+function laosNow() { return new Date(Date.now() + 7 * 3600 * 1000); }
+
+const LAO_MONTHS = ['ມັງກອນ', 'ກຸມພາ', 'ມີນາ', 'ເມສາ', 'ພຶດສະພາ', 'ມິຖຸນາ', 'ກໍລະກົດ', 'ສິງຫາ', 'ກັນຍາ', 'ຕຸລາ', 'ພະຈິກ', 'ທັນວາ'];
+
+// [new 2026-09-30, Tar-designed: "ເບິ່ງເວລາແຊັດລ່າສຸດ ທຽບໃສ່ກັນ" -- confirmed live against 3 real
+// AMBIGUOUS bills today (orders #73449, #73486, #73454) by comparing each candidate conversation's
+// own last-message time, straight off Pancake's UI, against the order's own created time] Parses
+// whatever raw text Pancake shows for a time/date -- an order-search-result row's innerText, or a
+// conversation-list row's innerText -- into a millisecond timestamp comparable to laosNow().getTime().
+// Handles every format seen live so far: "16:49 ມື້ວານ"/"yesterday" (yesterday at that time),
+// "13:49 29/09" (explicit time+date, this year unless that lands in the future), "17 ມິຖຸນາ" (an old
+// month/day with no time, noon assumed -- precision doesn't matter since this pattern only ever
+// shows up on conversations that are weeks/months stale), and a bare "09:32" (today at that time,
+// tried last since it's the least specific). Returns null if nothing recognizable is found -- the
+// caller must treat null as "can't use this one to disambiguate", never as "matches everything".
+function parsePancakeTimeLabel(text, refDate) {
+  if (!text) return null;
+
+  let m = /(\d{1,2}):(\d{2})\s*(?:ມື້ວານ|yesterday)/i.exec(text);
+  if (m) {
+    const d = new Date(refDate.getTime());
+    d.setUTCDate(d.getUTCDate() - 1);
+    d.setUTCHours(Number(m[1]), Number(m[2]), 0, 0);
+    return d.getTime();
+  }
+
+  m = /(\d{1,2}):(\d{2})\s+(\d{1,2})\/(\d{1,2})(?!\d)/.exec(text);
+  if (m) {
+    const d = new Date(refDate.getTime());
+    d.setUTCMonth(Number(m[4]) - 1, Number(m[3]));
+    d.setUTCHours(Number(m[1]), Number(m[2]), 0, 0);
+    if (d.getTime() - refDate.getTime() > 24 * 3600 * 1000) d.setUTCFullYear(d.getUTCFullYear() - 1);
+    return d.getTime();
+  }
+
+  for (let mi = 0; mi < LAO_MONTHS.length; mi++) {
+    const re = new RegExp('(?<!\\d)(\\d{1,2})\\s*' + LAO_MONTHS[mi]);
+    m = re.exec(text);
+    if (m) {
+      const d = new Date(refDate.getTime());
+      d.setUTCMonth(mi, Number(m[1]));
+      d.setUTCHours(12, 0, 0, 0);
+      if (d.getTime() - refDate.getTime() > 24 * 3600 * 1000) d.setUTCFullYear(d.getUTCFullYear() - 1);
+      return d.getTime();
+    }
+  }
+
+  m = /(?<!\d)(\d{1,2}):(\d{2})(?!\d)/.exec(text);
+  if (m) {
+    const d = new Date(refDate.getTime());
+    d.setUTCHours(Number(m[1]), Number(m[2]), 0, 0);
+    return d.getTime();
+  }
+
+  // [2026-10-01] Pancake's conversation list shows an older conversation's last-message date as "dd.mm" (e.g. "29.11",
+  // "09.05"; times of today/yesterday use a colon). It used to parse as null, so an old chat could not be compared with
+  // the order's time. Checked last, so any text that has a colon time still parses exactly as before; prices such as
+  // "199.000" never match (the lookarounds reject digits on both sides).
+  m = /(?<![\d.])(\d{1,2})\.(\d{1,2})(?![\d.])/.exec(text);
+  if (m && Number(m[1]) >= 1 && Number(m[1]) <= 31 && Number(m[2]) >= 1 && Number(m[2]) <= 12) {
+    const d = new Date(refDate.getTime());
+    d.setUTCMonth(Number(m[2]) - 1, Number(m[1]));
+    d.setUTCHours(12, 0, 0, 0);
+    if (d.getTime() - refDate.getTime() > 24 * 3600 * 1000) d.setUTCFullYear(d.getUTCFullYear() - 1);
+    return d.getTime();
+  }
+
+  return null;
+}
+
+// [added 2026-09-29, Tar-designed -- replaces trusting any single database field as ground truth]
+// Uses the courier bill's own order_id_guess (OCR'd off the courier's shipping label -- populated
+// far more reliably than matched_crm_purchase_id) to search Pancake's OWN POS Orders page directly
+// (https://pos.pages.fm/shop/1021300488/order), open that exact order, and read its CUSTOMER
+// avatar's page_id straight out of the <img> URL (every avatar Pancake serves is fetched through
+// /api/v1/pages/<page_id>/avatar/..., so the numeric page_id is always right there in the src).
+//
+// Confirmed live 2026-09-29 against order #73305 / phone 96711780, a real case with TWO separate
+// Facebook conversations under the same phone (one per page): the modal shows TWO different avatar
+// images -- one under class "avatar align-center" (page_id 104702642412926, labeled "Touk Shop",
+// which turned out to just be the POS's own "which shop am I in" selector, NOT the order's page) and
+// one under class "customer-info-avatar" (page_id 900472936488748) next to the customer's actual
+// name and phone. Cross-checking against the inbox confirmed the SECOND one (customer-info-avatar)
+// is the one that actually matches the correct conversation -- so this function reads ONLY that one,
+// never the "avatar align-center" one, however tempting its visible page name is.
+//
+// Once the order's page_id + phone are known, this searches the normal inbox
+// (pages.fm/multi_pages) for that phone and picks the ONE Facebook conversation row whose own
+// avatar page_id matches EXACTLY -- a numeric id comparison, never a name/text guess. This sidesteps
+// crm_purchases.conversation_link entirely, which has been found stale/duplicated for some rows
+// (two different orders sharing one identical, wrong link).
+//
+// [new 2026-09-30] When MORE than one conversation row matches the same exact page_id (a genuinely
+// AMBIGUOUS case -- the customer has 2+ separate Messenger threads under the one right page, e.g. two
+// different Facebook accounts messaging the same shop page), this now makes one more attempt before
+// giving up: compare each candidate's own last-message time against the order's own created time (see
+// parsePancakeTimeLabel) and auto-pick the one that's a decisive match. Still falls back to the exact
+// same AMBIGUOUS/manual-review result as before when the times don't clearly settle it.
+//
+// Returns { matched: true, ... } with the conversation ALREADY OPENED (this function does its own
+// page.goto/search/click, unlike resolveConversationLink which just returns a link for the caller
+// to navigate to) -- or { matched: false, reason } at any failure point, never throws. The caller
+// falls back to resolveConversationLink, then the old phone-search path, in that order.
+// [new 2026-10-05] Tar: bill 73759 failed with "search box not found" only 15 s after starting -- the old code
+// waited a FIXED 4-5 s after page.goto and then looked ONCE for the search box, so a slow / stale Pancake tab
+// (this was the first send after ~17 h idle) failed instantly and the row was marked failed for good. Now:
+// wait up to 20 s for the box to appear, and if it still isn't there reload the page once and wait up to 20 s
+// again. Every miss records a diagnostic snapshot (url, title, first visible text) so the real reason is
+// visible next time (e.g. login screen, popup, layout change).
+async function pageDiag(page) {
+  try {
+    return await page.evaluate(() => ({
+      url: location.href,
+      title: document.title,
+      text: (document.body && document.body.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 200),
+    }));
+  } catch (e) { return { diagError: String(e && e.message || e).slice(0, 120) }; }
+}
+async function waitForBoxWithRetry(page, selector, label, diagOut) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const h = await page.waitForSelector(selector, { timeout: 20000, state: 'visible' });
+      if (h) { if (attempt > 1 && diagOut) diagOut.push({ label, recoveredAfterReload: true }); return h; }
+    } catch (e) { /* timed out -- fall through to diag + reload */ }
+    const d = await pageDiag(page);
+    if (diagOut) diagOut.push({ label, attempt, notFound: selector, diag: d });
+    console.log('SEARCHBOX_MISS ' + JSON.stringify({ label, attempt, selector, diag: d }));
+    if (attempt === 1) {
+      try { await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }); } catch (e) {}
+      await page.waitForTimeout(3000);
+    }
+  }
+  return null;
+}
+
+async function resolveViaOrderSearch(page, bill) {
+  const orderId = bill.order_id_guess ? String(bill.order_id_guess).trim() : '';
+  if (!orderId || !/^\d+$/.test(orderId)) {
+    return { matched: false, reason: 'no numeric order_id_guess on this row' };
+  }
+
+  await page.goto('https://pos.pages.fm/shop/1021300488/order', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(5000);
+  await page.bringToFront();
+
+  const _osDiag = [];
+  const searchBox = await waitForBoxWithRetry(page, 'input[placeholder="ค้นหาคำสั่งซื้อ"]', 'pos_order_search', _osDiag);
+  if (!searchBox) return { matched: false, reason: 'POS order search box not found after 20 s + reload (Pancake may have changed the page layout, or the tab is stale / logged out)', diag: _osDiag };
+  await searchBox.click();
+  await searchBox.fill(orderId);
+  await page.keyboard.press('Enter').catch(() => {});
+  await page.waitForTimeout(5000);
+
+  // AntD renders table rows as <div class="ant-table-row">, not real <tr> elements -- find the
+  // exact-matching order-id leaf text node and walk up to its row ancestor instead of using a
+  // normal row selector.
+  const clickResult = await page.evaluate((oid) => {
+    const all = Array.from(document.querySelectorAll('*'));
+    const target = all.find((el) => el.children.length === 0 && el.textContent && el.textContent.trim() === oid);
+    if (!target) return { clicked: false };
+    let row = target;
+    for (let i = 0; i < 8 && row; i++) {
+      if (row.getAttribute('role') === 'row' || /row/i.test(row.className || '')) break;
+      row = row.parentElement;
+    }
+    if (!row) return { clicked: false };
+    // [new 2026-09-30] Grab the row's own full text (order id, customer, total, created date, etc,
+    // whatever columns Pancake shows) BEFORE clicking, so the caller can later pull this order's own
+    // created-date/time out of it -- used to disambiguate an AMBIGUOUS multi-conversation match below.
+    const rowText = row.innerText || '';
+    row.scrollIntoView();
+    row.click();
+    return { clicked: true, rowText };
+  }, orderId);
+  if (!clickResult.clicked) return { matched: false, reason: `order #${orderId} not found in POS search results (courier may have written the wrong order number)` };
+  const orderRowText = clickResult.rowText || '';
+  await page.waitForTimeout(3000);
+
+  const extracted = await page.evaluate(() => {
+    const modal = document.querySelector('.ant-modal-content') || document.querySelector('.ant-modal');
+    if (!modal) return null;
+    const custAvatarWrap = modal.querySelector('.customer-info-avatar');
+    const custImg = custAvatarWrap ? (custAvatarWrap.tagName === 'IMG' ? custAvatarWrap : custAvatarWrap.querySelector('img')) : null;
+    const parentText = custAvatarWrap && custAvatarWrap.parentElement ? custAvatarWrap.parentElement.innerText.replace(/\s+/g, ' ').trim() : '';
+    return { imgSrc: custImg ? custImg.src : null, parentText };
+  });
+  // Always close the modal before moving on, whether or not extraction succeeded, so it never
+  // lingers half-open for whatever step runs next.
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.waitForTimeout(1000);
+
+  if (!extracted || !extracted.imgSrc) {
+    return { matched: false, reason: `order #${orderId} opened, but could not find the customer avatar (.customer-info-avatar) to read its page id` };
+  }
+  const pageIdMatch = /\/pages\/(\d+)\//.exec(extracted.imgSrc);
+  if (!pageIdMatch) {
+    return { matched: false, reason: `order #${orderId}: customer avatar URL did not contain a recognizable page id (${extracted.imgSrc})` };
+  }
+  const orderPageId = pageIdMatch[1];
+  // [fixed 2026-09-29, live-test caught this] Pancake's own customer-info display shows the phone
+  // WITHOUT a leading 0 (e.g. "96711780", 8 digits) -- confirmed live against order #73305, where
+  // the original 0-required regex found nothing even though the phone was right there in the text.
+  // [widened 2026-09-29, per Tar: "with or without 020 it's the same number, don't overcomplicate
+  // it"] Order #73308 showed the fixed pattern still failing on an 11-digit number written WITH the
+  // "020" trunk prefix (02054144098) -- 0?\d{7,9} only covers up to 10 digits total. Rather than
+  // special-case the prefix, just widen the digit-count range to cover every real format Lao numbers
+  // show up in (8-digit local, 10-digit with a single leading 0, 11-digit with the "020" trunk code)
+  // in one plain \d{8,11} -- normalization down to the last 8 digits already happens wherever this
+  // phone number is actually used for matching, so the exact width read here doesn't need to be
+  // exact, just wide enough to capture the whole number. Anchored to digit boundaries (no digit
+  // immediately before/after) so it still can't grab a fragment out of an unrelated long digit
+  // string (an Ads/campaign id, etc.) elsewhere in the same text block.
+  const phoneMatch = /(?<!\d)\d{8,11}(?!\d)/.exec(extracted.parentText || '');
+  const orderPhone = phoneMatch ? phoneMatch[0] : null;
+  if (!orderPhone) {
+    return { matched: false, reason: `order #${orderId}: found page id ${orderPageId} but could not read a phone number near the customer avatar`, orderPageId };
+  }
+
+  // Now search that phone in the normal inbox and pick the ONE Facebook conversation whose own
+  // avatar page id matches the order's page id exactly.
+  await page.goto('https://pages.fm/multi_pages', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(4000);
+  await page.bringToFront();
+
+  const _ib2Diag = [];
+  const searchBox2 = await waitForBoxWithRetry(page, 'input.conversation-menu-search-input', 'inbox_search_after_order', _ib2Diag);
+  if (!searchBox2) return { matched: false, reason: 'inbox search box not found after 20 s + reload', orderPageId, orderPhone, diag: _ib2Diag };
+  await searchBox2.click();
+  await searchBox2.fill(orderPhone);
+  await page.keyboard.press('Enter').catch(() => {});
+  await page.waitForTimeout(5000);
+
+  const rows = await page.$$('.media.conversation-list-item');
+  const rowPageIds = await Promise.all(rows.map((el) => el.evaluate((row) => {
+    const img = row.querySelector('img[src*="/pages/"]');
+    if (!img) return null;
+    const m = /\/pages\/(\d+)\//.exec(img.src);
+    return m ? m[1] : null;
+  })));
+  const matchIdx = [];
+  rowPageIds.forEach((pid, idx) => { if (pid === orderPageId) matchIdx.push(idx); });
+
+  if (matchIdx.length === 0) {
+    return { matched: false, reason: `order #${orderId}: no conversation under page ${orderPageId} found when searching phone ${orderPhone} (matched ${rows.length} row(s) total, possibly all on other pages)`, orderPageId, orderPhone };
+  }
+  if (matchIdx.length > 1) {
+    // [new 2026-09-30, Tar-designed: "ເບິ່ງເວລາແຊັດລ່າສຸດ ທຽບໃສ່ກັນ" -- asked right after seeing 3
+    // real AMBIGUOUS bills today (orders #73449, #73486, #73454) where the correct conversation's own
+    // last-message time matched the order's created time almost exactly, while the OTHER conversation
+    // on the same page was stale by weeks/months] Before giving up, read each candidate row's own
+    // last-message time and the order's own created time (both straight off Pancake's UI text via
+    // parsePancakeTimeLabel) and see if exactly one candidate is a decisive time-match.
+    //
+    // "Decisive" here means: the closest candidate's gap to the order's OWN created time is within 7
+    // days, AND it beats every other candidate's gap by at least 2 hours. The 7-day ceiling (not 1
+    // day -- an earlier version of this used 24h and Tar caught that it would break completely normal
+    // orders: per Tar 2026-09-30, some orders aren't deposited/shipped until 2-4 days after the order
+    // was placed, and if the customer keeps chatting in the meantime (confirming, asking status), the
+    // CORRECT conversation's own last-message time can legitimately land several days past the
+    // order's created time -- a same-day-only rule would wrongly refuse to auto-pick the right answer
+    // in that case. 7 days is Tar's own confirmed real-world maximum order-to-deposit gap ("ບໍ່ກາຍ
+    // 7ມື້ສູງສຸດແລ້ວ"). The 2h margin is the real safety gate -- this is picking who gets sent a
+    // photo, so it only auto-picks when the win isn't close, and falls back to the exact same
+    // AMBIGUOUS/manual-review behavior as before otherwise. Every raw text + parsed value is logged
+    // either way (see timeDisambiguation below and the TIME_DISAMBIGUATED_AMBIGUOUS_CONVERSATION log
+    // line) so genuinely-close cases can be reviewed and the numbers tuned later with real examples,
+    // rather than guessed blind.
+    const laosNowMs = laosNow();
+    const orderTimeMs = parsePancakeTimeLabel(orderRowText, laosNowMs);
+    const rowTimeInfo = await Promise.all(matchIdx.map(async (idx) => {
+      const rawText = await rows[idx].evaluate((row) => row.innerText || '');
+      return { idx, rawText, ms: parsePancakeTimeLabel(rawText, laosNowMs) };
+    }));
+
+    let picked = null;
+    if (orderTimeMs != null) {
+      const withDiff = rowTimeInfo
+        .filter((r) => r.ms != null)
+        .map((r) => ({ ...r, diffMs: Math.abs(r.ms - orderTimeMs) }))
+        .sort((a, b) => a.diffMs - b.diffMs);
+      if (withDiff.length >= 1) {
+        const best = withDiff[0];
+        const secondDiff = withDiff.length > 1 ? withDiff[1].diffMs : Infinity;
+        const SEVEN_DAYS = 7 * 24 * 3600 * 1000;
+        const TWO_HOURS = 2 * 3600 * 1000;
+        if (best.diffMs <= SEVEN_DAYS && secondDiff - best.diffMs >= TWO_HOURS) {
+          picked = best;
+        }
+      }
+    }
+
+    const timeDisambiguation = { orderRowText, orderTimeMs, candidates: rowTimeInfo };
+    if (!picked) {
+      return {
+        matched: false,
+        reason: `order #${orderId}: AMBIGUOUS -- ${matchIdx.length} separate conversations under the SAME page ${orderPageId} matched phone ${orderPhone} -- not guessing which one`,
+        orderPageId, orderPhone, timeDisambiguation,
+      };
+    }
+    console.log(JSON.stringify({
+      note: 'TIME_DISAMBIGUATED_AMBIGUOUS_CONVERSATION',
+      orderId, orderPageId, orderPhone,
+      pickedIdx: picked.idx, pickedRawText: picked.rawText, pickedDiffMinutes: Math.round(picked.diffMs / 60000),
+      timeDisambiguation,
+    }));
+    matchIdx.length = 0;
+    matchIdx.push(picked.idx);
+  }
+
+  // [2026-10-01 17:50, real wrong-chat send on order 73457 (phone 02095923687): this customer had TWO Facebook
+  // conversations, an old one (29/6) and the right one (29/9), on DIFFERENT pages. Only the old one sat under the
+  // page id read from the order avatar, so matchIdx had exactly one entry, the AMBIGUOUS/time check above was
+  // skipped, and the bill was sent into the 3-month-old chat.] When other conversations for the same phone exist on
+  // other pages, sanity-check the single page match against the order's created time: keep it only if its last
+  // message is within 7 days of the order; otherwise take another page's conversation only if it is a decisive
+  // time match (within 7 days and 2h better than the rest); else refuse for manual review (reason contains AMBIGUOUS).
+  let resolvedPageId = orderPageId;
+  if (matchIdx.length === 1 && rows.length > 1) {
+    const laosNowMs2 = laosNow();
+    const orderTimeMs2 = parsePancakeTimeLabel(orderRowText, laosNowMs2);
+    if (orderTimeMs2 != null) {
+      const info = [];
+      for (let idx = 0; idx < rows.length; idx++) {
+        if (!rowPageIds[idx]) continue; // not a Facebook page conversation (e.g. WhatsApp)
+        const rawText = await rows[idx].evaluate((row) => row.innerText || '');
+        const ms = parsePancakeTimeLabel(rawText, laosNowMs2);
+        info.push({ idx, rawText, pageId: rowPageIds[idx], ms, diffMs: ms != null ? Math.abs(ms - orderTimeMs2) : null });
+      }
+      const SEVEN_DAYS2 = 7 * 24 * 3600 * 1000;
+      const TWO_HOURS2 = 2 * 3600 * 1000;
+      const same = info.find((r) => r.idx === matchIdx[0]);
+      const others = info.filter((r) => r.idx !== matchIdx[0] && r.diffMs != null).sort((a, b) => a.diffMs - b.diffMs);
+      const crossPageCheck = { orderRowText, orderTimeMs: orderTimeMs2, candidates: info.map((r) => ({ idx: r.idx, pageId: r.pageId, rawText: r.rawText, ms: r.ms })) };
+      if (same && same.diffMs != null && same.diffMs > SEVEN_DAYS2 && others.length > 0) {
+        const best = others[0];
+        const secondDiff = others.length > 1 ? others[1].diffMs : Infinity;
+        if (best.diffMs <= SEVEN_DAYS2 && secondDiff - best.diffMs >= TWO_HOURS2) {
+          console.log(JSON.stringify({ note: 'CROSS_PAGE_TIME_PICK', orderId, orderPageId, pickedPageId: best.pageId, pickedRawText: best.rawText, staleSamePageRawText: same.rawText, crossPageCheck }));
+          matchIdx.length = 0;
+          matchIdx.push(best.idx);
+          resolvedPageId = best.pageId;
+        } else {
+          return {
+            matched: false,
+            reason: `order #${orderId}: AMBIGUOUS -- the only conversation under page ${orderPageId} is stale (last message far from the order time) and the conversations on other pages are not a clear time match -- not guessing`,
+            orderPageId, orderPhone, crossPageCheck,
+          };
+        }
+      }
+    }
+  }
+
+  await rows[matchIdx[0]].click();
+  await page.waitForTimeout(3000);
+  const opened = await page.$('#replyBoxComposer');
+  if (!opened) {
+    return { matched: false, reason: `order #${orderId}: clicked the matching conversation but #replyBoxComposer did not appear`, orderPageId: resolvedPageId, orderPhone };
+  }
+  return { matched: true, orderPageId: resolvedPageId, orderPhone, matchMethod: 'order_id_guess' };
+}
+
+// [new 2026-09-29, replaces the API-search tag step, per Tar: "ໃຫ້n8n ເຮັດໜ້າທີ່ຄືຄົນຜູ້1 ໃຊ້
+// ເບົາເຊີໃນການເຮັດວຽກ ເຂົາແພັນເຄັກ ພິມເບີໂທແລະສົ່ງຂໍ້ຄວາມ"] The old approach asked a Supabase Edge
+// Function to search Pancake's own conversation list (paginated, capped at 15 pages) for the right
+// psid/customer_id -- but by the time this step runs, the conversation is ALREADY OPEN in this same
+// browser tab (however it got resolved: order-number search, direct link, or phone search). Found
+// via pancake-tag-url-diag.js (2026-09-29, read-only DOM inspection): every open conversation shows
+// a "quick tag" panel of .btn-tag-item buttons, one per known tag, and the currently-applied tags
+// are marked by a small <div class="ellipse"> child inside that exact button -- no search, no API
+// call, just click the button that's right there on screen, exactly like a human admin would.
+async function swapConversationTag(page, removeTagText, addTagText) {
+  const findBtnHandle = (text) => page.evaluateHandle((t) => {
+    const btns = Array.from(document.querySelectorAll('.btn-tag-item'));
+    return btns.find((b) => (b.innerText || '').trim() === t) || null;
+  }, text);
+  const isApplied = (handle) => page.evaluate((el) => !!(el && el.querySelector('.ellipse')), handle);
+
+  const result = { removeButtonFound: false, removedExisting: false, addButtonFound: false, addedNew: false };
+  try {
+    const removeHandle = await findBtnHandle(removeTagText);
+    const removeEl = removeHandle.asElement();
+    result.removeButtonFound = !!removeEl;
+    if (removeEl) {
+      const applied = await isApplied(removeHandle);
+      if (applied) {
+        await removeEl.click();
+        await page.waitForTimeout(1000);
+        result.removedExisting = true;
+      }
+    }
+
+    const addHandle = await findBtnHandle(addTagText);
+    const addEl = addHandle.asElement();
+    result.addButtonFound = !!addEl;
+    if (addEl) {
+      const alreadyApplied = await isApplied(addHandle);
+      if (!alreadyApplied) {
+        await addEl.click();
+        await page.waitForTimeout(1000);
+        result.addedNew = true;
+      } else {
+        result.addedNew = true; // already there -- treat as success, nothing to do
+      }
+    }
+
+    result.ok = result.removeButtonFound && result.addButtonFound;
+    if (!result.ok) {
+      result.error = !result.removeButtonFound && !result.addButtonFound
+        ? `neither "${removeTagText}" nor "${addTagText}" quick-tag button found on this conversation`
+        : !result.removeButtonFound
+          ? `"${removeTagText}" quick-tag button not found`
+          : `"${addTagText}" quick-tag button not found`;
+    }
+    return result;
+  } catch (e) {
+    return { ok: false, stage: 'exception', error: e.message, ...result };
+  }
+}
+
+function downloadToFile(url, destPath) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if (res.statusCode !== 200) { reject(new Error('download HTTP ' + res.statusCode)); return; }
+      const out = fs.createWriteStream(destPath);
+      res.pipe(out);
+      out.on('finish', () => out.close(resolve));
+    }).on('error', reject);
+  });
+}
+
+// Runs in-page (document.querySelectorAll etc). Scans a wide vertical band around the composer
+// (well past a fixed +/-250px, since attaching a file shifts a bottom toolbar row further down
+// than that) and returns every visible button/role=button candidate in that band, plus tags each
+// one with a unique data-cc-idx attribute so Node-side code can click a chosen one by index.
+function scanToolbarCandidates() {
+  const composer = document.getElementById('replyBoxComposer');
+  const composerRect = composer ? composer.getBoundingClientRect() : null;
+  if (!composerRect) return { error: 'no composer', candidates: [] };
+  const top = composerRect.top - 400;
+  const bottom = composerRect.bottom + 400;
+  // Widened well past just <button>/[role=button] -- a chat toolbar's icons are very often plain
+  // <div>/<span>/<i> elements with a click handler and a pointer cursor rather than real <button>
+  // elements (confirmed: a first pass with only button/[role=button] missed every emoji/image/gif/
+  // send icon and only caught one unrelated "create warnings" button). Any smallish element with
+  // cursor:pointer in the band, plus any svg/img itself, is a candidate.
+  const seen = new Set();
+  const raw = Array.from(document.querySelectorAll('button, [role="button"], div, span, i, a, svg, img'));
+  const els = [];
+  for (const el of raw) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    if (r.width > 80 || r.height > 80) continue; // toolbar icons are small; skip big containers
+    if (r.top < top || r.top > bottom) continue;
+    const style = window.getComputedStyle(el);
+    const isClickable = style.cursor === 'pointer' || el.tagName === 'BUTTON' || el.getAttribute('role') === 'button' || el.tagName === 'SVG' || el.tagName === 'IMG';
+    if (!isClickable) continue;
+    // de-dupe: skip an element whose parent is already in the list (parent likely the real click
+    // target and we'll also catch the parent directly via its own cursor:pointer)
+    const key = Math.round(r.top) + ',' + Math.round(r.left) + ',' + Math.round(r.width) + ',' + Math.round(r.height);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    els.push({ el, r, style });
+  }
+  const candidates = els.map((item, i) => {
+    const { el, r, style } = item;
+    el.setAttribute('data-cc-idx', String(i));
+    const svgOrImg = el.tagName === 'SVG' || el.tagName === 'IMG' ? el : el.querySelector('img, svg');
+    return {
+      i,
+      tag: el.tagName,
+      text: (el.innerText || '').trim().slice(0, 30),
+      title: el.getAttribute('title') || '',
+      ariaLabel: el.getAttribute('aria-label') || '',
+      className: (el.className || '').toString().slice(0, 150),
+      bg: style.backgroundColor,
+      cursor: style.cursor,
+      hasIcon: !!svgOrImg,
+      disabled: !!el.disabled,
+      rect: { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), width: Math.round(r.width), height: Math.round(r.height) },
+    };
+  });
+  return { composerTop: Math.round(composerRect.top), composerBottom: Math.round(composerRect.bottom), candidates };
+}
+
+// [new 2026-09-29, after Tar caught real customers marked "sent" with no image ever delivered --
+// order 73335 and "many" others] Runs in-page. Counts message-thread bubbles that contain an <img>,
+// excluding the still-in-composer preview tray and avatar images. Used as a before/after signal: if
+// a genuine send happened, a NEW image-bearing message bubble renders in the thread, so this count
+// goes up by at least 1. A fixed timeout alone (the old behavior) cannot tell a real send apart from
+// one that silently failed after the composer visually cleared.
+function countThreadImageMessages() {
+  const els = Array.from(document.querySelectorAll('[class*="message"]'));
+  let count = 0;
+  for (const el of els) {
+    const cls = (el.className || '').toString();
+    if (/preview-item/.test(cls)) continue;
+    if (el.closest && el.closest('[class*="avatar"]')) continue;
+    if (el.querySelector('img')) count++;
+  }
+  return count;
+}
+
+// [fixed 2026-09-30, real false-positive caught live: phone 95554282 -- send_status was marked
+// "sent" (imgCountBefore=8, reloadImgCount=13, deliveryConfirmed=true) with tag/POS status updated,
+// but the customer's actual Pancake chat never received the image. Root cause found by re-opening
+// that exact same conversation twice in a row for a diagnostic test, with NOTHING sent in between:
+// countThreadImageMessages() returned 13 the first time and 8 the second time on the IDENTICAL
+// thread -- proving the raw count is unstable, not a reliable before/after signal. Pancake's chat
+// pane lazy-renders only part of the conversation history into the DOM at a time, so how many
+// image-bearing bubbles happen to be mounted at the instant of counting depends on load/scroll
+// timing, not on how many images actually exist. A count going UP after reopening can just as
+// easily mean "more of the same old history finished rendering" as "a new image arrived" -- this is
+// exactly what fooled the old logic for 95554282, where resolveViaOrderSearch had matched the
+// CORRECT, unambiguous conversation every time (verified from script-output-log.txt), so this was
+// never a wrong-conversation problem, only a bad counting method.
+// Fix: compare actual image IDENTITIES (src URLs) within the trailing few messages, not a raw
+// count across the whole (unreliably-rendered) thread. The trailing ~10 messages right at the
+// bottom of a conversation are reliably rendered the instant it's opened -- confirmed across a real
+// 29-order audit the same day, where an image was consistently found 0-5 messages back with nothing
+// scrolled -- so capture the trailing image src set BEFORE sending, then after the authoritative
+// reopen, the send is only confirmed if a trailing image src appears that was NOT in the earlier
+// set (a genuinely new image), never merely "there are more images than before".
+const TRAILING_IMAGE_WINDOW = 10;
+function getTrailingImageSrcs(windowSize) {
+  const w = windowSize || 10;
+  const candidates = Array.from(document.querySelectorAll('[class*="message"]')).filter((el) => {
+    const cls = (el.className || '').toString();
+    if (/preview-item/.test(cls)) return false;
+    if (el.closest && el.closest('[class*="avatar"]')) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 50 && r.height > 10;
+  });
+  const sorted = candidates.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+  const last = sorted.slice(-w);
+  const srcs = [];
+  last.forEach((el) => {
+    el.querySelectorAll('img').forEach((img) => { if (img.src) srcs.push(img.src); });
+  });
+  return srcs;
+}
+
+// [new 2026-09-29 second fix] Pancake's chat app (pages.fm/multi_pages) never puts the open
+// conversation in the URL -- confirmed live: page.url() reads back as the bare
+// "https://pages.fm/multi_pages" root no matter which conversation is open, so a plain
+// page.goto(page.url()) "reload" just lands back on the empty inbox (reloadImgCount always 0,
+// caught live on order 73351's re-test). To actually force a fresh, server-backed re-fetch of
+// THIS SAME conversation (discarding any purely client-side optimistic message state), redo the
+// exact same phone-search-and-click sequence resolveViaOrderSearch/the ui_phone_search fallback
+// use to open it in the first place, rather than reloading the page.
+async function reopenConversationForVerify(page, targetPageId, phone) {
+  if (!phone) return { ok: false, reason: 'no phone available to reopen the conversation for verification' };
+  await page.goto('https://pages.fm/multi_pages', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(4000);
+  await page.bringToFront();
+  const searchBox = await page.$('input.conversation-menu-search-input');
+  if (!searchBox) return { ok: false, reason: 'inbox search box not found on reopen' };
+  await searchBox.click();
+  await searchBox.fill(phone);
+  await page.keyboard.press('Enter').catch(() => {});
+  await page.waitForTimeout(5000);
+  const rows = await page.$$('.media.conversation-list-item');
+  if (!rows.length) return { ok: false, reason: 'no conversation row found on reopen search' };
+  // [fixed 2026-09-30, real false-positive caught live: phone 95554282 -- send_status was marked
+  // "sent" and the day-count tag/POS status were updated, but the customer's actual Pancake chat
+  // never received the image] Root cause: when the phone search returned MULTIPLE rows (this same
+  // shop has several Facebook Pages, so one phone can have a separate conversation under each) and
+  // none of their avatar page-ids confidently matched targetPageId, this used to silently fall back
+  // to clicking rows[0] anyway and count ITS images -- so a different customer's unrelated new
+  // image could make this row look "delivered" while the real target conversation was untouched.
+  // Never guess here: if we can't positively confirm which row is the right one, report ok:false
+  // (the caller already treats that as deliveryConfirmed:false, same as any other verify failure)
+  // rather than silently verifying the wrong conversation.
+  let rowToClick = null;
+  if (targetPageId) {
+    const rowPageIds = await Promise.all(rows.map((el) => el.evaluate((row) => {
+      const img = row.querySelector('img[src*="/pages/"]');
+      if (!img) return null;
+      const m = /\/pages\/(\d+)\//.exec(img.src);
+      return m ? m[1] : null;
+    })));
+    const idx = rowPageIds.findIndex((pid) => pid === targetPageId);
+    if (idx < 0) {
+      return {
+        ok: false,
+        reason: `reopen found ${rows.length} row(s) for phone ${phone} but none confidently matched target page id ${targetPageId} (rowPageIds=${JSON.stringify(rowPageIds)}) -- refusing to guess`,
+      };
+    }
+    rowToClick = rows[idx];
+  } else if (rows.length === 1) {
+    rowToClick = rows[0];
+  } else {
+    return {
+      ok: false,
+      reason: `reopen found ${rows.length} ambiguous rows for phone ${phone} and no target page id to disambiguate -- refusing to guess`,
+    };
+  }
+  await rowToClick.click();
+  await page.waitForTimeout(3000);
+  const opened = await page.$('#replyBoxComposer');
+  return { ok: !!opened, reason: opened ? null : 'composer did not reappear after reopen click' };
+}
+
+// Node-side heuristic: pick the send-button candidate from the scan above.
+// Prefers a non-gray/non-transparent (colored, e.g. Pancake's primary blue) background, and among
+// those the one furthest to the right (send controls are conventionally last in a chat toolbar).
+// Falls back to the plain rightmost visible candidate below the composer's original top if no
+// colored one is found.
+function pickSendCandidate(candidates, composerBottom) {
+  const byLeft = (a, b) => b.rect.left - a.rect.left;
+  const byRight = (a, b) => b.rect.right - a.rect.right;
+  const notDisabled = (c) => !c.disabled;
+  // Confirmed via a real preview run + zoomed screenshot comparison (2026-09-28): Pancake's whole
+  // reply-box icon row (sticky-note, paperclip/attach, image, comment, SEND) all share the exact
+  // same className "new-reply-box-btn ...pancake-antd-tooltip", laid out left-to-right in that
+  // order -- so the send icon is simply the RIGHTMOST element carrying that class. This is far more
+  // reliable than color/position guessing: an unrelated floating "create warnings" button (orange,
+  // different className) sits further right on the page and was being picked by an earlier,
+  // position-only heuristic -- confirmed a false positive by cropping the screenshot.
+  const replyBoxBtns = candidates.filter((c) => /new-reply-box-btn/.test(c.className || '') && notDisabled(c));
+  if (replyBoxBtns.length) {
+    replyBoxBtns.sort(byLeft);
+    return replyBoxBtns[0];
+  }
+  // Fallback (className not found, e.g. Pancake changed markup): restrict to the toolbar band
+  // just below the composer and exclude the known "warning" false positive, then take the
+  // rightmost remaining icon-bearing element.
+  const notWarning = (c) => !/warning/i.test(c.className || '') && !/warning/i.test(c.title || '') && !/warning/i.test(c.ariaLabel || '');
+  const tight = candidates.filter((c) => c.rect.top >= composerBottom - 10 && c.rect.top <= composerBottom + 60 && notWarning(c) && notDisabled(c));
+  const pool = tight.length ? tight : candidates.filter((c) => notWarning(c) && notDisabled(c));
+  const leafIcons = pool.filter((c) => c.tag === 'SVG' || c.tag === 'IMG');
+  const ranked = (leafIcons.length ? leafIcons : pool).slice().sort(byRight);
+  return ranked[0] || null;
+}
+
+(async () => {
+  // [fixed 2026-09-28] argv order MUST match bridge-server.js's own runScript(): args = [fullPath,
+  // port, mode, extraArg] -- i.e. query "mode" lands in argv[3], query "bill" (reused here for the
+  // row id, avoiding a 5th bridge-server.js query param) lands in argv[4]. This file previously had
+  // rowId/mode swapped (argv[3]=rowId, argv[4]=mode), which never actually matched how
+  // bridge-server.js invokes ANY script including this one -- caught before this was ever
+  // wired into a real trigger, via a direct code read, not by a failed live run.
+  const port = process.argv[2] || 9224; // Pancake automation profile (dedicated Chrome, port 9224)
+  // argv[3] doubles as mode + attach-method, e.g. "preview", "live", "preview-clip", "live-clip"
+  const modeArg = process.argv[3] || 'preview';
+  let rowId = process.argv[4] || ''; // courier_bill_import_pages.id, passed as bridge-server's generic "bill" query param -- no PII in argv either way
+  const mode = /live/i.test(modeArg) ? 'live' : 'preview';
+  const useClipboard = /clip/i.test(modeArg);
+
+  // v(2026-10-03) EMERGENCY HOLD: while C:\n8n-data\HOLD-SENDS.txt exists AND starts with the word HOLD, the automatic picker sends
+  // nothing (checked BEFORE any row is claimed). Delete the file to resume.
+  if (/^(auto|next)$/i.test(rowId) && (() => { try { return /^\s*HOLD/i.test(fs.readFileSync('C:\\n8n-data\\HOLD-SENDS.txt', 'utf8')); } catch (e) { return false; } })()) {
+    console.log(JSON.stringify({ status: 'ok', message: 'HOLD-SENDS.txt present -- auto sending paused', rowId: 'auto' }));
+    process.exit(0);
+  }
+
+  // [new 2026-09-29, per Tar: "ກວດ Chrome ພ້ອມກ່ອນລອງສົ່ງທຸກຄັ້ງ"] Fail fast if Chrome's CDP port
+  // isn't reachable -- before picking/touching any row at all. Caught live: 13 consecutive n8n
+  // schedule firings all hit ECONNREFUSED deep inside connectOverCDP after already auto-picking a
+  // row each time (harmless since the DB patch happens even later, but wasted work and muddied the
+  // error signal). stage:"chrome_not_ready" lets bridge-server.js's circuit breaker recognize this
+  // exact failure mode and stop retrying instead of hammering every 20s forever.
+  const chromeCheck = await checkChromeReady(port);
+  if (!chromeCheck.ready) {
+    console.log(JSON.stringify({
+      status: 'error', stage: 'chrome_not_ready',
+      error: `Chrome CDP port ${port} not reachable: ${chromeCheck.error || ('HTTP ' + chromeCheck.statusCode)}`,
+      rowId: rowId || null,
+    }));
+    process.exit(1);
+  }
+
+  // [new 2026-09-29, bulk send feature] rowId="auto" (or "next") -- instead of a specific row,
+  // pick the OLDEST currently-eligible row ourselves: today's deposit_at, match_confidence=high,
+  // send_status=pending, Pancake channel only (channel logic mirrors Marketing Studio's own
+  // isPancakeLabel()/matched_crm_purchase_id-only rule, reverse-engineered from index.html). This
+  // lets an n8n Schedule Trigger just call this script once every 20s with rowId=auto and never
+  // needs to compute "which row is next" itself -- same shape as the already-proven "Send Ready
+  // (Pancake)" 30s-poll pattern (send-ready-courier-bills), just picking rows straight from
+  // courier_bill_import_pages instead of a separate ready_to_send queue.
+  if (/^(auto|next)$/i.test(rowId)) {
+    // [2026-10-01] Sweep: a row claimed ('sending' + sending_since) more than 20 minutes ago whose run was killed
+    // (bridge 45-min kill, PC restart, crash) is marked 'failed' for manual review instead of staying invisible
+    // forever. Rows with no sending_since (claimed before this fix) are deliberately left alone.
+    try {
+      const cutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+      await sbPatch(`/rest/v1/courier_bill_import_pages?send_status=eq.sending&sending_since=lt.${encodeURIComponent(cutoff)}`, { send_status: 'failed' });
+    } catch (e) { /* best-effort */ }
+    const todayISO = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10); // [2026-10-01] true Laos date regardless of the PC's own timezone
+    // Pancake-channel filter matches the validated scoping SQL exactly: sl.created_by='Pancake
+    // Sync' OR (no shipping_labels row at all AND a matched_crm_purchase_id exists). Embeds the
+    // shipping_labels row via PostgREST's foreign-key embed (matched_shipping_label_id -> id) so
+    // this re-check can run without a raw SQL call from the Windows script.
+    // v(2026-09-29b) FIX: send_status=eq.pending only matches rows where the column literally
+    // holds the STRING "pending" -- but a bill's send_status is NULL from the moment it's first
+    // matched/imported, and stays NULL until something explicitly writes to it. This is documented
+    // in Marketing Studio's own index.html ("send_status is stored as NULL (never the literal
+    // string 'pending') until something actually moves it forward"), which is exactly why ITS OWN
+    // status filter uses .or("send_status.is.null,send_status.eq.pending") instead of a plain
+    // .eq(). This script's auto-picker query never had that OR -- confirmed live 2026-09-29
+    // ~22:58: 77 rows genuinely had the literal string "pending" (left over from an earlier manual
+    // reset-to-pending correction) and 0 of those were Pancake-channel, while the real 50 freshly-
+    // matched Pancake bills from today all still sat at send_status=NULL and were silently
+    // invisible to this query the whole time -- the schedule kept firing "candidates found but
+    // none passed the Pancake-channel re-check" every 20s while real, unsent Pancake bills sat
+    // waiting. Switched eq.pending to an is.null/eq.pending OR, same as Marketing Studio's own
+    // filter, so freshly-matched (never-yet-touched) rows are picked up too.
+    const candidatesHigh = await sbGet(
+      `/rest/v1/courier_bill_import_pages?match_confidence=eq.high&or=(send_status.is.null,send_status.eq.pending)`
+      + `&deposit_at=gte.${todayISO}T00:00:00&deposit_at=lt.${todayISO}T23:59:59.999`
+      // v(2026-09-29) FIX: limit=50 was applied BEFORE the Pancake-channel filter below, so once
+      // 50+ non-Pancake pending rows (COD/other-channel bills, unrelated to this sender) piled up
+      // with earlier deposit_at than the actual Pancake-eligible ones, the auto-picker's fetch
+      // window never reached the real candidates at all -- confirmed live 2026-09-29 ~22:12: the
+      // 50 oldest pending/high rows were ALL non-Pancake (0 eligible), while 26 genuinely-eligible
+      // Pancake rows sat further down, past the cutoff, so the schedule kept firing "candidates
+      // found but none passed the Pancake-channel re-check" every 20s and nothing sent. Raised to
+      // 500 (today's total pending/high count is ~103, comfortably under this) so the fetch window
+      // covers everything pending today regardless of how many non-Pancake rows sort earlier.
+      + `&select=id,matched_shipping_label_id,matched_crm_purchase_id,shipping_labels!matched_shipping_label_id(created_by)&order=deposit_at.asc&limit=1000`
+    ).catch(() => null);
+
+    // [new 2026-09-30, Tar: "ຕອນນີ້ຢືນຢັນໃຫ້ແລ່ນແທ້ ສະເພາະບິນທີ່ເປັນ ສະຖານະ high ສ່ວນ midium ກັບ
+    // low ຕ້ອງໃຫ້ພະນັກງານກວດ ... ຫຼັງຈາກນັ້ນໃຫ້ n8n ໄປສົ່ງໂຕທີ່ພະນັກງານກົດ"] Second branch: ANY
+    // confidence level (medium/low included) that a staff member has already reviewed in the
+    // courier-bill-import UI and marked send_status="ready_to_send" via the "ກຽມສົ່ງ" button. The
+    // old link-based sender (send-ready-courier-bills' Pancake branch) is retired for Pancake bills
+    // as of the same day -- that function now SKIPS any Pancake-channel ready_to_send row and
+    // leaves it untouched specifically so this script is the only thing that ever acts on it,
+    // avoiding a double-send. No deposit_at/today restriction here: a staff approval is an explicit
+    // "send this now" instruction regardless of which day the bill is from.
+    const candidatesReady = await sbGet(
+      `/rest/v1/courier_bill_import_pages?send_status=eq.ready_to_send`
+      + `&select=id,matched_shipping_label_id,matched_crm_purchase_id,shipping_labels!matched_shipping_label_id(created_by)&order=deposit_at.asc&limit=1000`
+    ).catch(() => null);
+
+    const isPancakeChannel = (c) => {
+      const sl = c.shipping_labels;
+      const slCreatedBy = Array.isArray(sl) ? (sl[0] && sl[0].created_by) : (sl && sl.created_by);
+      return slCreatedBy === 'Pancake Sync' || (!c.matched_shipping_label_id && c.matched_crm_purchase_id);
+    };
+
+    const totalCandidateCount = (Array.isArray(candidatesHigh) ? candidatesHigh.length : 0)
+      + (Array.isArray(candidatesReady) ? candidatesReady.length : 0);
+    if (totalCandidateCount === 0) {
+      console.log(JSON.stringify({ status: 'ok', message: 'no eligible rows found (today/high/pending, or ready_to_send) -- nothing to do', rowId: 'auto' }));
+      process.exit(0);
+    }
+
+    // Staff-approved (ready_to_send) rows are checked FIRST -- a human already reviewed that exact
+    // bill and explicitly asked for it to go out, so it shouldn't wait behind today's auto-pending
+    // high-confidence queue. Each candidate is tagged with which claim-check it needs (see below),
+    // since a ready_to_send row must be claimed by re-checking send_status='ready_to_send', not
+    // null/pending.
+    const eligible = (Array.isArray(candidatesReady) ? candidatesReady : [])
+      .filter(isPancakeChannel)
+      .map((c) => Object.assign({}, c, { __claimFrom: 'ready_to_send' }))
+      .concat(
+        (Array.isArray(candidatesHigh) ? candidatesHigh : [])
+          .filter(isPancakeChannel)
+          .map((c) => Object.assign({}, c, { __claimFrom: 'pending' }))
+      );
+    if (eligible.length === 0) {
+      console.log(JSON.stringify({ status: 'ok', message: 'candidates found but none passed the Pancake-channel re-check', rowId: 'auto', candidateCount: totalCandidateCount }));
+      process.exit(0);
+    }
+
+    // v(2026-09-30, duplicate-send fix) CLAIM the row before doing anything else -- confirmed live
+    // 2026-09-29 ~23:50 that this was missing: this script only checked send_status AFTER already
+    // downloading the image and driving the browser, several real seconds later, so if this exact
+    // script got invoked twice close together (confirmed that night: n8n deactivating a workflow via
+    // its API did NOT actually stop its in-memory schedule, so the same "auto" trigger kept firing on
+    // its own on top of new runs), both copies would see the SAME row as eligible and BOTH would send
+    // it -- real customers got the same bill twice. Fixed at the root instead of just patching that
+    // one n8n bug: claim the row FIRST, atomically, the same way a human staff member "takes" a
+    // ticket off a shared queue -- write send_status="sending" but only where it's still
+    // null/pending (PostgREST applies that WHERE check as part of the single UPDATE, so this can
+    // never race with another copy doing the same PATCH at the same instant). Prefer:
+    // return=representation tells us whether OUR write actually matched a row: an empty array back
+    // means someone/something else claimed it a moment earlier, so we must move on to the NEXT
+    // eligible candidate rather than assume there's nothing left to do.
+    let claimedId = null;
+    for (const cand of eligible) {
+      // [2026-09-30] WHERE re-check must match whichever queue this candidate actually came from --
+      // a ready_to_send row is claimed by re-checking send_status='ready_to_send' (same
+      // compare-and-swap idea as before: PostgREST applies this as part of the single UPDATE, so it
+      // can never race with another copy of this script, or with send-ready-courier-bills, doing the
+      // same PATCH at the same instant).
+      const claimFilter = cand.__claimFrom === 'ready_to_send'
+        ? `send_status=eq.ready_to_send`
+        : `or=(send_status.is.null,send_status.eq.pending)`;
+      const claimRes = await sbPatchClaim(
+        `/rest/v1/courier_bill_import_pages?id=eq.${encodeURIComponent(cand.id)}&${claimFilter}`,
+        { send_status: 'sending', sending_since: new Date().toISOString() }
+      ).catch(() => null);
+      if (Array.isArray(claimRes) && claimRes.length === 1) { claimedId = cand.id; break; }
+    }
+    if (!claimedId) {
+      console.log(JSON.stringify({ status: 'ok', message: 'every eligible row was already claimed by another run before we could -- nothing left to send this tick', rowId: 'auto', candidateCount: eligible.length }));
+      process.exit(0);
+    }
+    rowId = claimedId;
+    console.log('AUTO_PICKED_ROW ' + JSON.stringify({ rowId, remainingCandidates: eligible.length }));
+  }
+  const isAutoMode = /^(auto|next)$/i.test(process.argv[4] || '');
+
+  // [new 2026-09-29, bulk send feature] In auto mode, a row that can't be resolved (ambiguous
+  // conversation, no match, etc.) would otherwise be picked again on every future run forever --
+  // the auto-picker always takes the OLDEST still-pending row, and a failed resolution never used
+  // to change send_status, so the exact same stuck row would block the entire rest of the batch.
+  // Only marks send_status="failed" (a real, already-used status -- Marketing Studio's own
+  // courierBillSendSelected uses it the same way, displayed as "❌ ບ້່ສ່ົມແໂທເທ໫ານ" for staff to review) when running
+  // as the auto-picker; a human-triggered single-rowId call keeps the original behavior of leaving
+  // the row untouched (pending) for manual follow-up, unchanged from before this feature existed.
+  // [2026-10-01 STUCK-SENDING FIX] A claimed row is set to send_status='sending'. Only failExit() used to
+  // release it, but ~20 other paths call process.exit directly (search box not found, composer not found,
+  // no send button, final .catch ...) and the bridge can kill this process after 45 min -- each left the row
+  // at 'sending' forever (the picker only takes null/pending/ready_to_send), so the customer silently never
+  // got the bill. Now process.exit is wrapped: in auto mode, if the row is STILL 'sending' at exit, mark it
+  // 'failed' (manual review, same as failExit; the WHERE keeps it from touching a row already 'sent'/'failed').
+  const _realExit = process.exit.bind(process);
+  let _exiting = false;
+  // [2026-10-01 FIX 17:40] The previous version of this wrapper started an ASYNC patch and RETURNED, so the code
+  // after every process.exit() call kept running for up to 6s. After failExit() (delivery not confirmed) it fell
+  // through to the "mark as sent" PATCH: 24 bills were falsely marked 'sent' today although the log said
+  // "NOT marked as sent". Now the release PATCH runs SYNCHRONOUSLY in a child node process and then the real
+  // exit happens right here, so nothing after process.exit() can ever run.
+  process.exit = (code) => {
+    if (_exiting) return _realExit(code);
+    _exiting = true;
+    if (isAutoMode && rowId) {
+      try {
+        execFileSync(process.execPath, ['-e',
+          "const https=require('https');const [h,p,k]=process.argv.slice(1);const b=JSON.stringify({send_status:'failed'});" +
+          "const r=https.request({hostname:h,path:p,method:'PATCH',headers:{apikey:k,'x-ms-token':'6daa795e5d328a784713b941a6007d597c8b0d5f791c94e7188ee2c0c9859656',Authorization:'Bearer '+k,'Content-Type':'application/json','Content-Length':Buffer.byteLength(b),Prefer:'return=minimal'}},res=>{res.resume();res.on('end',()=>process.exit(0));});" +
+          "r.on('error',()=>process.exit(0));r.setTimeout(8000,()=>{r.destroy();process.exit(0);});r.write(b);r.end();",
+          SUPABASE_HOST, `/rest/v1/courier_bill_import_pages?id=eq.${encodeURIComponent(rowId)}&send_status=eq.sending`, SUPABASE_ANON_KEY,
+        ], { timeout: 10000, stdio: 'ignore' });
+      } catch (e) { /* best effort */ }
+    }
+    _realExit(code);
+  };
+  async function failExit(errObj) {
+    if (isAutoMode && rowId) {
+      try {
+        await sbPatch(`/rest/v1/courier_bill_import_pages?id=eq.${encodeURIComponent(rowId)}`, { send_status: 'failed' });
+      } catch (e) { /* best-effort -- still report the original error below either way */ }
+    }
+    console.log(JSON.stringify(errObj));
+    process.exit(1);
+  }
+
+  if (!rowId) {
+    console.log(JSON.stringify({ status: 'error', error: 'rowId (argv[4] / bridge query "bill", a courier_bill_import_pages.id) required' }));
+    process.exit(1);
+  }
+
+  // Test-send override: Tar asked (in chat, never through a URL) to send to a SPECIFIC phone
+  // (his own test number) regardless of which real customer a given bill was matched to. Read from
+  // a small local file instead of argv/URL so the phone never travels through bridge-server.js's
+  // querystring either.
+  let overridePhone = null;
+  try {
+    overridePhone = fs.readFileSync('C:\\n8n-data\\send-override-phone.txt', 'utf8').trim() || null;
+  } catch (e) { /* no override file -- normal real-send path */ }
+
+  // 1) Look up the bill row + its matched customer phone/page + image url -- server-side, never
+  // through the bridge URL.
+  const rows = await sbGet(`/rest/v1/courier_bill_import_pages?id=eq.${encodeURIComponent(rowId)}&select=id,courier_bill_number,matched_customer_phone,matched_customer_name,page_image_url,send_status,matched_shipping_label_id,matched_crm_purchase_id,cod_amount,total_amount,matched_order_date,order_id_guess`);
+  if (!Array.isArray(rows) || rows.length === 0) {
+    console.log(JSON.stringify({ status: 'error', error: 'row not found', rowId }));
+    process.exit(1);
+  }
+  const bill = rows[0];
+  if (bill.send_status === 'sent') {
+    console.log(JSON.stringify({ status: 'error', error: 'row already marked sent -- refusing to resend', rowId, bill }));
+    process.exit(1);
+  }
+  // [relaxed 2026-09-29] Previously required matched_customer_phone up front, but the new
+  // order_id_guess path (resolveViaOrderSearch) can discover the phone itself by reading it live
+  // out of the POS order -- a real row can have order_id_guess set with matched_customer_phone still
+  // null (the CRM-matching step that fills that column is a separate, sometimes-later process). Only
+  // hard-require a phone here when there's no order number to try instead; recipientPhone is still
+  // used as the fallback-path search term and gets upgraded below if the order-search path finds a
+  // fresher one.
+  let recipientPhone = overridePhone || bill.matched_customer_phone;
+  if (!recipientPhone && !bill.order_id_guess) {
+    await failExit({ status: 'error', error: 'row has no matched_customer_phone, no order_id_guess, and no override file present -- nothing to search by', rowId });
+  }
+  if (!bill.page_image_url) {
+    console.log(JSON.stringify({ status: 'error', error: 'row has no page_image_url', rowId }));
+    process.exit(1);
+  }
+
+  // 2) Download the real bill image locally so Playwright can attach an actual file.
+  const localImagePath = path.join('C:\\n8n-data', `send-bill-${rowId}.png`);
+  await downloadToFile(bill.page_image_url, localImagePath);
+  const stat = fs.statSync(localImagePath);
+  if (!stat.size) {
+    console.log(JSON.stringify({ status: 'error', error: 'downloaded image is empty', rowId }));
+    process.exit(1);
+  }
+
+  // v(2026-10-03) IMAGE SANITY GUARD (Tar): a batch of badly-captured Anousith bill images (blank /
+  // cropped / wrong-bill) was sent to real customers because nothing checked the source file. Refuse
+  // to send anything too small, or (for Anousith bills, whose 13-digit numeric tracking number
+  // identifies them) anything whose pixel size is far from the normal ~897x535 card.
+  {
+    const imgBuf = fs.readFileSync(localImagePath);
+    let iw = 0, ih = 0;
+    if (imgBuf.length > 24 && imgBuf[0] === 0x89 && imgBuf[1] === 0x50) { // PNG: IHDR
+      iw = imgBuf.readUInt32BE(16); ih = imgBuf.readUInt32BE(20);
+    } else if (imgBuf.length > 4 && imgBuf[0] === 0xFF && imgBuf[1] === 0xD8) { // JPEG: SOF
+      let i = 2;
+      while (i + 9 < imgBuf.length) {
+        if (imgBuf[i] !== 0xFF) { i++; continue; }
+        const m = imgBuf[i + 1];
+        if (m === 0xFF) { i++; continue; }
+        if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) { ih = imgBuf.readUInt16BE(i + 5); iw = imgBuf.readUInt16BE(i + 7); break; }
+        i += 2 + imgBuf.readUInt16BE(i + 2);
+      }
+    }
+    const isAnousith = /^\d{13}$/.test(String(bill.courier_bill_number || ''));
+    let imgProblem = null;
+    if (stat.size < 20000) imgProblem = 'IMAGE_TOO_SMALL_' + stat.size + 'B';
+    else if (!iw || !ih) imgProblem = 'IMAGE_UNREADABLE';
+    else if (isAnousith && (iw < 560 || iw > 1050 || ih < 300 || ih > 2500)) imgProblem = 'IMAGE_BAD_DIMS_' + iw + 'x' + ih;
+    if (imgProblem) {
+      try { fs.unlinkSync(localImagePath); } catch (e) {}
+      await failExit({ status: 'error', error: 'REFUSED_BAD_IMAGE ' + imgProblem + ' -- not sending a bill image that looks wrong', rowId, bytes: stat.size, width: iw, height: ih });
+    }
+  }
+
+  const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
+  const context = browser.contexts()[0];
+  let page = context.pages().find((p) => p.url().includes('pages.fm'));
+  if (!page) page = await context.newPage();
+
+  // Resolution priority chain (per Tar, 2026-09-29):
+  //   1) order_id_guess -> POS order search -> read the customer's own page id straight from
+  //      Pancake's UI, then pick the exact-matching conversation by page id (resolveViaOrderSearch).
+  //      Most trustworthy: reads live UI state keyed by the actual order number, never a cached DB
+  //      field. Skipped for the override-phone test (no real order to look up).
+  //   2) crm_purchases.conversation_link (resolveConversationLink) -- kept as the 2nd-choice
+  //      fallback for rows where the order number is missing/wrong or the order-search method fails
+  //      for any other reason.
+  //   3) Old phone-search-in-inbox path, Facebook-only, refuses on 0 or >1 matches -- last-resort
+  //      safety net, and the override-phone test's only path (by design).
+  //   If ALL of the above fail or come back ambiguous: refuse outright and leave the row for a
+  //   human to check by hand (Tar: "ໃນເບື້ອງຕົ້ນໝາຍໄວ້ໃຫ້ພະນັກງານກວດກ່ອນ") -- never guess.
+  let navMethod = null;
+  let resolution = null;
+  const attemptLog = [];
+
+  if (!overridePhone) {
+    const orderSearchResult = await resolveViaOrderSearch(page, bill).catch((e) => ({ matched: false, reason: 'threw: ' + e.message }));
+    attemptLog.push({ method: 'order_id_guess', ...orderSearchResult });
+    if (orderSearchResult.matched) {
+      navMethod = 'order_search';
+      resolution = { matchMethod: 'order_id_guess', orderPageId: orderSearchResult.orderPageId, orderPhone: orderSearchResult.orderPhone, alreadyOpen: true };
+    }
+    // Even on a failed/ambiguous match, the order search may have read a real phone number off the
+    // live order -- prefer it over the (possibly stale or absent) database column for whatever
+    // fallback path runs next.
+    if (orderSearchResult.orderPhone) recipientPhone = orderSearchResult.orderPhone;
+  }
+
+  // [new 2026-09-29] Order 73308 failed here even though shipping_labels.recipient_phone was
+  // populated the whole time (02054144098) -- matched_customer_phone (CRM match) was empty and the
+  // POS order-search UI read failed for an unrelated reason, but the phone was sitting right there
+  // in the shipping label all along. Try it as a last DB-based fallback, distinct from the UI scan,
+  // before giving up on the row entirely.
+  if (!recipientPhone && bill.matched_shipping_label_id) {
+    const slRows = await sbGet(`/rest/v1/shipping_labels?id=eq.${encodeURIComponent(bill.matched_shipping_label_id)}&select=recipient_phone`).catch(() => null);
+    const slPhone = Array.isArray(slRows) && slRows[0] && slRows[0].recipient_phone;
+    if (slPhone) {
+      recipientPhone = slPhone;
+      attemptLog.push({ method: 'shipping_label_phone_fallback', matched: true, phone: slPhone });
+    }
+  }
+
+  if (!recipientPhone) {
+    await failExit({ status: 'error', error: 'no phone number available from any source (matched_customer_phone empty, order search could not read one, shipping_labels.recipient_phone also empty) -- flagged for manual review', rowId, attemptLog });
+  }
+
+  // [2026-10-01] The order search already REFUSED this row as AMBIGUOUS (2+ conversations under the same page
+  // matched and the time check could not settle it). Falling through to the CRM conversation_link (which the
+  // code's own comments call stale/duplicated for some rows) only needs a composer to exist, so it could send
+  // the bill to the wrong thread -- exactly the guess the design says never to make. Stop here for manual review.
+  {
+    const osAttempt = attemptLog.find((a) => a.method === 'order_id_guess');
+    if (!resolution && osAttempt && !osAttempt.matched && /AMBIGUOUS/i.test(String(osAttempt.reason || ''))) {
+      await failExit({ status: 'error', error: 'AMBIGUOUS order-search match -- refusing to fall back to crm_purchases link or phone search; manual review needed', rowId, attemptLog });
+    }
+  }
+
+  if (!resolution) {
+    const linkResult = overridePhone ? null : await resolveConversationLink(bill).catch(() => null);
+    if (linkResult) {
+      navMethod = 'direct_link';
+      await page.goto(`https://pancake.vn/${linkResult.pageId}?customer_id=${linkResult.customerId}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(4000);
+      await page.bringToFront();
+      // Confirm a real conversation actually opened before trusting it -- if the direct link didn't
+      // land on an open conversation (stale/broken link, page access issue, etc.), fall back to the
+      // phone-search path below instead of silently proceeding on a blank/error page.
+      const opened = await page.$('#replyBoxComposer, [class*="conversation-header"], [class*="chat-header"]');
+      if (opened) {
+        resolution = linkResult;
+      } else {
+        attemptLog.push({ method: 'crm_purchases_link', matched: false, reason: 'direct link navigated but no conversation view was detected afterward' });
+        navMethod = null;
+      }
+    } else if (!overridePhone) {
+      attemptLog.push({ method: 'crm_purchases_link', matched: false, reason: 'no crm_purchases row/conversation_link found for this bill' });
+    }
+  }
+
+  if (!resolution) {
+    if (!navMethod) navMethod = 'ui_phone_search';
+    await page.goto('https://pages.fm/multi_pages', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(4000);
+    await page.bringToFront();
+
+    const _fbDiag = [];
+    const searchBox = await waitForBoxWithRetry(page, 'input.conversation-menu-search-input', 'inbox_search_fallback', _fbDiag);
+    if (!searchBox) {
+      // [2026-10-05] now also prints WHY the earlier methods failed (attemptLog) plus page snapshots.
+      console.log(JSON.stringify({ status: 'error', error: 'search box not found', rowId, attemptLog, diag: _fbDiag }));
+      process.exit(1);
+    }
+    await searchBox.click();
+    await searchBox.fill(recipientPhone);
+    await page.keyboard.press('Enter').catch(() => {});
+    await page.waitForTimeout(5000);
+
+    // Last-resort safety net only, used when order_id_guess is missing/wrong AND no crm_purchases
+    // match exists (or this is the override-phone test). Filters out WhatsApp/other channels first
+    // (Messenger is the only channel this bill data ever points to), then REFUSES rather than
+    // guessing among remaining Facebook matches -- per Tar, a real customer can legitimately have
+    // several Facebook-page conversations plus a WhatsApp conversation under one phone number, so
+    // even Facebook-only filtering can still be ambiguous, and this is flagged for manual review
+    // rather than guessed.
+    const allConvRows = await page.$$('.media.conversation-list-item');
+    const isFacebookFlags = await Promise.all(allConvRows.map((el) => el.$('.name-module.platform-facebook').then((m) => !!m)));
+    const convRows = allConvRows.filter((_, idx) => isFacebookFlags[idx]);
+    if (convRows.length === 0) {
+      await failExit({ status: 'error', error: 'no Facebook Messenger conversation found for this customer (search matched ' + allConvRows.length + ' row(s) total, possibly on WhatsApp/other channels only) -- flagged for manual review, all resolution methods exhausted', rowId, navMethod, totalMatchesAllChannels: allConvRows.length, attemptLog });
+    }
+    if (convRows.length > 1) {
+      await failExit({ status: 'error', error: 'AMBIGUOUS: more than one Facebook Messenger conversation matched this phone, and no order/crm_purchases link was available to pick the exact one -- flagged for manual review, not guessing which page', rowId, navMethod, matchCount: convRows.length, attemptLog });
+    }
+    // Capture page_id from the clicked row's own avatar (same trick as resolveViaOrderSearch's
+    // rowPageIds) so the post-send tag step still has a page_id to work with even on this
+    // last-resort fallback path, where no resolution object gets built otherwise.
+    const fallbackPageId = await convRows[0].evaluate((row) => {
+      const img = row.querySelector('img[src*="/pages/"]');
+      if (!img) return null;
+      const m = /\/pages\/(\d+)\//.exec(img.src);
+      return m ? m[1] : null;
+    }).catch(() => null);
+    if (fallbackPageId) resolution = { matchMethod: 'ui_phone_search', pageId: fallbackPageId };
+    await convRows[0].click();
+    await page.waitForTimeout(3000);
+  }
+
+  // [new 2026-09-29, after a live duplicate-send caught in testing] This script reuses whatever
+  // Pancake tab is already open (context.pages().find(...pages.fm...)) rather than opening a fresh
+  // one each run. If a PREVIOUS invocation attached an image into the composer but never sent it
+  // (a preview run, or a live run that crashed/timed out after attaching but before clicking send),
+  // that attachment silently stays in the composer's file-preview tray. The next invocation then
+  // pastes/attaches its OWN image on top and sends BOTH -- confirmed live: back-to-back preview
+  // (file-input) then live (clipboard) on the same conversation sent 2 copies of the bill to one
+  // real customer. Fix: before attaching anything, clear out any leftover ".preview-item" entries
+  // already sitting in the composer tray by clicking each one's own remove control.
+  async function clearComposerAttachments(page) {
+    for (let i = 0; i < 5; i++) {
+      const cleared = await page.evaluate(() => {
+        const items = Array.from(document.querySelectorAll('[class*="preview-item"]'))
+          .filter((el) => /^preview-item(\s|$)/.test(el.className || ''));
+        if (items.length === 0) return 0;
+        const item = items[0];
+        // The remove control is a small icon (svg/span) inside the preview item -- fire a real
+        // pointer/mouse event sequence on it (or on the item itself if no inner icon is found),
+        // matching the click technique already used elsewhere in this file for non-<button> UI.
+        const target = item.querySelector('svg, [class*="close"], [class*="remove"]') || item;
+        const r = target.getBoundingClientRect();
+        ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach((t) =>
+          target.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }))
+        );
+        return items.length;
+      });
+      if (!cleared) break;
+      await page.waitForTimeout(400);
+    }
+  }
+  await clearComposerAttachments(page);
+
+  if (useClipboard) {
+    try {
+      setClipboardImage(localImagePath);
+    } catch (e) {
+      console.log(JSON.stringify({ status: 'error', error: 'setClipboardImage failed: ' + e.message, rowId }));
+      process.exit(1);
+    }
+    const composerEl = await page.$('#replyBoxComposer');
+    if (!composerEl) {
+      console.log(JSON.stringify({ status: 'error', error: 'conversation opened but #replyBoxComposer not found (clipboard method)' }));
+      process.exit(1);
+    }
+    await composerEl.click();
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Control+V');
+    await page.waitForTimeout(3000);
+  } else {
+    const fileInput = await page.$('#uploadFileInput');
+    if (!fileInput) {
+      console.log(JSON.stringify({ status: 'error', error: 'conversation opened but #uploadFileInput not found' }));
+      process.exit(1);
+    }
+    await fileInput.setInputFiles(localImagePath);
+    await page.waitForTimeout(3000);
+  }
+
+  const scan1 = await page.evaluate(scanToolbarCandidates);
+  // [trimmed 2026-09-29, batch run] full candidate array logging was making every bridge response
+  // ~15KB, which is wasteful once the picker logic is proven -- log just the counts needed to spot
+  // a problem at a glance; the full scan1 object is still used internally for pickSendCandidate.
+  console.log('AFTER_ATTACH_SCAN ' + JSON.stringify({ composerTop: scan1.composerTop, composerBottom: scan1.composerBottom, candidateCount: (scan1.candidates || []).length }));
+  await page.screenshot({ path: `C:\\n8n-data\\send-bill-preview-${rowId}.png`, fullPage: false });
+  console.log('PREVIEW_SCREENSHOT_SAVED ' + `C:\\n8n-data\\send-bill-preview-${rowId}.png`);
+
+  // [new 2026-09-29, after clearComposerAttachments still let a real customer get 2 images in one
+  // send] clearComposerAttachments is best-effort (its own remove-click can silently fail on some
+  // preview-item variants, e.g. type "file" vs "photo" -- confirmed live on order 73406/cbp_
+  // 1790661859301t1jfi: it left 1 leftover "file" item behind, this run's own "photo" item sat next
+  // to it, and clicking send sent both to the customer). Don't trust that the clear worked -- COUNT
+  // what's actually in the composer right now, right before the send decision. In live mode, more
+  // than 1 attachment means sending now would deliver something extra we don't control, so abort
+  // without clicking send and flag for manual review instead of risking another double-send.
+  const attachCountCheck = await page.evaluate(() => {
+    return Array.from(document.querySelectorAll('[class*="preview-item"]'))
+      .filter((el) => /^preview-item(\s|$)/.test(el.className || '')).length;
+  });
+  console.log('ATTACH_COUNT_CHECK ' + JSON.stringify({ attachCountCheck }));
+  if (mode === 'live' && attachCountCheck > 1) {
+    await failExit({
+      status: 'error',
+      error: `composer has ${attachCountCheck} attachments after clear+attach (expected 1) -- aborting before clicking send to avoid delivering extra/duplicate content to a real customer; needs manual review in Pancake`,
+      rowId,
+      attachCountCheck,
+    });
+  }
+
+  if (mode === 'preview') {
+    const picked = pickSendCandidate(scan1.candidates || [], scan1.composerBottom || 0);
+    console.log('PREVIEW_PICKED_SEND_CANDIDATE ' + JSON.stringify(picked));
+    console.log(JSON.stringify({ status: 'ok', mode: 'preview', method: useClipboard ? 'clipboard-paste' : 'file-input', rowId, navMethod, resolvedConversation: resolution ? { matchMethod: resolution.matchMethod, pageId: resolution.pageId || resolution.orderPageId || null, customerId: resolution.customerId || null, phone: resolution.orderPhone || null } : null, attemptLog, note: 'attached only, nothing sent -- check the screenshot and PREVIEW_PICKED_SEND_CANDIDATE before running mode=live' }));
+    process.exit(0);
+  }
+
+  // mode=live: pick the send-button candidate and click it.
+  let picked = pickSendCandidate(scan1.candidates || [], scan1.composerBottom || 0);
+  if (!picked) {
+    console.log(JSON.stringify({ status: 'error', error: 'no send-button candidate found near the composer after attaching', rowId, scan1 }));
+    process.exit(1);
+  }
+  // [new 2026-09-29, per Tar's live bug report: images marked "sent" that never reached the
+  // customer] Capture the thread's image-message count BEFORE clicking, so the post-click poll
+  // below can detect a genuine NEW image message rendering, not just a cleared composer.
+  // [new 2026-09-29 second fix, per Tar's live report: order 73351/phone 28904697 was marked
+  // "sent" with deliveryConfirmed:true from the poll below, afterclick screenshot even *looked*
+  // like it showed the new image bubble -- yet the real conversation on Tar's phone had NO bill
+  // image at all, minutes later. Conclusion: Pancake renders the outgoing image bubble
+  // optimistically (client-side) the instant the send is clicked, before the upload/send to
+  // Facebook Messenger has actually been confirmed by the server; if that server-side send then
+  // fails silently, the optimistic bubble can still be sitting there when this poll runs, so
+  // BOTH the poll below and the afterclick screenshot were only ever looking at pre-confirmation,
+  // optimistic UI state -- not proof of real delivery. The ONLY way to see the true, persisted
+  // state is to force the browser to throw away all local/optimistic state and refetch the
+  // conversation from the server, which is what reopenConversationForVerify below (a real
+  // re-search + re-click, since Pancake's SPA never puts the open conversation in the URL --
+  // see that function's own comment) does. deliveryConfirmed now REQUIRES the post-reopen
+  // count, not just the poll.
+  const verifyTargetPageId = (resolution && (resolution.pageId || resolution.orderPageId)) || null;
+  const verifyPhone = (resolution && resolution.orderPhone) || recipientPhone || null;
+
+  // [new 2026-09-30, Tar: "ຖ້າຂໍ້ມູນລູກຄ້າຖືກທັງໝົດແລ້ວຊອກແຊັດເຫັນ ແຕ່ວ່າເກີດການສົ່ງບໍ່ອອກ ...
+  // ຖ້າໃນແຊັດນັ້ນຍັງບໍ່ມີຮູບບິນ ແມ່ນໃຫ້ສົ່ງຄືນອີກເທື່ອໜຶ່ງ"] Retry ONLY this send-and-verify step, up
+  // to 2 total attempts -- this is for the case the conversation was found correctly and everything
+  // up to here was fine, but the click-to-send itself didn't actually go through. This does NOT
+  // apply to ambiguous-match/no-conversation-found cases above (those still fail immediately for a
+  // human to check, per Tar's original design) since the retry only starts once a real conversation
+  // is already open with the image attached. Capped at 2 attempts total so a genuinely broken send
+  // button (not just a one-off glitch) doesn't hammer the same customer's chat over and over.
+  const MAX_SEND_ATTEMPTS = 2;
+  let deliveryConfirmed = false;
+  let imgCountBefore = null;
+  let trailingSrcsBefore = [];
+  let lastPollState = null;
+  let reloadImgCount = null;
+  let newImageSrcsFound = null;
+  let pollConfirmed = false;
+  let contentVerify = null;
+  let contentMismatch = false;
+
+  for (let attempt = 1; attempt <= MAX_SEND_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      console.log('RETRY_SEND_ATTEMPT ' + JSON.stringify({ attempt, rowId }));
+      // The previous attempt's reopenConversationForVerify already re-fetched this same
+      // conversation fresh from the server -- if the image genuinely isn't there, this is a new
+      // page state and the composer almost certainly has no attachment pending anymore, so
+      // re-attach the same already-downloaded image file before trying to send again.
+      const trayCountBefore2 = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('[class*="preview-item"]'))
+          .filter((el) => /^preview-item(\s|$)/.test(el.className || '')).length;
+      }).catch(() => 0);
+      if (!trayCountBefore2) {
+        if (useClipboard) {
+          // setClipboardImage is synchronous (execFileSync), not a Promise -- it has no .catch().
+          // Chaining .catch() on its undefined return threw "Cannot read properties of undefined
+          // (reading 'catch')" on every retry attempt, which is what actually tripped the bridge
+          // circuit breaker (3 fails in a row), not a real send failure. Wrap in try/catch instead.
+          try { setClipboardImage(localImagePath); } catch (e) { /* fall through, retry scan below will catch it */ }
+          await page.keyboard.press('Control+V').catch(() => {});
+        } else {
+          const fileInput2 = await page.$('#uploadFileInput');
+          if (fileInput2) await fileInput2.setInputFiles(localImagePath).catch(() => {});
+        }
+        await page.waitForTimeout(3000);
+      }
+      const scanRetry = await page.evaluate(scanToolbarCandidates);
+      picked = pickSendCandidate(scanRetry.candidates || [], scanRetry.composerBottom || 0);
+      if (!picked) {
+        console.log('RETRY_NO_SEND_CANDIDATE ' + JSON.stringify({ attempt, rowId }));
+        continue;
+      }
+    }
+
+    const target = await page.$(`[data-cc-idx="${picked.i}"]`);
+    if (!target) {
+      console.log(JSON.stringify({ status: attempt < MAX_SEND_ATTEMPTS ? 'retrying' : 'error', error: 'picked candidate element not found by data-cc-idx (DOM may have re-rendered)', rowId, picked, attempt }));
+      if (attempt >= MAX_SEND_ATTEMPTS) process.exit(1);
+      continue;
+    }
+    console.log('LIVE_CLICKING_CANDIDATE ' + JSON.stringify({ attempt, picked }));
+
+    imgCountBefore = await page.evaluate(countThreadImageMessages).catch(() => null);
+    trailingSrcsBefore = await page.evaluate(getTrailingImageSrcs, TRAILING_IMAGE_WINDOW).catch(() => []);
+    await target.click();
+
+    // Poll up to ~12s (8 x 1.5s) for BOTH: (a) the composer's attachment tray to actually empty
+    // out, and (b) a new image-bearing message to appear in the thread. This is only an
+    // early/optimistic signal now (see note above) -- kept and logged because a negative result
+    // here is still a fast, useful "definitely did not even attempt to send" signal, but a
+    // POSITIVE result here is no longer trusted on its own to mark the row sent.
+    pollConfirmed = false;
+    lastPollState = null;
+    for (let i = 0; i < 8; i++) {
+      await page.waitForTimeout(1500);
+      const trayCount = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('[class*="preview-item"]'))
+          .filter((el) => /^preview-item(\s|$)/.test(el.className || '')).length;
+      }).catch(() => null);
+      const imgCountNow = await page.evaluate(countThreadImageMessages).catch(() => null);
+      lastPollState = { pollIteration: i, trayCount, imgCountNow, imgCountBefore };
+      const trayEmpty = trayCount === 0;
+      const imgIncreased = imgCountBefore != null && imgCountNow != null && imgCountNow > imgCountBefore;
+      if (trayEmpty && imgIncreased) { pollConfirmed = true; break; }
+    }
+    console.log('DELIVERY_POLL ' + JSON.stringify({ attempt, imgCountBefore, lastPollState, pollConfirmed }));
+
+    // Authoritative check: give the server-side send a few more seconds to actually resolve, then
+    // re-open this SAME conversation via a fresh search+click (not a SPA in-place re-render, and
+    // not a bare page reload either -- see reopenConversationForVerify's own comment for why) so
+    // any purely-local optimistic bubble is discarded and only what Facebook/Pancake's server
+    // actually has gets counted. Only THIS count decides deliveryConfirmed.
+    try {
+      await page.waitForTimeout(3000);
+      const reopenResult = await reopenConversationForVerify(page, verifyTargetPageId, verifyPhone);
+      if (!reopenResult.ok) {
+        deliveryConfirmed = false;
+        reloadImgCount = `reopen_failed: ${reopenResult.reason}`;
+      } else {
+        // [fixed 2026-09-30 -- see getTrailingImageSrcs' own comment for the full story] Counting
+        // total images before/after is NOT trusted anymore (proven unstable: the same untouched
+        // thread reopened twice in a row returned two different counts). Instead, only a trailing
+        // image src that was NOT present before counts as proof of a real new send.
+        const trailingSrcsAfter = await page.evaluate(getTrailingImageSrcs, TRAILING_IMAGE_WINDOW).catch(() => []);
+        newImageSrcsFound = trailingSrcsAfter.filter((src) => !trailingSrcsBefore.includes(src));
+        reloadImgCount = trailingSrcsAfter.length; // kept only for log/debug continuity
+        deliveryConfirmed = newImageSrcsFound.length > 0;
+        if (deliveryConfirmed) {
+          contentVerify = await verifyNewImageContent(page, newImageSrcsFound, localImagePath);
+          console.log('CONTENT_VERIFY ' + JSON.stringify({ attempt, rowId, enforce: BILL_IMAGE_MATCH_ENFORCE, threshold: BILL_IMAGE_MATCH_THRESHOLD, contentVerify }));
+          if (BILL_IMAGE_MATCH_ENFORCE && contentVerify && contentVerify.ok && contentVerify.similarity < BILL_IMAGE_MATCH_THRESHOLD) {
+            // a NEW image did arrive but it does not look like our bill -> do NOT confirm, and do NOT
+            // retry-send (that would deliver a second copy of the bill to the customer)
+            deliveryConfirmed = false; contentMismatch = true;
+          }
+        }
+      }
+    } catch (e) {
+      deliveryConfirmed = false;
+      reloadImgCount = `error: ${e.message}`;
+    }
+    console.log('RELOAD_VERIFY ' + JSON.stringify({ attempt, verifyTargetPageId, verifyPhone, trailingSrcsBeforeCount: trailingSrcsBefore.length, reloadImgCount, newImageSrcsFoundCount: newImageSrcsFound ? newImageSrcsFound.length : null, pollConfirmed, deliveryConfirmed }));
+
+    if (deliveryConfirmed || contentMismatch) break;
+  }
+
+  // Re-scan after the click: if the send worked, the file-attachment preview card and the
+  // composer's file-input badge should be gone.
+  const afterClick = await page.evaluate(() => {
+    const composer = document.getElementById('replyBoxComposer');
+    const fileInputEl = document.getElementById('uploadFileInput');
+    return {
+      composerText: composer ? (composer.innerText || composer.value || '').trim().slice(0, 100) : null,
+      fileInputFileCount: fileInputEl && fileInputEl.files ? fileInputEl.files.length : null,
+    };
+  });
+  console.log('AFTER_CLICK_STATE ' + JSON.stringify(afterClick));
+  await page.screenshot({ path: `C:\\n8n-data\\send-bill-afterclick-${rowId}.png`, fullPage: false });
+  console.log('AFTERCLICK_SCREENSHOT_SAVED ' + `C:\\n8n-data\\send-bill-afterclick-${rowId}.png`);
+
+  // [new 2026-09-29] If delivery could not be confirmed (now: after up to 2 attempts -- see above),
+  // DO NOT mark this row "sent", do NOT swap the conversation tag, and do NOT push the POS status
+  // change -- all three of those used to fire unconditionally right after the click. Flag it
+  // instead (failExit sets send_status="failed" in auto mode, same as any other unresolved row) so
+  // it surfaces for a human to check and resend, rather than silently vanishing into a false "sent"
+  // state.
+  if (!deliveryConfirmed) {
+    await failExit({
+      status: 'error',
+      error: 'clicked the send candidate but the image was NOT still present after a hard reload of the conversation (server-side/persisted check), even after retrying once -- the optimistic poll result is not trusted on its own (see RELOAD_VERIFY log) -- NOT marked as sent, tag/POS status left untouched, flagged for manual review/resend',
+      rowId, navMethod,
+      resolvedConversation: resolution ? { matchMethod: resolution.matchMethod, pageId: resolution.pageId || resolution.orderPageId || null, customerId: resolution.customerId || null, phone: resolution.orderPhone || null } : null,
+      attemptLog, contentMismatch, contentVerify, clicked: picked, imgCountBefore, trailingSrcsBeforeCount: trailingSrcsBefore.length, lastPollState, reloadImgCount, newImageSrcsFoundCount: newImageSrcsFound ? newImageSrcsFound.length : null,
+    });
+  }
+
+  // [added 2026-09-28, controlled-trial rollout, Tar: "ແກ້ bug ແລ້ວທົດລອງແບບຄວບຄຸມກ່ອນ"] Now marks
+  // the row sent right after a live click -- this MUST happen before this script is ever wired
+  // into anything that can run unattended/repeatedly (a schedule, a retry loop), otherwise the
+  // exact same bill would get re-sent to the exact same customer every time it runs (this row's
+  // own leading send_status==="sent" guard above only protects a row AFTER this write lands).
+  // Still trial-only for now by design elsewhere, not by anything in this script itself: nothing
+  // currently calls mode=live except a human manually triggering one specific rowId at a time and
+  // checking the afterclick screenshot before doing the next one -- if a click silently failed
+  // despite looking right (the send-button pick is a DOM heuristic, confirmed live only once
+  // before this trial), the row will show send_status="sent" here even though the customer never
+  // actually got it; catch that from the screenshot, not from this row's status, and fix it
+  // manually in the courier-bill-import table (re-tick + ກຽມສົ່ງ) if that happens.
+  let dbUpdateError = null;
+  try {
+    const patchRes = await sbPatch(`/rest/v1/courier_bill_import_pages?id=eq.${encodeURIComponent(rowId)}`, {
+      send_status: 'sent',
+      send_channel: 'pancake_image',
+      sent_at: new Date().toISOString(),
+      sent_by: 'n8n-image-send',
+    });
+    if (patchRes.statusCode >= 300) dbUpdateError = `PATCH HTTP ${patchRes.statusCode}: ${patchRes.body}`;
+  } catch (e) {
+    dbUpdateError = e.message;
+  }
+
+  // [changed 2026-09-29, per Tar: "ໃຫ້n8n ເຮັດໜ້າທີ່ຄືຄົນຜູ້1 ໃຊ້ເບົາເຊີ...ບໍ່ແມ່ນໃຊ້ api"] The
+  // conversation this send just used is STILL OPEN right here in `page` -- swap the tag by clicking
+  // it directly in the browser (swapConversationTag above) instead of asking a Supabase Edge
+  // Function to re-search Pancake's conversation list by page_id/customer_id/phone. This removes
+  // the old search-depth limitation entirely (nothing to search -- the right conversation is
+  // already on screen), at the cost of this step now depending on the quick-tag panel being visible
+  // (confirmed present on every conversation checked via pancake-tag-url-diag.js). Never blocks or
+  // changes the "sent" outcome above -- the image has already reached the customer regardless of
+  // whether tagging succeeds.
+  let tagResult = null;
+  try {
+    tagResult = await swapConversationTag(page, 'ສັ່ງຊື້ແລ້ວ', 'ສົ່ງບິນແລ້ວ');
+  } catch (e) {
+    tagResult = { ok: false, stage: 'exception', error: e.message };
+  }
+
+  // [new 2026-09-29, per Tar: "ຕອນໃຫ້ໂຄເວີກສົ່ງເປັນລິ້ງບິນແມ່ນເຮັດວຽກປົກກະຕິຄື ປ່ຽນແທັກອໍເດີໃນ pos ຈາກ
+  // ລໍສົ່ງຂອງ ໄປເປັນ ຈັດສົ່ງແລ້ວ"] Best-effort: also flip the order's STATUS inside Pancake's POS
+  // order screen (distinct from the conversation TAG handled above) from "ລໍສົ່ງຂອງ" (9) to
+  // "ຈັດສົ່ງແລ້ວ"/"ສົ່ງຂອງໄປ" (Pancake status 2), mirroring index.html's changeLabelStatus() ->
+  // syncOrderStatusToPancake()/syncOrderStatusToPancakeGeneral(). Only applies to rows resolved via
+  // matched_shipping_label_id (courier-bill matching's normal path) -- routing (Touk vs general
+  // credentials) is decided the exact same way changeLabelStatus does: source==="touk_pancake" ->
+  // update-pancake-order-status (Touk creds); else a purely-numeric label_number is still a real
+  // Pancake order id -> update-pancake-order-status-general (general creds); a non-numeric
+  // ("T"-prefixed) label_number is a Studio-native label with no Pancake order to push to, skipped.
+  // Never blocks or changes the "sent" outcome above -- same non-fatal design as the tag step.
+  let posStatusResult = null;
+  if (bill.matched_shipping_label_id) {
+    try {
+      const slRows = await sbGet(
+        `/rest/v1/shipping_labels?id=eq.${encodeURIComponent(bill.matched_shipping_label_id)}&select=id,label_number,source,status`
+      ).catch(() => null);
+      const sl = Array.isArray(slRows) && slRows[0] ? slRows[0] : null;
+      if (!sl) {
+        posStatusResult = { ok: false, stage: 'lookup', error: 'shipping_labels row not found for matched_shipping_label_id' };
+      } else if (sl.status === 2 || sl.status === 6) {
+        posStatusResult = { ok: true, skipped: true, reason: `already at status ${sl.status} (2=shipped, 6=cancelled) -- no push needed` };
+      } else {
+        const isTouk = sl.source === 'touk_pancake';
+        const isNumericLabel = /^\d+$/.test(String(sl.label_number || ''));
+        if (!isTouk && !isNumericLabel) {
+          posStatusResult = { ok: false, stage: 'skipped', error: `label_number "${sl.label_number}" is not numeric and not touk_pancake -- Studio-native label, no Pancake order to push to` };
+        } else {
+          const fnSlug = isTouk ? 'update-pancake-order-status' : 'update-pancake-order-status-general';
+          const pushRes = await sbFunctionPost(fnSlug, { pancake_order_id: Number(sl.label_number), status: 2 });
+          if (pushRes && pushRes.success === true) {
+            posStatusResult = { ok: true, fn: fnSlug, pancake_order_id: Number(sl.label_number), pushedStatus: 2 };
+            // Mirror the local side too (shipping_labels.status + label_status_history), same as
+            // dbUpdateLabelStatus/dbInsertLabelStatusHistory in index.html, so Studio's own UI
+            // doesn't drift out of sync with what Pancake now shows.
+            await sbPatch(`/rest/v1/shipping_labels?id=eq.${encodeURIComponent(sl.id)}`, { status: 2 }).catch((e) => {
+              posStatusResult.localUpdateError = e.message;
+            });
+            await sbInsert('/rest/v1/label_status_history', {
+              id: 'lsh' + Date.now() + Math.random().toString(36).slice(2, 7),
+              label_id: sl.id, old_status: sl.status, new_status: 2,
+              reason: 'ອັດຕະໂນມັດ ສົ່ງບິນ Pancake (n8n)', changed_by: 'ລະບົບ (ອັດຕະໂນມັດ)', changed_at: new Date().toISOString(),
+            }).catch((e) => {
+              posStatusResult.historyInsertError = e.message;
+            });
+          } else {
+            posStatusResult = { ok: false, stage: 'push', fn: fnSlug, error: pushRes };
+          }
+        }
+      }
+    } catch (e) {
+      posStatusResult = { ok: false, stage: 'exception', error: e.message };
+    }
+  } else if (/^\d+$/.test(String(bill.matched_crm_purchase_id || ''))) {
+    // v(2026-11-13, Tar: order #75539 stayed "ລໍສົ່ງຂອງ" after the bill was sent): PURE Pancake orders have NO shipping_labels row
+    // (matched_shipping_label_id is NULL, matched via crm_purchases only) so the branch above skipped them. For those the
+    // matched_crm_purchase_id IS the Pancake order id -> push status 2 with update-pancake-order-status-general (general credentials,
+    // exactly what that function was built for). Skip when the synced pancake_status is already past "waiting to ship".
+    try {
+      const cpRows = await sbGet(`/rest/v1/crm_purchases?id=eq.${encodeURIComponent(bill.matched_crm_purchase_id)}&select=id,pancake_status`).catch(() => null);
+      const cp = Array.isArray(cpRows) && cpRows[0] ? cpRows[0] : null;
+      if (cp && [2, 3, 4, 5, 6, 10].includes(Number(cp.pancake_status))) {
+        posStatusResult = { ok: true, skipped: true, via: 'crm', reason: `already at pancake_status ${cp.pancake_status} -- no push needed` };
+      } else {
+        const pushRes = await sbFunctionPost('update-pancake-order-status-general', { pancake_order_id: Number(bill.matched_crm_purchase_id), status: 2 });
+        if (pushRes && pushRes.success === true) {
+          posStatusResult = { ok: true, via: 'crm', fn: 'update-pancake-order-status-general', pancake_order_id: Number(bill.matched_crm_purchase_id), pushedStatus: 2 };
+          await sbPatch(`/rest/v1/crm_purchases?id=eq.${encodeURIComponent(bill.matched_crm_purchase_id)}`, { pancake_status: 2 }).catch((e) => { posStatusResult.localUpdateError = e.message; });
+        } else {
+          posStatusResult = { ok: false, stage: 'push', via: 'crm', fn: 'update-pancake-order-status-general', error: pushRes };
+        }
+      }
+    } catch (e) {
+      posStatusResult = { ok: false, stage: 'exception', via: 'crm', error: e.message };
+    }
+  } else {
+    posStatusResult = { ok: false, stage: 'skipped', error: 'no matched_shipping_label_id and no numeric matched_crm_purchase_id on this row -- POS status step skipped' };
+  }
+
+  console.log(JSON.stringify({ status: 'ok', mode: 'live', method: useClipboard ? 'clipboard-paste' : 'file-input', rowId, navMethod, resolvedConversation: resolution ? { matchMethod: resolution.matchMethod, pageId: resolution.pageId || resolution.orderPageId || null, customerId: resolution.customerId || null, phone: resolution.orderPhone || null } : null, attemptLog, clicked: picked, dbUpdateError, tagResult, posStatusResult, note: dbUpdateError ? 'clicked the send candidate but send_status PATCH FAILED -- check dbUpdateError, this row may need its status fixed by hand' : 'clicked the send candidate and marked send_status=sent -- still verify via the afterclick screenshot that this was a real send' }));
+  process.exit(0);
+})().catch((e) => {
+  console.log(JSON.stringify({ status: 'error', error: e.message }));
+  process.exit(1);
+});
