@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.83"; // v8.83 CHANGE (Tar 2026-11-13, "ເພີ່ມຂະໜາດປຸ່ມເລີ່ມພັກ/ຈົບພັກ ໃຫ້ກົດງ່າຍຂຶ້ນ"): 🕒 ໂມງ page — the ▶ ເລີ່ມພັກ / ■ ຈົບພັກ button is now full-width and tall (min 70px, big text, red outline while running) so it is easy to tap between sets; ລ້າງທັງໝົດ stays small below it. CSS only.
+const APP_VERSION = "8.84"; // v8.84 NEW (Tar 2026-11-16, "ຕັ້ງເວລາເປີດ-ປິດແລ້ວ ບໍ່ເຫັນຢູ່ແຄມເປນ ບໍ່ຮູ້ຈະເປີດ/ປິດເມື່ອໃດ — ຢາກໃຫ້ເຫັນຄືໃນ Ads Manager"): the ຄ່າໂຄສະນາລວມ board now shows a yellow badge on every campaign row that has an ENABLED schedule (🟢 open time, 🔴 close time, days) - ensureCampaignSchedulesLoaded() / campaignScheduleBadgeHtml(); clicking the badge opens the ⏰ schedule list (toggle/delete there); the cache refreshes when that list closes. Schedules themselves unchanged (table campaign_schedules, edge function run-campaign-schedules). The weekly schedule "ເປີດຈັນ 2/11" was also switched off in the DB the same day (Tar no longer wants it).
+// (previous text of this slot, kept) // v8.83 CHANGE (Tar 2026-11-13, "ເພີ່ມຂະໜາດປຸ່ມເລີ່ມພັກ/ຈົບພັກ ໃຫ້ກົດງ່າຍຂຶ້ນ"): 🕒 ໂມງ page — the ▶ ເລີ່ມພັກ / ■ ຈົບພັກ button is now full-width and tall (min 70px, big text, red outline while running) so it is easy to tap between sets; ລ້າງທັງໝົດ stays small below it. CSS only.
 // (previous text of this slot, kept) v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ່ມຈັບເວລາ ໄວ້ໃສ່ກໍລະນີຟິດເນັດ ຫຼັງຈົບແຕ່ລະເຊັດ ກົດເບິ່ງວ່າພັກເທົ່າໃດ"): 🕒 ໂມງ page gets a rest stopwatch — ▶ ເລີ່ມພັກ starts, ■ ຈົບພັກ stops and logs "ເຊັດທີ N · ພັກ mm:ss" (newest first, with total + average rest), ລ້າງທັງໝົດ clears. Uses Date.now() so time stays right while the page is left and reopened (STATE.swStart / STATE.swLog, in memory only). Display refreshes with a self-rescheduling setTimeout (100 ms, only while running and only on this page, DOM-only, no render(), no setInterval, no network).
 // (previous text of this slot, kept) v8.81 CHANGE (Tar 2026-11-12, "ຖ້າໂອນເຂົ້າ LDB ຂອງຮ້ານ ບໍ່ຢາກໃຫ້ຂຶ້ນກ່ອງສີແດງ ຍັງບໍ່ເຫັນເງິນເຂົ້າ; ຖ້າ LDB ໂອນຫາ BCEL ໃຫ້ຂຶ້ນໄດ້"): in renderOnlinePaymentLine, orders whose payment bank (online_orders.payment_bank_name) is LDB now show a neutral grey line instead of the red "not seen in OnePay Shop" box, because that money never passes BCEL OnePay Shop. Orders paid into BCEL (even from an LDB customer account) keep the old green/yellow/red logic. mapOnlineOrderRow now carries paymentBankName. Nothing else changed.
 // (previous text of this slot, kept) // v8.80 NEW (Tar 2026-11-12, orders L00294/L00295 were the same customer ordering twice and staff confirmed both, so stock was cut twice; also staff may reject a slip by mistake): new button "↩️ ເອີ້ນກັບໄປກວດສະລິບ" on the ✅ confirmed and ❌ rejected tabs of ອໍເດີອອນລາຍ (revertOnlineOrderToReview). From rejected: just back to ⏳ pending review. From confirmed: first cancels the POS bill with the existing cancel-pos-bill-by-label function (restocks, writes pos_stock_movements cancel rows + activity log), frees the bill number (old cancelled bill renamed Lxxxxx-X<time>, because (shop_id, transaction_no) is unique and re-confirming needs the same number), sets the shipping label back to ໃໝ່ (blocked if the label already moved past ຢືນຢັນແລ້ວ/ສົ່ງບິນແລ້ວ), then the order goes back to pending review. Nothing else changed.
@@ -1625,7 +1626,7 @@ const APP_VERSION = "8.83"; // v8.83 CHANGE (Tar 2026-11-13, "ເພີ່ມຂ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.82"; // (v8.82 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.83"; // (v8.83 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.81 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.78 slot:  (v8.78 text kept in the history comment lines of APP_VERSION above)
@@ -1735,7 +1736,7 @@ const APP_VERSION_PREV = "8.82"; // (v8.82 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.81"; // (v8.81 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.82"; // (v8.82 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.79 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.77 slot:  (v8.77 text kept in the history comment lines above)
@@ -21376,6 +21377,7 @@ function renderAdSpendCampaignTable(){
   // currently ticked (if any) — spanning every page, not just what's on screen — otherwise sums
   // every row currently matching the tab/search/impressions filters (also every page, not just
   // this one), so the total always reflects exactly what Tar is looking at right now.
+  ensureCampaignSchedulesLoaded(); // v8.84
   const selectedIds = Object.keys(STATE.adSpendCampaignSelectedForDelete||{});
   const totalsSourceRows = selectedIds.length>0 ? rows.filter(r=>STATE.adSpendCampaignSelectedForDelete[r.id]) : rows;
   const SUM_KEYS = ["spend","purchaseValue","purchases","leads","messages","impressions","clicks"];
@@ -21504,6 +21506,7 @@ function renderAdSpendCampaignRow(c, visibleCols, totalCols){
       <td style="${stickyCol2} background:${rowBg};">
         <div style="display:flex; align-items:center; gap:4px;">
           <span>${c.nickname ? `<b>${esc(c.nickname)}</b> <span class="small-muted" style="font-size:11px;">(${esc(c.campaignName)})</span>` : esc(c.campaignName)}</span>
+          ${campaignScheduleBadgeHtml(c.id)}
           <button type="button" class="btn btn-sm btn-outline" data-edit-campaign-nickname="${esc(c.id)}" data-entity-type="campaign" data-current-nickname="${esc(c.nickname||"")}" title="ຕັ້ງຊື່ຫຼິ້ນ" style="padding:1px 5px; font-size:11px;">✏️</button>
         </div>
       </td>
@@ -21995,6 +21998,31 @@ function fmtLaoDateTimeWithSeconds(iso){
 // directly (like Facebook Ads Manager scheduling). Rows live in `campaign_schedules`; edge function
 // `run-campaign-schedules` (pg_cron every 5 min, Laos time) calls update-ad-entity toggle_status.
 const CS_DAY_LABELS = ["ອາທິດ","ຈັນ","ອັງຄານ","ພຸດ","ພະຫັດ","ສຸກ","ເສົາ"];
+// v8.84 (Tar 2026-11-16): schedules are now VISIBLE on each campaign row (like Ads Manager) - a small badge shows the saved
+// open/close time + days; click it to open the schedule list. Before this a saved schedule was invisible in the board.
+function ensureCampaignSchedulesLoaded(force){
+  if(STATE.campaignSchedulesLoading) return;
+  if(STATE.campaignSchedules && !force) return;
+  STATE.campaignSchedulesLoading = true;
+  (async()=>{
+    try{
+      const { data } = await sb.from("campaign_schedules").select("id,name,campaigns,days,on_time,off_time,enabled").eq("enabled", true);
+      STATE.campaignSchedules = data || [];
+    }catch(e){ STATE.campaignSchedules = STATE.campaignSchedules || []; }
+    STATE.campaignSchedulesLoading = false;
+    try{ preserveAdSpendTableScroll(render); }catch(e){ render(); }
+  })();
+}
+function campaignScheduleBadgeHtml(campaignId){
+  const list = (STATE.campaignSchedules||[]).filter(r=>(r.campaigns||[]).some(c=>String(c.id)===String(campaignId)));
+  if(!list.length) return "";
+  const parts = list.map(r=>{
+    const days = (r.days||[]).length===7 ? "ທຸກວັນ" : (r.days||[]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(d=>CS_DAY_LABELS[d]).join(" ");
+    const t = (r.on_time?`🟢${String(r.on_time).slice(0,5)}`:"") + (r.on_time&&r.off_time?" ":"") + (r.off_time?`🔴${String(r.off_time).slice(0,5)}`:"");
+    return `${t} ${days}`;
+  });
+  return `<span data-open-campaign-schedules="1" title="ມີຕາຕະລາງເວລາເປີດ/ປິດອັດຕະໂນມັດ — ກົດເພື່ອເບິ່ງ/ປິດ" style="cursor:pointer;background:#FFF3CD;color:#7a5a00;border-radius:10px;padding:1px 7px;font-size:11px;white-space:nowrap;">⏰ ${esc(parts.join(" · "))}</span>`;
+}
 async function openCampaignScheduleModal(){
   const old = document.getElementById("cs-modal-overlay"); if(old) old.remove();
   const selIds = Object.keys(STATE.adSpendCampaignSelectedForDelete||{});
@@ -22002,7 +22030,7 @@ async function openCampaignScheduleModal(){
   const ov = document.createElement("div");
   ov.id = "cs-modal-overlay";
   ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:12px;";
-  ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); });
+  ov.addEventListener("click", e=>{ if(e.target===ov){ ov.remove(); ensureCampaignSchedulesLoaded(true); } });
   document.body.appendChild(ov);
   async function paint(){
     let list = [];
@@ -22036,7 +22064,7 @@ async function openCampaignScheduleModal(){
       </div>
       <div style="font-weight:600;margin-bottom:4px;">ຕາຕະລາງທີ່ມີ</div>${rows}
     </div>`;
-    document.getElementById("cs-close").onclick = ()=>ov.remove();
+    document.getElementById("cs-close").onclick = ()=>{ ov.remove(); ensureCampaignSchedulesLoaded(true); };
     document.getElementById("cs-save").onclick = async ()=>{
       const days = [...ov.querySelectorAll(".cs-day:checked")].map(x=>Number(x.value));
       const on = document.getElementById("cs-on").value || null;
@@ -25427,6 +25455,7 @@ function attachAdSpendEvents(){
     preserveAdSpendTableScroll(render);
   }
   const scheduleBtn = document.getElementById("btn-adspend-schedule");
+  document.querySelectorAll("[data-open-campaign-schedules]").forEach(el=>el.addEventListener("click", ev=>{ ev.stopPropagation(); openCampaignScheduleModal(); }));
   if(scheduleBtn) scheduleBtn.addEventListener("click", ()=>openCampaignScheduleModal());
   const bulkOpenBtn = document.getElementById("btn-adspend-bulk-open");
   if(bulkOpenBtn) bulkOpenBtn.addEventListener("click", ()=>bulkToggleSelectedEntities("ACTIVE"));
