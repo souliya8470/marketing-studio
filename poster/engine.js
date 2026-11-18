@@ -28,7 +28,7 @@ function cutout(img, tol, fillgaps){
   const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(img,0,0);
   const w=c.width,h=c.height; const d=x.getImageData(0,0,w,h); const p=d.data;
   const cs=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]].map(([a,b])=>{const i=(b*w+a)*4;return [p[i],p[i+1],p[i+2],p[i+3]];});
-  const transparentAlready = cs.every(v=>v[3]<10);
+  const transparentAlready = cs.every(v=>v[3]<10); let quality = transparentAlready;
   if(!transparentAlready){
     const bg=[0,1,2].map(k=>cs.reduce((s,v)=>s+v[k],0)/4);
     const dist=(i)=>{const dr=p[i*4]-bg[0],dg=p[i*4+1]-bg[1],db=p[i*4+2]-bg[2];return Math.sqrt(dr*dr+dg*dg+db*db);};
@@ -37,6 +37,9 @@ function cutout(img, tol, fillgaps){
     for(let a=0;a<w;a++){push(a);push((h-1)*w+a);} for(let b=0;b<h;b++){push(b*w);push(b*w+w-1);}
     while(st.length){ const i=st.pop(); const a=i%w,b=(i/w)|0;
       if(a>0)push(i-1); if(a<w-1)push(i+1); if(b>0)push(i-w); if(b<h-1)push(i+w); }
+    { let rem=0,bd=0; for(let i=0;i<w*h;i++) if(seen[i]) rem++;
+      for(let a=0;a<w;a++){ if(seen[a])bd++; if(seen[(h-1)*w+a])bd++; } for(let b=0;b<h;b++){ if(seen[b*w])bd++; if(seen[b*w+w-1])bd++; }
+      const rf=rem/(w*h), bf=bd/(2*(w+h)); quality=(bf>=.9 && rf>=.12 && rf<=.93); }
     // optional: restore gaps inside the product (rows between leftmost and rightmost product pixel)
     if(fillgaps){
       for(let b=0;b<h;b++){ let l=-1,r=-1; for(let a=0;a<w;a++) if(!seen[b*w+a]){ if(l<0)l=a; r=a; }
@@ -50,9 +53,9 @@ function cutout(img, tol, fillgaps){
   // crop to content
   let x0=w,y0=h,x1=0,y1=0; const q=x.getImageData(0,0,w,h).data;
   for(let b=0;b<h;b++)for(let a=0;a<w;a++) if(q[(b*w+a)*4+3]>20){ if(a<x0)x0=a; if(a>x1)x1=a; if(b<y0)y0=b; if(b>y1)y1=b; }
-  if(x1<=x0||y1<=y0) return c;
+  if(x1<=x0||y1<=y0){ c.cutOk=false; return c; }
   const o=document.createElement('canvas'); o.width=x1-x0+1; o.height=y1-y0+1;
-  o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); return o;
+  o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); o.cutOk=quality; return o;
 }
 
 // ---------- drawing helpers ----------
@@ -234,9 +237,16 @@ function draw(ctx,S,o){
   ctx.shadowColor='rgba(0,0,0,.35)'; ctx.shadowBlur=26; ctx.shadowOffsetY=8; ctx.fillStyle=ag;
   ctx.beginPath(); ctx.moveTo(ax,ay+ah); ctx.lineTo(ax,ay+aw/2); ctx.arc(ax+aw/2,ay+aw/2,aw/2,Math.PI,0); ctx.lineTo(ax+aw,ay+ah); ctx.closePath(); ctx.fill();
   ctx.shadowColor='transparent'; ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; ctx.stroke(); ctx.restore();
-  ctx.save(); const pg2=ctx.createLinearGradient(0,880,0,950); pg2.addColorStop(0,'#fff3c8'); pg2.addColorStop(1,'#efc77a'); ctx.fillStyle=pg2; ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=16; ctx.shadowOffsetY=6;
-  ctx.beginPath(); ctx.ellipse(267,908,215,42,0,0,Math.PI*2); ctx.fill(); ctx.restore();
-  if(o.img){ const iw=o.img.width, ih=o.img.height; const bw=300, bh=480; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc;
+  if(!(o.mode==='photo' && o.raw)){ ctx.save(); const pg2=ctx.createLinearGradient(0,880,0,950); pg2.addColorStop(0,'#fff3c8'); pg2.addColorStop(1,'#efc77a'); ctx.fillStyle=pg2; ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=16; ctx.shadowOffsetY=6;
+  ctx.beginPath(); ctx.ellipse(267,908,215,42,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+  if(o.mode==='photo' && o.raw){
+    // whole photo, cover-fitted and clipped inside the arch (for photos that cannot be cut out cleanly)
+    const r=o.raw, iw=r.naturalWidth||r.width, ih=r.naturalHeight||r.height, pad=9;
+    const bx=ax+pad, bw2=aw-2*pad, by=ay+pad, bh2=ah-2*pad, rad=bw2/2;
+    ctx.save(); ctx.beginPath(); ctx.moveTo(bx,by+bh2); ctx.lineTo(bx,by+rad); ctx.arc(bx+rad,by+rad,rad,Math.PI,0); ctx.lineTo(bx+bw2,by+bh2); ctx.closePath(); ctx.clip();
+    const sc=Math.max(bw2/iw,bh2/ih), dw=iw*sc, dh=ih*sc; ctx.drawImage(r,bx+(bw2-dw)/2,by+(bh2-dh)/2,dw,dh); ctx.restore();
+    ctx.save(); ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(ax,ay+ah); ctx.lineTo(ax,ay+aw/2); ctx.arc(ax+aw/2,ay+aw/2,aw/2,Math.PI,0); ctx.lineTo(ax+aw,ay+ah); ctx.closePath(); ctx.stroke(); ctx.restore();
+  } else   if(o.img){ const iw=o.img.width, ih=o.img.height; const bw=300, bh=480; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc;
     ctx.save(); ctx.shadowColor='rgba(60,20,30,.45)'; ctx.shadowBlur=24; ctx.shadowOffsetY=12; ctx.drawImage(o.img,267-dw/2,898-dh,dw,dh); ctx.restore(); }
 
   // price panel
