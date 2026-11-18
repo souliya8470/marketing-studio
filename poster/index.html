@@ -151,7 +151,7 @@ function filtered(){
   const q = $("q").value.trim().toLowerCase(); const oi = $("onlyImg").checked, op = $("onlyPrice").checked;
   return P.items.filter(p => (!oi || p.image_url) && (!op || Number(p.price_1)>0) && (!q || (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q)));
 }
-const CHK_TXT = { ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຮູບນ້ອຍ","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
+const CHK_TXT = { ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຄວນຖ່າຍໃໝ່","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
 function badgeHtml(id){ const c = P.check.get(id); if(!c) return ""; const t = CHK_TXT[c.s]; return `<span class="badge ${t[1]}">${t[0]}</span>`; }
 function renderList(){
   const list = filtered(); const box = $("list");
@@ -174,6 +174,15 @@ async function cutImage(p){
   let c = P.cut.get(key);
   if(!c){ c = cutout(raw, +$("tol").value, $("fg").checked); if(P.cut.size > 40) P.cut.clear(); P.cut.set(key, c); }
   return c;
+}
+// how the cut-out will look in the 300x470 product slot: upscaling, size in slot, and "ghostliness" (semi-transparent pixels)
+function cutStats(c){
+  if(c.__st) return c.__st;
+  const sc = Math.min(300/c.width, 470/c.height), area = (c.width*sc)*(c.height*sc)/(300*470);
+  const k = Math.min(1, 260/Math.max(c.width,c.height)), w = Math.max(1,Math.round(c.width*k)), h = Math.max(1,Math.round(c.height*k));
+  const t = document.createElement("canvas"); t.width=w; t.height=h; const x = t.getContext("2d",{willReadFrequently:true}); x.drawImage(c,0,0,w,h);
+  const d = x.getImageData(0,0,w,h).data; let A=0,S=0; for(let i=3;i<d.length;i+=4){ if(d[i]>20){ A++; if(d[i]>=215) S++; } }
+  return (c.__st = { sc, area, solid: A ? S/A : 0, w:c.width, h:c.height });
 }
 // decides how the product photo is used: {img: cut-out canvas | null, raw, mode: "cut"|"photo"}
 // ---------- AI background removal (imgly, runs in this browser; model ~44MB is downloaded once from a CDN) ----------
@@ -221,10 +230,10 @@ async function prepare(p, force){
   const raw = await rawImage(p); if(!raw) return {img:null, raw:null, mode:"cut"};
   const ov = P.ov.get(p.id) || {}; const want = force || ov.mode || $("pmode").value;
   if(want==="photo") return {img:null, raw, mode:"photo"};
-  if(want!=="ai"){ const cut = await cutImage(p); if(want==="cut" || cut.cutOk) return {img:cut, raw, mode:"cut", how:"fast"}; }
+  if(want!=="ai"){ const cut = await cutImage(p); if(want==="cut" || (cut.cutOk && cutStats(cut).solid>=0.82)) return {img:cut, raw, mode:"cut", how:"fast"}; }
   $("modeNote").textContent = "ກຳລັງໃຫ້ AI ຕັດພື້ນຫຼັງ… (ເທື່ອທຳອິດຕ້ອງໂຫຼດໂມເດວ ~44MB ອາດໃຊ້ເວລາຫຼາຍນາທີ)";
   const ai = await aiImage(p);
-  if(ai && ai.cutOk) return {img:ai, raw, mode:"cut", how:"ai"};
+  if(ai && ai.cutOk && cutStats(ai).solid>=0.82) return {img:ai, raw, mode:"cut", how:"ai"};
   return {img:null, raw, mode:"photo", how: ai===null ? "aifail" : "aibad"};
 }
 function optsFor(p, pr){
@@ -300,12 +309,13 @@ async function checkOne(p){
   const rw = raw.naturalWidth||raw.width, rh = raw.naturalHeight||raw.height, dim = rw+"×"+rh;
   const pr = await prepare(p, "auto");
   if(pr.mode==="cut"){
-    const c = pr.img, sc = Math.min(300/c.width, 470/c.height);
-    if(sc > 1.3) return {s:"low", why:"ຕົວສິນຄ້າໃນຮູບນ້ອຍເກີນ ("+c.width+"×"+c.height+" ຈຸດ) ຈະເບລີ", dim};
-    return {s:"ok", why:"ຕັດຕົວສິນຄ້າໄດ້ ("+(pr.how==="ai"?"ໃຊ້ AI":"ແບບໄວ")+")", dim};
+    const c = pr.img, st = cutStats(c), how = pr.how==="ai" ? "ໃຊ້ AI" : "ແບບໄວ";
+    if(st.sc > 1.3) return {s:"low", why:"ຕົວສິນຄ້າໃນຮູບນ້ອຍເກີນ ("+c.width+"×"+c.height+" ຈຸດ) ຈະເບລີ", dim};
+    if(st.area < 0.27) return {s:"low", why:"ຕົວສິນຄ້າຈະນ້ອຍເກີນໃນກອບ (ເຫັນພຽງ "+Math.round(st.area*100)+"% ຂອງກອບ) ຮູບຮ່າງຍາວ/ແບນ ຫຼື ເປັນຮູບຫຼາຍອັນລວມກັນ", dim};
+    return {s:"ok", why:"ຕັດຕົວສິນຄ້າໄດ້ ("+how+")", dim};
   }
   if(pr.how==="aifail") return {s:"ai", why:"ໂມເດວ AI ໂຫຼດບໍ່ໄດ້ ("+(P.aiErr||"ກວດອິນເຕີເນັດ")+")", dim};
-  return {s:"ad", why:"ແຍກຕົວສິນຄ້າບໍ່ໄດ້ (ຮູບໂຄສະນາ ຫຼື ພື້ນຫຼັງລົກ)", dim};
+  return {s:"ad", why:"ຕັດຕົວສິນຄ້າບໍ່ສະອາດ (ຮູບໂຄສະນາ, ຮູບລວມຫຼາຍຮູບ, ພື້ນຫຼັງລົກ ຫຼື ຕົວສິນຄ້າໂປ່ງແສງ)", dim};
 }
 function chkRows(onlyBad){
   const rows = [...P.selected].filter(id=>P.check.has(id)).map(id=>({p:P.byId.get(id), c:P.check.get(id)}));
