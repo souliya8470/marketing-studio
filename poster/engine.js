@@ -7,7 +7,7 @@ const FONTS = {
   SPF:  "fonts/pf.woff2", SGV: "fonts/gv.woff2", SCD: "fonts/cd.woff2"
 };
 const THEMES = {
-  crimson: { bg:['#f0283c','#d41a32','#a10f28'], panel:['#b01029','#85081c'], deep:'#85081c', head2:'#ffe14a', text2:'#8a0a20' },
+  crimson: { bg:['#a81a3c','#8a0e32','#640822'], panel:['#7e0c2c','#580620'], deep:'#580620', head2:'#ffe14a', text2:'#6a0a26' },
   royal:   { bg:['#8a35d0','#4f1c92','#2a0d5c'], panel:['#4a1a8c','#2a0d5c'], deep:'#2a0d5c', head2:'#ffe14a', text2:'#2a0d5c' }
 };
 const LAO_MONTHS = ['ມັງກອນ','ກຸມພາ','ມີນາ','ເມສາ','ພຶດສະພາ','ມິຖຸນາ','ກໍລະກົດ','ສິງຫາ','ກັນຍາ','ຕຸລາ','ພະຈິກ','ທັນວາ'];
@@ -232,22 +232,37 @@ function draw(ctx,S,o){
       const pg=ctx.createLinearGradient(0,0,0,50); pg.addColorStop(0,'#fff0a0'); pg.addColorStop(1,'#f0bd30'); ctx.fillStyle=pg; rr(ctx,px,664,tw,50,25); ctx.fill(); ctx.restore();
       textO(ctx,o.sub,745,700,F(8,s),th.text2,null,0); } }
 
-  // arch + pedestal + product
-  ctx.save(); const ax=62,ay=352,aw=410,ah=574; const ag=ctx.createLinearGradient(0,ay,0,ay+ah); ag.addColorStop(0,'#fff6ea'); ag.addColorStop(1,'#ffe6d2');
-  ctx.shadowColor='rgba(0,0,0,.35)'; ctx.shadowBlur=26; ctx.shadowOffsetY=8; ctx.fillStyle=ag;
-  ctx.beginPath(); ctx.moveTo(ax,ay+ah); ctx.lineTo(ax,ay+aw/2); ctx.arc(ax+aw/2,ay+aw/2,aw/2,Math.PI,0); ctx.lineTo(ax+aw,ay+ah); ctx.closePath(); ctx.fill();
+  // arch (rounded floor) + plinth inside it + product
+  const ax=62,ay=352,aw=410,ah=574, RY=46, cx0=ax+aw/2, yb=ay+ah-RY;
+  const archPath=(x,y,w,h,ry)=>{ const r=w/2; ctx.beginPath(); ctx.moveTo(x,y+h-ry); ctx.lineTo(x,y+r); ctx.arc(x+r,y+r,r,Math.PI,0); ctx.lineTo(x+w,y+h-ry); ctx.ellipse(x+r,y+h-ry,r,ry,0,0,Math.PI); ctx.closePath(); };
+  ctx.save(); const ag=ctx.createLinearGradient(0,ay,0,ay+ah); ag.addColorStop(0,'#fff6ea'); ag.addColorStop(1,'#ffe3cf');
+  ctx.shadowColor='rgba(0,0,0,.35)'; ctx.shadowBlur=26; ctx.shadowOffsetY=8; ctx.fillStyle=ag; archPath(ax,ay,aw,ah,RY); ctx.fill();
   ctx.shadowColor='transparent'; ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; ctx.stroke(); ctx.restore();
-  if(!(o.mode==='photo' && o.raw)){ ctx.save(); const pg2=ctx.createLinearGradient(0,880,0,950); pg2.addColorStop(0,'#fff3c8'); pg2.addColorStop(1,'#efc77a'); ctx.fillStyle=pg2; ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=16; ctx.shadowOffsetY=6;
-  ctx.beginPath(); ctx.ellipse(267,908,215,42,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-  if(o.mode==='photo' && o.raw){
+  const photoMode=(o.mode==='photo' && o.raw);
+  if(!photoMode){
+    // plinth: a gold-cream disc lying on the floor of the arch (same curve as the arch bottom, slightly smaller)
+    ctx.save(); archPath(ax,ay,aw,ah,RY); ctx.clip();
+    const rx=aw/2-20, ry=34, cy=yb+4;
+    let pg2=ctx.createLinearGradient(0,cy-ry,0,cy+ry+14); pg2.addColorStop(0,'#fff8dc'); pg2.addColorStop(.6,'#f6dc98'); pg2.addColorStop(1,'#e2b25a');
+    ctx.fillStyle=pg2; ctx.shadowColor='rgba(120,60,20,.35)'; ctx.shadowBlur=14; ctx.shadowOffsetY=5;
+    ctx.beginPath(); ctx.ellipse(cx0,cy+8,rx,ry,0,0,Math.PI*2); ctx.fill();   // side thickness
+    ctx.shadowColor='transparent';
+    pg2=ctx.createLinearGradient(0,cy-ry,0,cy+ry); pg2.addColorStop(0,'#fffbe8'); pg2.addColorStop(1,'#f8e6ac');
+    ctx.fillStyle=pg2; ctx.beginPath(); ctx.ellipse(cx0,cy,rx,ry,0,0,Math.PI*2); ctx.fill();   // top surface
+    ctx.strokeStyle='rgba(240,194,74,.9)'; ctx.lineWidth=3; ctx.stroke();
+    ctx.restore();
+  }
+  if(photoMode){
     // whole photo, cover-fitted and clipped inside the arch (for photos that cannot be cut out cleanly)
     const r=o.raw, iw=r.naturalWidth||r.width, ih=r.naturalHeight||r.height, pad=9;
-    const bx=ax+pad, bw2=aw-2*pad, by=ay+pad, bh2=ah-2*pad, rad=bw2/2;
-    ctx.save(); ctx.beginPath(); ctx.moveTo(bx,by+bh2); ctx.lineTo(bx,by+rad); ctx.arc(bx+rad,by+rad,rad,Math.PI,0); ctx.lineTo(bx+bw2,by+bh2); ctx.closePath(); ctx.clip();
+    const bx=ax+pad, bw2=aw-2*pad, by=ay+pad, bh2=ah-2*pad;
+    ctx.save(); archPath(bx,by,bw2,bh2,RY-pad); ctx.clip();
     const sc=Math.max(bw2/iw,bh2/ih), dw=iw*sc, dh=ih*sc; ctx.drawImage(r,bx+(bw2-dw)/2,by+(bh2-dh)/2,dw,dh); ctx.restore();
-    ctx.save(); ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(ax,ay+ah); ctx.lineTo(ax,ay+aw/2); ctx.arc(ax+aw/2,ay+aw/2,aw/2,Math.PI,0); ctx.lineTo(ax+aw,ay+ah); ctx.closePath(); ctx.stroke(); ctx.restore();
-  } else   if(o.img){ const iw=o.img.width, ih=o.img.height; const bw=300, bh=480; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc;
-    ctx.save(); ctx.shadowColor='rgba(60,20,30,.45)'; ctx.shadowBlur=24; ctx.shadowOffsetY=12; ctx.drawImage(o.img,267-dw/2,898-dh,dw,dh); ctx.restore(); }
+    ctx.save(); ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; archPath(ax,ay,aw,ah,RY); ctx.stroke(); ctx.restore();
+  } else if(o.img){ const iw=o.img.width, ih=o.img.height; const bw=300, bh=470; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc; const baseY=yb+6;
+    ctx.save(); const cs=ctx.createRadialGradient(cx0,baseY,2,cx0,baseY,dw*.5); cs.addColorStop(0,'rgba(110,50,30,.45)'); cs.addColorStop(1,'rgba(110,50,30,0)');
+    ctx.translate(0,baseY); ctx.scale(1,.2); ctx.translate(0,-baseY); ctx.fillStyle=cs; ctx.beginPath(); ctx.arc(cx0,baseY,dw*.5,0,Math.PI*2); ctx.fill(); ctx.restore();   // contact shadow
+    ctx.save(); ctx.shadowColor='rgba(60,20,30,.4)'; ctx.shadowBlur=22; ctx.shadowOffsetY=10; ctx.drawImage(o.img,cx0-dw/2,baseY-dh,dw,dh); ctx.restore(); }
 
   // price panel
   { const x=520,y=776,w=520,h=168; const pgp=ctx.createLinearGradient(0,y,0,y+h); pgp.addColorStop(0,th.panel[0]); pgp.addColorStop(1,th.panel[1]);
