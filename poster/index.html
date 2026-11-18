@@ -53,7 +53,7 @@
       <button class="sec" id="selAll">ເລືອກທັງໝົດທີ່ກອງ</button>
       <button class="sec" id="selNone">ລ້າງການເລືອກ</button>
     </div>
-    <div class="small" id="selCount">ເລືອກແລ້ວ: 0</div><div class="small">ຕິກ ☑ ໜ້າສິນຄ້າທີ່ຢາກເຮັດ ແລ້ວກົດປຸ່ມ "ສ້າງຮູບທີ່ເລືອກ"</div>
+    <div class="small" id="selCount">ເລືອກແລ້ວ: 0</div><div class="small">ຕິກ ☑ ໜ້າສິນຄ້າທີ່ຢາກເຮັດ ແລ້ວກົດປຸ່ມ "ດາວໂຫຼດຮູບທີ່ເລືອກ"</div>
     <div id="list"></div>
     <details>
       <summary>⚙️ ຕັ້ງຄ່າໂປສເຕີ</summary>
@@ -82,8 +82,8 @@
       <label>ເລື່ອນຂຶ້ນ-ລົງ</label><input type="range" id="bgy" min="0" max="100" value="50" style="width:100%">
       <button class="sec" id="bgclear" type="button" style="margin-top:8px">ໃຊ້ພື້ນຫຼັງແບບແຕ້ມ (ລ້າງຮູບ)</button>
       <div class="row">
-        <div><label>ຂະໜາດໄຟລ໌ ZIP</label><select id="esize"><option value="1">1080×1080</option><option value="2">2160×2160</option></select></div>
-        <div><label>ຮູບແບບ</label><select id="efmt"><option value="jpg">JPG (ເບົາ)</option><option value="png">PNG</option></select></div>
+        <div><label>ຂະໜາດຮູບ</label><select id="esize"><option value="1">1080×1080</option><option value="2">2160×2160</option></select></div>
+        <div><label>ຮູບແບບ</label><select id="efmt"><option value="png">PNG</option><option value="jpg">JPG (ເບົາ)</option></select></div>
       </div>
     </details>
   </aside>
@@ -97,8 +97,8 @@
       <div class="small">ຄ່າເລີ່ມຕົ້ນມາຈາກ POS (ຊື່ + ລາຄາ 1). ແກ້ຢູ່ນີ້ບໍ່ປ່ຽນຂໍ້ມູນໃນ POS.</div>
     </details>
     <div class="bar">
-      <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້ (PNG)</button>
-      <button id="dlZip" disabled>ສ້າງຮູບທີ່ເລືອກ ແລະ ດາວໂຫຼດ ZIP</button>
+      <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້</button>
+      <button id="dlZip" disabled>ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
     </div>
     <div id="prog"><i></i></div>
@@ -107,14 +107,13 @@
     <div id="err"></div>
   </main>
 </div>
-<script src="jszip.min.js"></script>
 <script src="engine.js"></script>
 <script>
 "use strict";
 const SUPABASE_URL = "https://swrijpkkufarddsyqhrh.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3cmlqcGtrdWZhcmRkc3lxaHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDQ4ODYsImV4cCI6MjA5ODQ4MDg4Nn0.GoGsR4Z4u4UiCJ03-jZkJAgjJtjD8J4MosiBh4cpths";
 const TOKEN_KEY = "ms_token_v1";
-const CFG_KEY = "ms_poster_cfg_v1";
+const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
 const P = { items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
@@ -154,7 +153,7 @@ function renderList(){
   }).join("");
   updateSelCount();
 }
-function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ສ້າງຮູບທີ່ເລືອກ ("+P.selected.size+") ແລະ ດາວໂຫຼດ ZIP" : "ສ້າງຮູບທີ່ເລືອກ ແລະ ດາວໂຫຼດ ZIP"; }
+function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
 
 async function rawImage(p){
   if(P.raw.has(p.id)) return P.raw.get(p.id);
@@ -214,34 +213,30 @@ function download(blob, name){ const a=document.createElement("a"); a.href=URL.c
 async function downloadOne(){
   const p = P.cur && P.byId.get(P.cur); if(!p) return;
   try{
-    const pr = await prepare(p); const c = document.createElement("canvas"); c.width=W*2; c.height=H*2; draw(c.getContext("2d"),2,optsFor(p,pr));
-    download(await toBlob(c,"image/png"), fileName(p,"png"));
+    const S = +$("esize").value, fmt = $("efmt").value; const pr = await prepare(p);
+    const c = document.createElement("canvas"); c.width=W*S; c.height=H*S; draw(c.getContext("2d"),S,optsFor(p,pr));
+    download(await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92), fileName(p, fmt==="png"?"png":"jpg"));
   }catch(e){ $("err").textContent = "ດາວໂຫຼດບໍ່ສຳເລັດ: "+e.message; }
 }
-async function downloadZip(){
+// each selected product is downloaded as its own image file (no zip). Chrome asks once to allow multiple downloads.
+async function downloadAll(){
   if(P.busy || !P.selected.size) return;
   const ids = [...P.selected].filter(id=>P.byId.has(id)); const S = +$("esize").value; const fmt = $("efmt").value;
-  if(ids.length > 150 && !confirm("ເລືອກ "+ids.length+" ຮູບ ອາດໃຊ້ເວລານານ ແລະ ໄຟລ໌ໃຫຍ່. ສືບຕໍ່ບໍ?")) return;
+  if(ids.length > 30 && !confirm("ເລືອກ "+ids.length+" ຮູບ. ບຣາວເຊີຈະດາວໂຫຼດຫຼາຍໄຟລ໌ຕິດກັນ. ສືບຕໍ່ບໍ?")) return;
   P.busy = true; P.cancel = false; updateSelCount(); $("cancel").style.display = ""; $("prog").style.display = "block"; $("err").textContent = "";
-  const zip = new JSZip(); const failed = []; let done = 0;
+  const failed = []; let done = 0, ok = 0;
   for(const id of ids){
     if(P.cancel) break;
-    const p = P.byId.get(id); $("msg").textContent = "ກຳລັງສ້າງ "+(done+1)+" / "+ids.length+" …";
+    const p = P.byId.get(id); $("msg").textContent = "ກຳລັງສ້າງ ແລະ ດາວໂຫຼດ "+(done+1)+" / "+ids.length+" …";
     try{
       const pr = await prepare(p); if(!pr.raw) throw new Error("no image");
       const c = document.createElement("canvas"); c.width=W*S; c.height=H*S; draw(c.getContext("2d"),S,optsFor(p,pr));
-      const blob = await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92);
-      zip.file(fileName(p, fmt==="png"?"png":"jpg"), blob);
+      download(await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92), fileName(p, fmt==="png"?"png":"jpg")); ok++;
+      await new Promise(r=>setTimeout(r,700)); // give the browser time between downloads
     }catch(e){ failed.push(p.name+" — "+e.message); }
     done++; $("prog").firstElementChild.style.width = Math.round(done/ids.length*100)+"%";
-    await new Promise(r=>setTimeout(r,0));
   }
-  if(!P.cancel && done > failed.length){
-    $("msg").textContent = "ກຳລັງຮວມເປັນ ZIP …";
-    const out = await zip.generateAsync({type:"blob", compression:"STORE"});
-    download(out, "poster-bountatluang-"+vientianeToday()+".zip");
-    $("msg").textContent = "ສຳເລັດ: "+(done-failed.length)+" ຮູບ"+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"");
-  } else $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ບໍ່ມີຮູບທີ່ສ້າງໄດ້";
+  $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ສຳເລັດ: "+ok+" ຮູບ"+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"")+" (ເບິ່ງໃນໂຟນເດີ Downloads)";
   if(failed.length) $("err").textContent = "ຮູບທີ່ບໍ່ສຳເລັດ:\n"+failed.slice(0,30).join("\n");
   P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount();
 }
@@ -275,7 +270,7 @@ $("ovPrice").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get
 $("ovMode").addEventListener("change", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.mode=$("ovMode").value; P.ov.set(P.cur,o); renderPreview(); });
 $("bgfile").addEventListener("change", e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ P.bg = await loadImg(r.result); renderPreview(); }; r.readAsDataURL(f); });
 $("bgclear").onclick = () => { P.bg = null; $("bgfile").value=""; renderPreview(); };
-$("dl1").onclick = downloadOne; $("dlZip").onclick = downloadZip; $("cancel").onclick = () => { P.cancel = true; };
+$("dl1").onclick = downloadOne; $("dlZip").onclick = downloadAll; $("cancel").onclick = () => { P.cancel = true; };
 init();
 </script>
 </body>
