@@ -38,6 +38,11 @@
   #msg{margin:8px 0;color:#7a0a3a;font-weight:700;max-width:720px}
   #err{color:#b00020;font-size:12px;max-width:720px;white-space:pre-wrap}
   .small{font-size:12px;color:#7a6a70}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:8px;padding:1px 6px;margin-left:4px}
+  .b-ok{background:#dff5e3;color:#14702b}.b-low{background:#fff1cc;color:#8a5a00}.b-ad{background:#fde0e0;color:#a30f1f}
+  #chkPanel{display:none;max-width:720px;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:8px}
+  #chkPanel table{width:100%;border-collapse:collapse;font-size:13px}#chkPanel td{padding:5px 4px;border-bottom:1px solid #f0e8eb;vertical-align:middle}
+  #chkPanel img{width:36px;height:36px;object-fit:contain;background:#faf6f4;border-radius:5px}
   @media (max-width:900px){#app{flex-direction:column;height:auto}#side{width:auto;max-height:70vh}}
 </style>
 </head>
@@ -99,8 +104,10 @@
     <div class="bar">
       <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້</button>
       <button id="dlZip" disabled>ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)</button>
+      <button class="sec" id="chk" disabled>🔍 ກວດຮູບທີ່ເລືອກ</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
     </div>
+    <div id="chkPanel"></div>
     <div id="prog"><i></i></div>
     <div class="small" id="modeNote" style="margin-top:6px"></div>
     <div id="msg"></div>
@@ -115,7 +122,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -144,16 +151,18 @@ function filtered(){
   const q = $("q").value.trim().toLowerCase(); const oi = $("onlyImg").checked, op = $("onlyPrice").checked;
   return P.items.filter(p => (!oi || p.image_url) && (!op || Number(p.price_1)>0) && (!q || (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q)));
 }
+const CHK_TXT = { ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຮູບນ້ອຍ","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
+function badgeHtml(id){ const c = P.check.get(id); if(!c) return ""; const t = CHK_TXT[c.s]; return `<span class="badge ${t[1]}">${t[0]}</span>`; }
 function renderList(){
   const list = filtered(); const box = $("list");
   $("count").textContent = "ສິນຄ້າທີ່ເປີດຂາຍ ແລະ ມີສະຕ໊ອກ: "+P.items.length+" ລາຍການ · ສະແດງ "+list.length;
   box.innerHTML = list.map(p => {
     const img = p.image_url ? `<img loading="lazy" src="${esc(p.image_url)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
-    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(p.name)}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
+    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(p.name)}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
   }).join("");
   updateSelCount();
 }
-function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
+function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("chk").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
 
 async function rawImage(p){
   if(P.raw.has(p.id)) return P.raw.get(p.id);
@@ -208,9 +217,9 @@ async function aiImage(p){
   if(P.ai.size > 40) P.ai.clear(); P.ai.set(p.id, res); return res;
 }
 // decides how the product photo is used: {img: cut-out canvas | null, raw, mode: "cut"|"photo", how: text}
-async function prepare(p){
+async function prepare(p, force){
   const raw = await rawImage(p); if(!raw) return {img:null, raw:null, mode:"cut"};
-  const ov = P.ov.get(p.id) || {}; const want = ov.mode || $("pmode").value;
+  const ov = P.ov.get(p.id) || {}; const want = force || ov.mode || $("pmode").value;
   if(want==="photo") return {img:null, raw, mode:"photo"};
   if(want!=="ai"){ const cut = await cutImage(p); if(want==="cut" || cut.cutOk) return {img:cut, raw, mode:"cut", how:"fast"}; }
   $("modeNote").textContent = "ກຳລັງໃຫ້ AI ຕັດພື້ນຫຼັງ… (ເທື່ອທຳອິດຕ້ອງໂຫຼດໂມເດວ ~44MB ອາດໃຊ້ເວລາຫຼາຍນາທີ)";
@@ -284,6 +293,52 @@ async function downloadAll(){
   P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount();
 }
 
+// ---------- pre-check: which selected photos are usable, which must be re-shot ----------
+async function checkOne(p){
+  let raw = null; try{ raw = await rawImage(p); }catch(e){}
+  if(!raw) return {s:"err", why:"ໂຫຼດຮູບບໍ່ໄດ້ (ກວດລິ້ງຮູບໃນ POS)"};
+  const rw = raw.naturalWidth||raw.width, rh = raw.naturalHeight||raw.height, dim = rw+"×"+rh;
+  const pr = await prepare(p, "auto");
+  if(pr.mode==="cut"){
+    const c = pr.img, sc = Math.min(300/c.width, 470/c.height);
+    if(sc > 1.3) return {s:"low", why:"ຕົວສິນຄ້າໃນຮູບນ້ອຍເກີນ ("+c.width+"×"+c.height+" ຈຸດ) ຈະເບລີ", dim};
+    return {s:"ok", why:"ຕັດຕົວສິນຄ້າໄດ້ ("+(pr.how==="ai"?"ໃຊ້ AI":"ແບບໄວ")+")", dim};
+  }
+  if(pr.how==="aifail") return {s:"ai", why:"ໂມເດວ AI ໂຫຼດບໍ່ໄດ້ ("+(P.aiErr||"ກວດອິນເຕີເນັດ")+")", dim};
+  return {s:"ad", why:"ແຍກຕົວສິນຄ້າບໍ່ໄດ້ (ຮູບໂຄສະນາ ຫຼື ພື້ນຫຼັງລົກ)", dim};
+}
+function chkRows(onlyBad){
+  const rows = [...P.selected].filter(id=>P.check.has(id)).map(id=>({p:P.byId.get(id), c:P.check.get(id)}));
+  return onlyBad ? rows.filter(r=>r.c.s!=="ok") : rows;
+}
+function renderChk(){
+  const all = chkRows(false), bad = chkRows(true); const n = k => all.filter(r=>r.c.s===k).length;
+  const panel = $("chkPanel"); const wasHidden = panel.style.display !== "block"; panel.style.display = "block";
+  panel.innerHTML = `<b>ຜົນການກວດ ${all.length} ຮູບ:</b> ✅ ${n("ok")} · ⚠ ${n("low")+n("ai")} · ❌ ${n("ad")+n("err")}
+    <div class="bar"><button id="chkCopy" class="sec" ${bad.length?"":"disabled"}>ຄັດລອກລາຍການທີ່ຕ້ອງຖ່າຍໃໝ່ (${bad.length})</button><button id="chkDrop" class="sec" ${bad.length?"":"disabled"}>ເອົາທີ່ບໍ່ຜ່ານອອກຈາກການເລືອກ</button></div>
+    <table>`+all.sort((a,b)=>(a.c.s==="ok")-(b.c.s==="ok")).map(r=>`<tr><td style="width:40px">${r.p.image_url?`<img src="${esc(r.p.image_url)}" alt="">`:""}</td><td>${esc(r.p.name)}<div class="small">${esc(r.p.barcode||"")} · ${esc(r.c.why)}</div></td><td style="width:110px"><span class="badge ${CHK_TXT[r.c.s][1]}">${CHK_TXT[r.c.s][0]}</span></td></tr>`).join("")+`</table>`;
+  if(wasHidden) panel.scrollIntoView({behavior:"smooth", block:"start"});
+  $("chkCopy").onclick = async () => {
+    const txt = "ສິນຄ້າທີ່ຕ້ອງຖ່າຍຮູບໃໝ່ (ພື້ນຂາວ, ຮູບໃຫຍ່ ≥1000 ຈຸດ):\n"+bad.map((r,i)=>(i+1)+". "+(r.p.barcode||"")+" "+r.p.name+" — "+r.c.why).join("\n");
+    try{ await navigator.clipboard.writeText(txt); $("msg").textContent = "ຄັດລອກແລ້ວ ສົ່ງໃຫ້ທີມງານໄດ້ເລີຍ"; }catch(e){ prompt("ຄັດລອກຂໍ້ຄວາມນີ້:", txt); }
+  };
+  $("chkDrop").onclick = () => { bad.forEach(r=>P.selected.delete(r.p.id)); renderList(); renderChk(); };
+}
+async function checkSelected(){
+  if(P.busy || !P.selected.size) return;
+  const ids = [...P.selected].filter(id=>P.byId.has(id)); P.busy = true; P.cancel = false; updateSelCount();
+  $("cancel").style.display = ""; $("prog").style.display = "block"; $("err").textContent = ""; let done = 0;
+  for(const id of ids){
+    if(P.cancel) break; const p = P.byId.get(id); $("msg").textContent = "ກຳລັງກວດ "+(done+1)+" / "+ids.length+" … (ຮູບທີ່ຕ້ອງໃຫ້ AI ຕັດອາດໃຊ້ເວລາ ~10 ວິນາທີ)";
+    try{ P.check.set(id, await checkOne(p)); }catch(e){ P.check.set(id, {s:"err", why:e.message}); }
+    done++; $("prog").firstElementChild.style.width = Math.round(done/ids.length*100)+"%";
+    await new Promise(r=>setTimeout(r,0));
+  }
+  $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ກວດຄົບແລ້ວ"; P.busy = false; $("cancel").style.display = "none";
+  setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1000);
+  renderList(); updateSelCount(); renderChk();
+}
+
 async function init(){
   $("d1").value = vientianeToday(); loadCfg(); if(!$("d1").value) $("d1").value = vientianeToday();
   $("patv").textContent = $("pat").value; $("tolv").textContent = $("tol").value;
@@ -313,7 +368,7 @@ $("ovPrice").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get
 $("ovMode").addEventListener("change", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.mode=$("ovMode").value; P.ov.set(P.cur,o); renderPreview(); });
 $("bgfile").addEventListener("change", e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ P.bg = await loadImg(r.result); renderPreview(); }; r.readAsDataURL(f); });
 $("bgclear").onclick = () => { P.bg = null; $("bgfile").value=""; renderPreview(); };
-$("dl1").onclick = downloadOne; $("dlZip").onclick = downloadAll; $("cancel").onclick = () => { P.cancel = true; };
+$("chk").onclick = checkSelected; $("dl1").onclick = downloadOne; $("dlZip").onclick = downloadAll; $("cancel").onclick = () => { P.cancel = true; };
 init();
 </script>
 </body>
