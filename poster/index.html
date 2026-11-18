@@ -71,7 +71,7 @@
       <select id="theme"><option value="crimson">ແດງເລືອດໝູ + ທອງ</option><option value="royal">ມ່ວງ + ທອງ</option></select>
       <label>ຄວາມເຂັ້ມລາຍດອກຈັນ: <span id="patv">30</span></label>
       <input type="range" id="pat" min="0" max="80" value="30" style="width:100%">
-      <label>ວິທີໃສ່ຮູບສິນຄ້າ</label><select id="pmode"><option value="auto">ອັດຕະໂນມັດ (ຕັດໄດ້ສະອາດ = ຕັດ, ບໍ່ໄດ້ = ໃສ່ຮູບເຕັມໃນກອບ)</option><option value="cut">ຕັດພື້ນຫຼັງທຸກຮູບ</option><option value="photo">ໃສ່ຮູບເຕັມໃນກອບທຸກຮູບ</option></select>
+      <label>ວິທີໃສ່ຮູບສິນຄ້າ</label><select id="pmode"><option value="auto">ອັດຕະໂນມັດ (ພື້ນຂາວ = ຕັດໄວ, ບໍ່ແມ່ນ = ໃຫ້ AI ຕັດ, ຍັງບໍ່ໄດ້ = ໃສ່ຮູບເຕັມໃນກອບ)</option><option value="ai">ໃຫ້ AI ຕັດທຸກຮູບ (ຊ້າ ~10 ວິນາທີ/ຮູບ)</option><option value="cut">ຕັດແບບໄວ ທຸກຮູບ (ເໝາະພື້ນຂາວ)</option><option value="photo">ໃສ່ຮູບເຕັມໃນກອບທຸກຮູບ</option></select>
       <div class="chk"><input type="checkbox" id="fg" checked><span>ເຕີມຊ່ອງຫວ່າງໃນຕົວສິນຄ້າ (ປິດ ຖ້າມີຮູທະລຸ)</span></div>
       <label>ຄວາມແຮງການຕັດ: <span id="tolv">26</span></label>
       <input type="range" id="tol" min="6" max="80" value="26" style="width:100%">
@@ -93,7 +93,7 @@
     <details style="max-width:720px;background:#fff">
       <summary>✏️ ແກ້ຊື່/ລາຄາ ສະເພາະຮູບນີ້</summary>
       <label>ຊື່ໃນໂປສເຕີ</label><input type="text" id="ovName">
-      <label>ລາຄາໃນໂປສເຕີ (ກີບ)</label><input type="number" id="ovPrice" inputmode="numeric"><label>ວິທີໃສ່ຮູບ (ສະເພາະຮູບນີ້)</label><select id="ovMode"><option value="">ຕາມການຕັ້ງຄ່າລວມ</option><option value="cut">ຕັດພື້ນຫຼັງ</option><option value="photo">ໃສ່ຮູບເຕັມໃນກອບ</option></select>
+      <label>ລາຄາໃນໂປສເຕີ (ກີບ)</label><input type="number" id="ovPrice" inputmode="numeric"><label>ວິທີໃສ່ຮູບ (ສະເພາະຮູບນີ້)</label><select id="ovMode"><option value="">ຕາມການຕັ້ງຄ່າລວມ</option><option value="ai">ໃຫ້ AI ຕັດ</option><option value="cut">ຕັດແບບໄວ</option><option value="photo">ໃສ່ຮູບເຕັມໃນກອບ</option></select>
       <div class="small">ຄ່າເລີ່ມຕົ້ນມາຈາກ POS (ຊື່ + ລາຄາ 1). ແກ້ຢູ່ນີ້ບໍ່ປ່ຽນຂໍ້ມູນໃນ POS.</div>
     </details>
     <div class="bar">
@@ -115,7 +115,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -167,13 +167,56 @@ async function cutImage(p){
   return c;
 }
 // decides how the product photo is used: {img: cut-out canvas | null, raw, mode: "cut"|"photo"}
+// ---------- AI background removal (imgly, runs in this browser; model ~44MB is downloaded once from a CDN) ----------
+let aiLoad = null;
+function loadAiLib(){
+  if(window.imglyRemoveBackground) return Promise.resolve();
+  if(!aiLoad) aiLoad = new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="bgremove.bundle.js?v="+Date.now(); s.onload=res; s.onerror=()=>{ aiLoad=null; rej(new Error("ໂຫຼດໂມດູນ AI ບໍ່ໄດ້")); }; document.head.appendChild(s); });
+  return aiLoad;
+}
+function canvasToBlob(c){ return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("toBlob")),"image/png")); }
+// keep only the largest blob of the AI result (drops floating bubbles/labels), crop, and judge it
+async function aiCut(raw){
+  await loadAiLib();
+  const c = document.createElement("canvas"); const sc = Math.min(1, 1024/Math.max(raw.naturalWidth||raw.width, raw.naturalHeight||raw.height));
+  c.width = Math.round((raw.naturalWidth||raw.width)*sc); c.height = Math.round((raw.naturalHeight||raw.height)*sc); c.getContext("2d").drawImage(raw,0,0,c.width,c.height);
+  const cfg = { model:"small", output:{ format:"image/png" } }; if(window.POSTER_AI_PATH) cfg.publicPath = window.POSTER_AI_PATH;
+  const out = await window.imglyRemoveBackground(await canvasToBlob(c), cfg);
+  const img = await loadImg(URL.createObjectURL(out));
+  const w = img.width, h = img.height, r = document.createElement("canvas"); r.width=w; r.height=h; const x = r.getContext("2d",{willReadFrequently:true}); x.drawImage(img,0,0);
+  const d = x.getImageData(0,0,w,h), a = d.data, lab = new Int32Array(w*h), sizes=[0];
+  let n=0; const st=[];
+  for(let s=0;s<w*h;s++){ if(lab[s]||a[s*4+3]<110) continue; n++; let cnt=0; lab[s]=n; st.push(s);
+    while(st.length){ const i=st.pop(); cnt++; const px=i%w, py=(i/w)|0;
+      if(px>0&&!lab[i-1]&&a[(i-1)*4+3]>=110){lab[i-1]=n;st.push(i-1);} if(px<w-1&&!lab[i+1]&&a[(i+1)*4+3]>=110){lab[i+1]=n;st.push(i+1);}
+      if(py>0&&!lab[i-w]&&a[(i-w)*4+3]>=110){lab[i-w]=n;st.push(i-w);} if(py<h-1&&!lab[i+w]&&a[(i+w)*4+3]>=110){lab[i+w]=n;st.push(i+w);} }
+    sizes[n]=cnt; }
+  if(!n) return {ok:false};
+  let best=1; for(let k=1;k<=n;k++) if(sizes[k]>sizes[best]) best=k;
+  let x0=w,y0=h,x1=0,y1=0;
+  for(let i=0;i<w*h;i++){ const l=lab[i]; const keep = l===best || (l && sizes[l] > sizes[best]*0.25);
+    if(!keep) a[i*4+3]=0; else { const px=i%w, py=(i/w)|0; if(px<x0)x0=px; if(px>x1)x1=px; if(py<y0)y0=py; if(py>y1)y1=py; } }
+  x.putImageData(d,0,0);
+  const frac = sizes[best]/(w*h);
+  const o = document.createElement("canvas"); o.width=x1-x0+1; o.height=y1-y0+1; o.getContext("2d").drawImage(r,x0,y0,o.width,o.height,0,0,o.width,o.height);
+  o.cutOk = frac>0.04 && frac<0.72; return o;
+}
+async function aiImage(p){
+  if(P.ai.has(p.id)) return P.ai.get(p.id);
+  const raw = await rawImage(p); if(!raw) return null;
+  let res = null; try{ res = await aiCut(raw); }catch(e){ P.aiErr = e.message; res = null; }
+  if(P.ai.size > 40) P.ai.clear(); P.ai.set(p.id, res); return res;
+}
+// decides how the product photo is used: {img: cut-out canvas | null, raw, mode: "cut"|"photo", how: text}
 async function prepare(p){
   const raw = await rawImage(p); if(!raw) return {img:null, raw:null, mode:"cut"};
   const ov = P.ov.get(p.id) || {}; const want = ov.mode || $("pmode").value;
   if(want==="photo") return {img:null, raw, mode:"photo"};
-  const cut = await cutImage(p);
-  if(want==="cut" || cut.cutOk) return {img:cut, raw, mode:"cut"};
-  return {img:null, raw, mode:"photo"};
+  if(want!=="ai"){ const cut = await cutImage(p); if(want==="cut" || cut.cutOk) return {img:cut, raw, mode:"cut", how:"fast"}; }
+  $("modeNote").textContent = "ກຳລັງໃຫ້ AI ຕັດພື້ນຫຼັງ… (ເທື່ອທຳອິດຕ້ອງໂຫຼດໂມເດວ ~44MB ອາດໃຊ້ເວລາຫຼາຍນາທີ)";
+  const ai = await aiImage(p);
+  if(ai && ai.cutOk) return {img:ai, raw, mode:"cut", how:"ai"};
+  return {img:null, raw, mode:"photo", how: ai===null ? "aifail" : "aibad"};
 }
 function optsFor(p, pr){
   const img = pr && pr.img, raw = pr && pr.raw, mode = pr && pr.mode;
@@ -192,7 +235,7 @@ async function renderPreview(){
   let pr = null; try{ pr = await prepare(p); }catch(e){ $("err").textContent = "ຕັດພື້ນຫຼັງບໍ່ໄດ້: "+e.message; }
   if(my !== renderSeq) return;
   if(pr && !pr.raw && p.image_url) $("err").textContent = "ໂຫຼດຮູບສິນຄ້ານີ້ບໍ່ໄດ້ (ກວດລິ້ງຮູບໃນ POS)";
-  if(pr && pr.raw) $("modeNote").textContent = pr.mode==="cut" ? "ຮູບນີ້: ຕັດພື້ນຫຼັງແລ້ວ" : "ຮູບນີ້: ໃສ່ຮູບເຕັມໃນກອບ (ຕັດພື້ນຫຼັງບໍ່ສະອາດ ຫຼື ເລືອກໄວ້)";
+  if(pr && pr.raw) $("modeNote").textContent = pr.mode==="cut" ? (pr.how==="ai" ? "ຮູບນີ້: AI ຕັດພື້ນຫຼັງແລ້ວ" : "ຮູບນີ້: ຕັດພື້ນຫຼັງແລ້ວ") : (pr.how==="aifail" ? "ຮູບນີ້: ໃຫ້ AI ຕັດບໍ່ໄດ້ ("+(P.aiErr||"ຜິດພາດ")+") ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : pr.how==="aibad" ? "ຮູບນີ້: ແຍກຕົວສິນຄ້າອອກບໍ່ໄດ້ (ເປັນຮູບໂຄສະນາ) ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : "ຮູບນີ້: ໃສ່ຮູບເຕັມໃນກອບ");
   draw(ctx,1,optsFor(p,pr));
   $("dl1").disabled = false;
 }
@@ -262,7 +305,7 @@ $("selAll").onclick = () => { filtered().forEach(p=>P.selected.add(p.id)); rende
 $("selNone").onclick = () => { P.selected.clear(); renderList(); };
 for(const id of ["q","onlyImg","onlyPrice"]) $(id).addEventListener("input", renderList);
 for(const id of ["d1","d2","shop","shopfont","cta","theme","pat","bgz","bgx","bgy"]) $(id).addEventListener("input", ()=>{ if(id==="pat") $("patv").textContent=$("pat").value; saveCfg(); renderPreview(); });
-for(const id of ["pmode","fg"]) $(id).addEventListener("change", ()=>{ P.cut.clear(); saveCfg(); renderPreview(); });
+for(const id of ["pmode","fg"]) $(id).addEventListener("change", ()=>{ P.cut.clear(); P.ai.clear(); saveCfg(); renderPreview(); });
 $("tol").addEventListener("input", ()=>{ $("tolv").textContent=$("tol").value; saveCfg(); renderPreview(); });
 for(const id of ["esize","efmt"]) $(id).addEventListener("change", saveCfg);
 $("ovName").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.name=$("ovName").value; P.ov.set(P.cur,o); renderPreview(); });
