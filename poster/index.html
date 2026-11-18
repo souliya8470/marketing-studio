@@ -108,6 +108,7 @@
       <button class="sec" id="chk" disabled>🔍 ກວດຮູບທີ່ເລືອກ</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
     </div>
+    <div id="photoBar" class="small" style="display:none;max-width:720px;margin:6px 0"></div>
     <div class="small" style="max-width:720px">📷 ເທິງໂທລະສັບ: ກົດ "ຖ່າຍຮູບສິນຄ້ານີ້" ແລ້ວຖ່າຍສິນຄ້າເທິງເຈ້ຍ ຫຼື ຜ້າຂາວ ໃກ້ປ່ອງຢ້ຽມ (ແສງສະຫວ່າງ), ໃຫ້ສິນຄ້າເຕັມເຟຣມ ແລະ ຕັ້ງຕົງ. ລະບົບຕັດພື້ນຫຼັງໃຫ້ເອງ.</div>
     <input type="file" id="cam" accept="image/*" capture="environment" hidden>
     <div id="chkPanel"></div>
@@ -266,7 +267,7 @@ function setCur(id){
   $("ovName").value = p ? (ov.name!=null?ov.name:p.name) : ""; $("ovPrice").value = p ? (ov.price!=null?ov.price:Number(p.price_1||0)) : ""; $("ovMode").value = ov.mode||"";
   document.querySelectorAll(".item.cur").forEach(e=>e.classList.remove("cur"));
   const el = document.querySelector('.item[data-id="'+id+'"]'); if(el) el.classList.add("cur");
-  renderPreview();
+  renderPreview(); renderPhotoBar();
 }
 function fileName(p, ext){
   const base = ((p.barcode||p.id.slice(0,8))+"_"+(p.name||"")).replace(/[\\/:*?"<>|\s]+/g,"-").slice(0,70);
@@ -314,10 +315,11 @@ async function fetchPosterPhotos(){
     for(let off=0; ; ){
       const r = await fetch(SUPABASE_URL+"/storage/v1/object/list/"+PHOTO_BUCKET, { method:"POST", headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "Content-Type":"application/json" }, body: JSON.stringify({ prefix:"poster", limit:1000, offset:off, sortBy:{column:"name",order:"asc"} }) });
       if(!r.ok) break; const rows = await r.json(); if(!Array.isArray(rows)) break;
-      for(const o of rows){ const mm = /^(.+)_(\d+)\.jpg$/.exec(o.name||""); if(!mm) continue; const cur = m.get(mm[1]); if(!cur || +mm[2] > cur.ts) m.set(mm[1], { ts:+mm[2], url: SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/poster/"+o.name }); }
+      for(const o of rows){ const mm = /^(.+)_(\d+)(_off)?\.jpg$/.exec(o.name||""); if(!mm) continue; const cur = m.get(mm[1]); if(!cur || +mm[2] > cur.ts) m.set(mm[1], { ts:+mm[2], off:!!mm[3], url: SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/poster/"+o.name }); }
       if(rows.length < 1000) break; off += rows.length;
     }
   }catch(e){}
+  for(const [k,v] of [...m]) if(v.off) m.delete(k);   // latest action was "back to the POS photo"
   return m;
 }
 async function uploadPosterPhoto(p, file){
@@ -325,11 +327,34 @@ async function uploadPosterPhoto(p, file){
   const k = Math.min(1, 1600/Math.max(img.naturalWidth, img.naturalHeight)); const c = document.createElement("canvas");
   c.width = Math.round(img.naturalWidth*k); c.height = Math.round(img.naturalHeight*k); const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height);
   const blob = await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("toBlob")),"image/jpeg",.9));
-  const ts = Date.now(), name = p.id+"_"+ts+".jpg";
+  return putPosterBlob(p, blob, false);
+}
+async function putPosterBlob(p, blob, off){
+  const ts = Date.now(), name = p.id+"_"+ts+(off?"_off":"")+".jpg";
   const r = await fetch(SUPABASE_URL+"/storage/v1/object/"+PHOTO_BUCKET+"/poster/"+name, { method:"POST", headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token(), "Content-Type":"image/jpeg", "cache-control":"max-age=3600" }, body: blob });
   if(!r.ok){ const t = await r.text(); throw new Error("ອັບໂຫຼດບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,120)); }
-  P.photos.set(p.id, { ts, url: SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/poster/"+name });
+  if(off) P.photos.delete(p.id); else P.photos.set(p.id, { ts, url: SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/poster/"+name });
   P.raw.delete(p.id); P.ai.delete(p.id); for(const key of [...P.cut.keys()]) if(key.startsWith(p.id+"|")) P.cut.delete(key); P.check.delete(p.id);
+}
+async function revertPhoto(id){
+  const p = P.byId.get(id); if(!p || !P.photos.has(id)) return;
+  if(!confirm("ກັບໄປໃຊ້ຮູບເດີມຈາກ POS ບໍ?")) return;
+  $("msg").textContent = "ກຳລັງກັບໄປໃຊ້ຮູບ POS…"; $("err").textContent = "";
+  try{
+    const c = document.createElement("canvas"); c.width = c.height = 2; c.getContext("2d").fillRect(0,0,2,2);
+    const blob = await new Promise(res=>c.toBlob(res,"image/jpeg",.5));
+    await putPosterBlob(p, blob, true); renderList(); if(P.cur===id) await renderPreview(); renderPhotoBar();
+    if(P.selected.has(id)){ P.check.set(id, await checkOne(p)); renderList(); if($("chkPanel").style.display==="block") renderChk(); }
+    $("msg").textContent = "ກັບໄປໃຊ້ຮູບ POS ແລ້ວ";
+  }catch(e){ $("msg").textContent = ""; $("err").textContent = e.message; }
+}
+function renderPhotoBar(){
+  const bar = $("photoBar"), id = P.cur, ph = id && P.photos.get(id), cam = $("camBtn");
+  cam.textContent = ph ? "🔄 ຖ່າຍຮູບໃໝ່ (ຖ່າຍທັບ)" : "📷 ຖ່າຍຮູບສິນຄ້ານີ້";
+  if(!ph){ bar.style.display = "none"; bar.innerHTML = ""; return; }
+  bar.style.display = "block";
+  bar.innerHTML = `<img src="${esc(ph.url)}" alt="" style="height:54px;border-radius:8px;vertical-align:middle;margin-right:8px"> ໃຊ້ຮູບທີ່ຖ່າຍໃໝ່ຢູ່. ບໍ່ງາມ? ກົດ "ຖ່າຍຮູບໃໝ່" ເພື່ອຖ່າຍທັບ ຫຼື <button class="sec" id="revertBtn" style="padding:4px 10px;font-size:12px">↩ ກັບໄປໃຊ້ຮູບ POS ເດີມ</button>`;
+  $("revertBtn").onclick = () => revertPhoto(id);
 }
 function askPhoto(id){ P.camFor = id; $("cam").value = ""; $("cam").click(); }
 async function onPhotoPicked(){
@@ -339,7 +364,7 @@ async function onPhotoPicked(){
     await uploadPosterPhoto(p, f); $("msg").textContent = "ອັບໂຫຼດແລ້ວ ກຳລັງຕັດພື້ນຫຼັງ…"; renderList();
     if(P.cur !== p.id) setCur(p.id); else await renderPreview();
     if(P.selected.has(p.id)){ P.check.set(p.id, await checkOne(p)); renderList(); if($("chkPanel").style.display==="block") renderChk(); }
-    $("msg").textContent = "ສຳເລັດ ຮູບໃໝ່ຂອງ "+p.name;
+    renderPhotoBar(); $("msg").textContent = "ສຳເລັດ ຮູບໃໝ່ຂອງ "+p.name+" — ຖ້າບໍ່ງາມ ກົດ ຖ່າຍຮູບໃໝ່ ໄດ້ເລີຍ";
   }catch(e){ $("msg").textContent = ""; $("err").textContent = e.message; }
 }
 
