@@ -7,7 +7,7 @@ const FONTS = {
   SPF:  "fonts/pf.woff2", SGV: "fonts/gv.woff2", SCD: "fonts/cd.woff2"
 };
 const THEMES = {
-  crimson: { bg:['#e0245e','#b3124a','#7a0a3a'], panel:['#8f0f46','#6a0832'], deep:'#6a0832', head2:'#ffe14a', text2:'#7a0a3a' },
+  crimson: { bg:['#f0283c','#d41a32','#a10f28'], panel:['#b01029','#85081c'], deep:'#85081c', head2:'#ffe14a', text2:'#8a0a20' },
   royal:   { bg:['#8a35d0','#4f1c92','#2a0d5c'], panel:['#4a1a8c','#2a0d5c'], deep:'#2a0d5c', head2:'#ffe14a', text2:'#2a0d5c' }
 };
 const LAO_MONTHS = ['ມັງກອນ','ກຸມພາ','ມີນາ','ເມສາ','ພຶດສະພາ','ມິຖຸນາ','ກໍລະກົດ','ສິງຫາ','ກັນຍາ','ຕຸລາ','ພະຈິກ','ທັນວາ'];
