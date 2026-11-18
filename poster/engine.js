@@ -59,6 +59,44 @@ function cutout(img, tol, fillgaps){
 }
 
 // ---------- drawing helpers ----------
+// ad-style retouch of a cut-out product: auto levels + gentle white balance + a little saturation, cleaner edge, soft rim/top light.
+// Pure canvas maths (no AI). Returns a new canvas of the same size; cached on the source canvas.
+function enhanceCut(src){
+  if(src._enh) return src._enh;
+  const w=src.width,h=src.height; const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0);
+  const d=x.getImageData(0,0,w,h), p=d.data; const hist=new Uint32Array(256); let n=0, sr=0,sg=0,sb=0;
+  for(let i=0;i<p.length;i+=4){ if(p[i+3]<200) continue; const l=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0; hist[l]++; n++; sr+=p[i]; sg+=p[i+1]; sb+=p[i+2]; }
+  if(n<50){ src._enh=src; return src; }
+  const pct=f=>{ let a=0; for(let k=0;k<256;k++){ a+=hist[k]; if(a>=n*f) return k; } return 255; };
+  const lo=pct(.015), hi=pct(.985); const span=Math.max(60,hi-lo);
+  const mr=sr/n, mg=sg/n, mb=sb/n, m=(mr+mg+mb)/3;
+  // gray-world white balance, limited to +-2% so coloured packaging keeps its colour
+  const cl=v=>Math.max(.98,Math.min(1.02,v)); const gr=cl(m/mr), gg=cl(m/mg), gb=cl(m/mb);
+  const lm=(lo+hi)/2; const gam = lm<118 ? Math.max(.72,lm/118*.35+.65) : (lm>165?1.08:1);   // brighten dim photos
+  const lut=new Uint8Array(256); for(let k=0;k<256;k++){ let v=(k-lo)/span; v=Math.max(0,Math.min(1,v)); v=Math.pow(v,gam); lut[k]=Math.round(6+v*246); }
+  const sat=1.14;
+  for(let i=0;i<p.length;i+=4){ if(p[i+3]===0) continue;
+    let r=lut[Math.min(255,p[i]*gr|0)], g=lut[Math.min(255,p[i+1]*gg|0)], b=lut[Math.min(255,p[i+2]*gb|0)];
+    const l=r*.299+g*.587+b*.114; r=l+(r-l)*sat; g=l+(g-l)*sat; b=l+(b-l)*sat;
+    p[i]=r<0?0:r>255?255:r; p[i+1]=g<0?0:g>255?255:g; p[i+2]=b<0?0:b>255?255:b; }
+  // edge clean-up: halve alpha of pixels touching transparency (removes the light fringe left by the old background)
+  const a0=new Uint8Array(w*h); for(let i=0;i<w*h;i++) a0[i]=p[i*4+3];
+  for(let b=1;b<h-1;b++)for(let a=1;a<w-1;a++){ const i=b*w+a; if(a0[i]>0 && (a0[i-1]<40||a0[i+1]<40||a0[i-w]<40||a0[i+w]<40)) p[i*4+3]=a0[i]>>1; }
+  x.putImageData(d,0,0);
+  // soft light: warm rim on the left edge, golden on the right, faint top gloss (only on product pixels)
+  x.save(); x.globalCompositeOperation='source-atop';
+  let g=x.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(255,236,190,.30)'); g.addColorStop(.22,'rgba(255,236,190,0)'); g.addColorStop(.78,'rgba(255,196,120,0)'); g.addColorStop(1,'rgba(255,196,120,.22)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+  g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,.14)'); g.addColorStop(.25,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+  x.restore();
+  src._enh=c; return c;
+}
+// faint mirror image of the product on the plinth (drawn before the product itself)
+function reflectionOf(img,dw,dh){
+  const k=.30, rh=Math.round(dh*k); const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(dw)); c.height=Math.max(1,rh); const x=c.getContext('2d');
+  x.save(); x.translate(0,0); x.scale(1,-k); x.drawImage(img,0,-dh,dw,dh); x.restore();
+  x.globalCompositeOperation='destination-in'; const g=x.createLinearGradient(0,0,0,rh); g.addColorStop(0,'rgba(0,0,0,.34)'); g.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=g; x.fillRect(0,0,c.width,rh);
+  return c;
+}
 function star(ctx,x,y,r,a=1){ ctx.save(); ctx.globalAlpha=a; ctx.translate(x,y); ctx.fillStyle='#fff6c8'; ctx.shadowColor='#ffe27a'; ctx.shadowBlur=r*1.2;
   ctx.beginPath(); for(let i=0;i<8;i++){ const rr=i%2?r*0.22:r; const an=i*Math.PI/4-Math.PI/2; ctx.lineTo(Math.cos(an)*rr,Math.sin(an)*rr);} ctx.closePath(); ctx.fill(); ctx.restore(); }
 
@@ -259,10 +297,14 @@ function draw(ctx,S,o){
     ctx.save(); archPath(bx,by,bw2,bh2,RY-pad); ctx.clip();
     const sc=Math.max(bw2/iw,bh2/ih), dw=iw*sc, dh=ih*sc; ctx.drawImage(r,bx+(bw2-dw)/2,by+(bh2-dh)/2,dw,dh); ctx.restore();
     ctx.save(); ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; archPath(ax,ay,aw,ah,RY); ctx.stroke(); ctx.restore();
-  } else if(o.img){ const iw=o.img.width, ih=o.img.height; const bw=300, bh=470; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc; const baseY=yb+6;
+  } else if(o.img){ const pimg=(o.enh!==false && o.mode!=='photo')?enhanceCut(o.img):o.img; const iw=o.img.width, ih=o.img.height; const bw=300, bh=470; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc; const baseY=yb+6;
+    if(o.enh!==false){   // soft warm glow behind the product + mirror reflection on the plinth, both kept inside the arch
+      ctx.save(); archPath(ax,ay,aw,ah,RY); ctx.clip();
+      const gl=ctx.createRadialGradient(cx0,baseY-dh*.5,10,cx0,baseY-dh*.5,Math.max(dw,dh)*.75); gl.addColorStop(0,'rgba(255,250,228,.50)'); gl.addColorStop(1,'rgba(255,250,228,0)'); ctx.fillStyle=gl; ctx.fillRect(ax,ay,aw,ah);
+      ctx.drawImage(reflectionOf(pimg,dw,dh),cx0-dw/2,baseY+2,dw,Math.round(dh*.30)); ctx.restore(); }
     ctx.save(); const cs=ctx.createRadialGradient(cx0,baseY,2,cx0,baseY,dw*.5); cs.addColorStop(0,'rgba(110,50,30,.45)'); cs.addColorStop(1,'rgba(110,50,30,0)');
     ctx.translate(0,baseY); ctx.scale(1,.2); ctx.translate(0,-baseY); ctx.fillStyle=cs; ctx.beginPath(); ctx.arc(cx0,baseY,dw*.5,0,Math.PI*2); ctx.fill(); ctx.restore();   // contact shadow
-    ctx.save(); ctx.shadowColor='rgba(60,20,30,.4)'; ctx.shadowBlur=22; ctx.shadowOffsetY=10; ctx.drawImage(o.img,cx0-dw/2,baseY-dh,dw,dh); ctx.restore(); }
+    ctx.save(); ctx.shadowColor='rgba(60,20,30,.4)'; ctx.shadowBlur=22; ctx.shadowOffsetY=10; ctx.drawImage(pimg,cx0-dw/2,baseY-dh,dw,dh); ctx.restore(); }
 
   // price panel
   { const x=520,y=776,w=520,h=168; const pgp=ctx.createLinearGradient(0,y,0,y+h); pgp.addColorStop(0,th.panel[0]); pgp.addColorStop(1,th.panel[1]);

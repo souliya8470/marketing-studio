@@ -77,6 +77,7 @@
       <label>ຄວາມເຂັ້ມລາຍດອກຈັນ: <span id="patv">30</span></label>
       <input type="range" id="pat" min="0" max="80" value="30" style="width:100%">
       <label>ວິທີໃສ່ຮູບສິນຄ້າ</label><select id="pmode"><option value="auto">ອັດຕະໂນມັດ (ພື້ນຂາວ = ຕັດໄວ, ບໍ່ແມ່ນ = ໃຫ້ AI ຕັດ, ຍັງບໍ່ໄດ້ = ໃສ່ຮູບເຕັມໃນກອບ)</option><option value="ai">ໃຫ້ AI ຕັດທຸກຮູບ (ຊ້າ ~10 ວິນາທີ/ຮູບ)</option><option value="cut">ຕັດແບບໄວ ທຸກຮູບ (ເໝາະພື້ນຂາວ)</option><option value="photo">ໃສ່ຮູບເຕັມໃນກອບທຸກຮູບ</option></select>
+      <div class="chk"><input type="checkbox" id="enh" checked><span>ປັບແສງ/ສີສິນຄ້າໃຫ້ງາມ ແບບຮູບໂຄສະນາ (ແສງຂອບ, ເງົາສະທ້ອນ)</span></div>
       <div class="chk"><input type="checkbox" id="fg" checked><span>ເຕີມຊ່ອງຫວ່າງໃນຕົວສິນຄ້າ (ປິດ ຖ້າມີຮູທະລຸ)</span></div>
       <label>ຄວາມແຮງການຕັດ: <span id="tolv">26</span></label>
       <input type="range" id="tol" min="6" max="80" value="26" style="width:100%">
@@ -134,7 +135,7 @@ function vientianeToday(){
   const p = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Vientiane",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   return p; // YYYY-MM-DD
 }
-const CFG_FIELDS = ["d1","d2","shop","shopfont","cta","theme","pat","pmode","fg","tol","bgz","bgx","bgy","esize","efmt"];
+const CFG_FIELDS = ["d1","d2","shop","shopfont","cta","theme","pat","pmode","fg","enh","tol","bgz","bgx","bgy","esize","efmt"];
 function saveCfg(){ try{ const o={}; for(const k of CFG_FIELDS){ const el=$(k); o[k]= el.type==="checkbox" ? el.checked : el.value; } localStorage.setItem(CFG_KEY, JSON.stringify(o)); }catch(e){} }
 function loadCfg(){ try{ const o=JSON.parse(localStorage.getItem(CFG_KEY)||"null"); if(!o) return; for(const k of CFG_FIELDS){ if(!(k in o)) continue; const el=$(k); if(el.type==="checkbox") el.checked=!!o[k]; else el.value=o[k]; } }catch(e){} }
 
@@ -246,7 +247,7 @@ function optsFor(p, pr){
   const ov = P.ov.get(p.id) || {};
   return { name: ov.name!=null ? ov.name : p.name, sub:"", price: ov.price!=null ? ov.price : p.price_1,
     d1:$("d1").value, d2:$("d2").value, shop:$("shop").value, shopfont:$("shopfont").value, cta:$("cta").value, theme:$("theme").value,
-    pat:+$("pat").value, img, raw, mode, bg:P.bg, bgz:+$("bgz").value, bgx:+$("bgx").value, bgy:+$("bgy").value };
+    pat:+$("pat").value, img, raw, mode, enh:$("enh").checked, bg:P.bg, bgz:+$("bgz").value, bgx:+$("bgx").value, bgy:+$("bgy").value };
 }
 let renderSeq = 0;
 async function renderPreview(){
@@ -438,6 +439,7 @@ $("selNone").onclick = () => { P.selected.clear(); renderList(); };
 for(const id of ["q","onlyImg","onlyPrice"]) $(id).addEventListener("input", renderList);
 for(const id of ["d1","d2","shop","shopfont","cta","theme","pat","bgz","bgx","bgy"]) $(id).addEventListener("input", ()=>{ if(id==="pat") $("patv").textContent=$("pat").value; saveCfg(); renderPreview(); });
 for(const id of ["pmode","fg"]) $(id).addEventListener("change", ()=>{ P.cut.clear(); P.ai.clear(); saveCfg(); renderPreview(); });
+$("enh").addEventListener("change", ()=>{ saveCfg(); renderPreview(); });
 $("tol").addEventListener("input", ()=>{ $("tolv").textContent=$("tol").value; saveCfg(); renderPreview(); });
 for(const id of ["esize","efmt"]) $(id).addEventListener("change", saveCfg);
 $("ovName").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.name=$("ovName").value; P.ov.set(P.cur,o); renderPreview(); });
