@@ -53,7 +53,7 @@
       <button class="sec" id="selAll">ເລືອກທັງໝົດທີ່ກອງ</button>
       <button class="sec" id="selNone">ລ້າງການເລືອກ</button>
     </div>
-    <div class="small" id="selCount">ເລືອກແລ້ວ: 0</div>
+    <div class="small" id="selCount">ເລືອກແລ້ວ: 0</div><div class="small">ຕິກ ☑ ໜ້າສິນຄ້າທີ່ຢາກເຮັດ ແລ້ວກົດປຸ່ມ "ສ້າງຮູບທີ່ເລືອກ"</div>
     <div id="list"></div>
     <details>
       <summary>⚙️ ຕັ້ງຄ່າໂປສເຕີ</summary>
@@ -98,7 +98,7 @@
     </details>
     <div class="bar">
       <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້ (PNG)</button>
-      <button id="dlZip" disabled>ສ້າງທັງໝົດ ແລະ ດາວໂຫຼດ ZIP</button>
+      <button id="dlZip" disabled>ສ້າງຮູບທີ່ເລືອກ ແລະ ດາວໂຫຼດ ZIP</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
     </div>
     <div id="prog"><i></i></div>
@@ -153,7 +153,7 @@ function renderList(){
   }).join("");
   updateSelCount();
 }
-function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ສ້າງທັງໝົດ ("+P.selected.size+") ແລະ ດາວໂຫຼດ ZIP" : "ສ້າງທັງໝົດ ແລະ ດາວໂຫຼດ ZIP"; }
+function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ສ້າງຮູບທີ່ເລືອກ ("+P.selected.size+") ແລະ ດາວໂຫຼດ ZIP" : "ສ້າງຮູບທີ່ເລືອກ ແລະ ດາວໂຫຼດ ZIP"; }
 
 async function rawImage(p){
   if(P.raw.has(p.id)) return P.raw.get(p.id);
