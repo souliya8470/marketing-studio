@@ -40,6 +40,9 @@
   .small{font-size:12px;color:#7a6a70}
   .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:8px;padding:1px 6px;margin-left:4px}
   .b-ok{background:#dff5e3;color:#14702b}.b-low{background:#fff1cc;color:#8a5a00}.b-ad{background:#fde0e0;color:#a30f1f}
+  #namePanel{display:none;max-width:720px;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:8px}
+  #namePanel table{width:100%;border-collapse:collapse;font-size:13px}#namePanel td{padding:5px 4px;border-bottom:1px solid #f0e8eb;vertical-align:top}
+  #namePanel input[type=text]{width:100%;margin:2px 0}
   #chkPanel{display:none;max-width:720px;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:8px}
   #chkPanel table{width:100%;border-collapse:collapse;font-size:13px}#chkPanel td{padding:5px 4px;border-bottom:1px solid #f0e8eb;vertical-align:middle}
   #chkPanel img{width:36px;height:36px;object-fit:contain;background:#faf6f4;border-radius:5px}
@@ -96,19 +99,22 @@
   <main id="main">
     <div class="bar"><b id="curName">ເລືອກສິນຄ້າຈາກລາຍການເບື້ອງຊ້າຍ</b></div>
     <canvas id="cv" width="1080" height="1080"></canvas>
-    <details style="max-width:720px;background:#fff">
+    <details open style="max-width:720px;background:#fff">
       <summary>✏️ ແກ້ຊື່/ລາຄາ ສະເພາະຮູບນີ້</summary>
-      <label>ຊື່ໃນໂປສເຕີ</label><input type="text" id="ovName">
+      <label>ຊື່ໃນໂປສເຕີ <span class="small" id="nameSt"></span></label><input type="text" id="ovName">
+      <div class="bar" style="margin:6px 0"><button class="sec" id="nameFix" disabled>✨ ໃຫ້ Claude ກວດຕົວສະກົດ/ວັນນະຍຸດ</button><button class="sec" id="nameRevert" disabled style="display:none">↩ ໃຊ້ຊື່ຈາກ POS</button></div>
       <label>ລາຄາໃນໂປສເຕີ (ກີບ)</label><input type="number" id="ovPrice" inputmode="numeric"><label>ວິທີໃສ່ຮູບ (ສະເພາະຮູບນີ້)</label><select id="ovMode"><option value="">ຕາມການຕັ້ງຄ່າລວມ</option><option value="ai">ໃຫ້ AI ຕັດ</option><option value="cut">ຕັດແບບໄວ</option><option value="photo">ໃສ່ຮູບເຕັມໃນກອບ</option></select>
-      <div class="small">ຄ່າເລີ່ມຕົ້ນມາຈາກ POS (ຊື່ + ລາຄາ 1). ແກ້ຢູ່ນີ້ບໍ່ປ່ຽນຂໍ້ມູນໃນ POS.</div>
+      <div class="small">ຄ່າເລີ່ມຕົ້ນມາຈາກ POS (ຊື່ + ລາຄາ 1). ຊື່ທີ່ແກ້ຢູ່ນີ້ ຖືກບັນທຶກໄວ້ໃຊ້ກັບໂປສເຕີ (ທຸກເຄື່ອງເຫັນຄືກັນ) ແຕ່ບໍ່ປ່ຽນຂໍ້ມູນໃນ POS. ລາຄາທີ່ແກ້ ໃຊ້ສະເພາະຄັ້ງນີ້.</div>
     </details>
     <div class="bar">
       <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້</button>
       <button id="dlZip" disabled>ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)</button>
       <button id="camBtn" disabled>📷 ຖ່າຍຮູບສິນຄ້ານີ້</button>
       <button class="sec" id="chk" disabled>🔍 ກວດຮູບທີ່ເລືອກ</button>
+      <button class="sec" id="nameFixSel" disabled>✨ ກວດຊື່ທີ່ເລືອກ</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
     </div>
+    <div id="namePanel"></div>
     <div id="photoBar" class="small" style="display:none;max-width:720px;margin:6px 0"></div>
     <div class="small" style="max-width:720px">📷 ເທິງໂທລະສັບ: ກົດ "ຖ່າຍຮູບສິນຄ້ານີ້" ແລ້ວຖ່າຍສິນຄ້າເທິງເຈ້ຍ ຫຼື ຜ້າຂາວ ໃກ້ປ່ອງຢ້ຽມ (ແສງສະຫວ່າງ), ໃຫ້ສິນຄ້າເຕັມເຟຣມ ແລະ ຕັ້ງຕົງ. ລະບົບຕັດພື້ນຫຼັງໃຫ້ເອງ.</div>
     <input type="file" id="cam" accept="image/*" capture="environment" hidden>
@@ -127,7 +133,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -157,17 +163,18 @@ function filtered(){
   return P.items.filter(p => (!oi || p.image_url) && (!op || Number(p.price_1)>0) && (!q || (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q)));
 }
 const CHK_TXT = { ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຄວນຖ່າຍໃໝ່","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
+function dname(p){ const o = P.ov.get(p.id); return (o && o.name!=null && o.name!=='') ? o.name : p.name; }
 function badgeHtml(id){ let h = P.photos.has(id) ? `<span class="badge b-ok">📷 ຮູບໃໝ່</span>` : ""; const c = P.check.get(id); if(!c) return h; const t = CHK_TXT[c.s]; return h+`<span class="badge ${t[1]}">${t[0]}</span>`; }
 function renderList(){
   const list = filtered(); const box = $("list");
   $("count").textContent = "ສິນຄ້າທີ່ເປີດຂາຍ ແລະ ມີສະຕ໊ອກ: "+P.items.length+" ລາຍການ · ສະແດງ "+list.length;
   box.innerHTML = list.map(p => {
     const thumb = (P.photos.get(p.id)||{}).url || p.image_url; const img = thumb ? `<img loading="lazy" src="${esc(thumb)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
-    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(p.name)}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
+    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(dname(p))}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${P.names.has(p.id)?`<span class="badge b-ok">✏️ ແກ້ຊື່</span>`:""}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
   }).join("");
   updateSelCount();
 }
-function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("chk").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
+function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("chk").disabled = P.busy || !P.selected.size; $("nameFixSel").disabled = !P.selected.size; $("nameFixSel").textContent = P.selected.size ? "✨ ກວດຊື່ທີ່ເລືອກ ("+P.selected.size+")" : "✨ ກວດຊື່ທີ່ເລືອກ"; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
 
 async function rawImage(p){
   if(P.raw.has(p.id)) return P.raw.get(p.id);
@@ -255,7 +262,7 @@ async function renderPreview(){
   const p = P.cur && P.byId.get(P.cur);
   $("err").textContent = "";
   if(!p){ draw(ctx,1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null)); return; }
-  $("curName").textContent = p.name + (p.barcode?"  ("+p.barcode+")":"");
+  $("curName").textContent = dname(p) + (p.barcode?"  ("+p.barcode+")":"");
   let pr = null; try{ pr = await prepare(p); }catch(e){ $("err").textContent = "ຕັດພື້ນຫຼັງບໍ່ໄດ້: "+e.message; }
   if(my !== renderSeq) return;
   if(pr && !pr.raw && p.image_url) $("err").textContent = "ໂຫຼດຮູບສິນຄ້ານີ້ບໍ່ໄດ້ (ກວດລິ້ງຮູບໃນ POS)";
@@ -266,12 +273,13 @@ async function renderPreview(){
 function setCur(id){
   P.cur = id; $("camBtn").disabled = false; const p = P.byId.get(id); const ov = P.ov.get(id) || {};
   $("ovName").value = p ? (ov.name!=null?ov.name:p.name) : ""; $("ovPrice").value = p ? (ov.price!=null?ov.price:Number(p.price_1||0)) : ""; $("ovMode").value = ov.mode||"";
+  $("nameFix").disabled = false; renderNameSt();
   document.querySelectorAll(".item.cur").forEach(e=>e.classList.remove("cur"));
   const el = document.querySelector('.item[data-id="'+id+'"]'); if(el) el.classList.add("cur");
   renderPreview(); renderPhotoBar();
 }
 function fileName(p, ext){
-  const base = ((p.barcode||p.id.slice(0,8))+"_"+(p.name||"")).replace(/[\\/:*?"<>|\s]+/g,"-").slice(0,70);
+  const base = ((p.barcode||p.id.slice(0,8))+"_"+(dname(p)||"")).replace(/[\\/:*?"<>|\s]+/g,"-").slice(0,70);
   return base+"."+ext;
 }
 function toBlob(canvas, type, q){ return new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error("toBlob failed (CORS?)")), type, q)); }
@@ -369,6 +377,92 @@ async function onPhotoPicked(){
   }catch(e){ $("msg").textContent = ""; $("err").textContent = e.message; }
 }
 
+// ---------- poster names: corrected ad names are saved in table poster_name_overrides (POS is never changed) ----------
+const nameTimers = new Map();
+function nameHeaders(extra){ return Object.assign({ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token(), "Content-Type":"application/json" }, extra||{}); }
+async function fetchNameOverrides(){
+  const m = new Map();
+  try{
+    for(let off=0; ; ){
+      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_name_overrides?select=product_id,name&order=product_id.asc&limit=1000&offset="+off, { headers:nameHeaders() });
+      if(!r.ok) break; const rows = await r.json(); if(!Array.isArray(rows)||!rows.length) break;
+      for(const o of rows) if(o.name) m.set(o.product_id, o.name);
+      off += rows.length; if(rows.length < 1000) break;
+    }
+  }catch(e){}
+  return m;
+}
+async function saveNameOverride(id, name){
+  const p = P.byId.get(id); name = (name||"").trim();
+  if(!name || (p && name === (p.name||"").trim())){   // same as POS -> no override
+    const r = await fetch(SUPABASE_URL+"/rest/v1/poster_name_overrides?product_id=eq."+encodeURIComponent(id), { method:"DELETE", headers:nameHeaders() });
+    if(!r.ok) throw new Error("ບັນທຶກຊື່ບໍ່ໄດ້ (HTTP "+r.status+")"); P.names.delete(id); return;
+  }
+  const r = await fetch(SUPABASE_URL+"/rest/v1/poster_name_overrides?on_conflict=product_id", { method:"POST", headers:nameHeaders({ "Prefer":"resolution=merge-duplicates,return=minimal" }), body: JSON.stringify({ product_id:id, name, updated_at:new Date().toISOString() }) });
+  if(!r.ok){ const t = await r.text(); throw new Error("ບັນທຶກຊື່ບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,120)); }
+  P.names.set(id, name);
+}
+function renderNameSt(){
+  const id = P.cur; if(!id) return; const saved = P.names.has(id), p = P.byId.get(id);
+  $("nameSt").textContent = saved ? "· ຊື່ທີ່ບັນທຶກໄວ້ (ຕ່າງຈາກ POS)" : "";
+  $("nameRevert").style.display = saved ? "" : "none"; $("nameRevert").disabled = !saved;
+  if(saved && p) $("nameRevert").title = "ຊື່ໃນ POS: "+p.name;
+}
+function queueNameSave(id){
+  clearTimeout(nameTimers.get(id)); $("nameSt").textContent = "· ກຳລັງບັນທຶກ…";
+  nameTimers.set(id, setTimeout(async () => {
+    const o = P.ov.get(id)||{};
+    try{ await saveNameOverride(id, o.name); renderNameSt(); renderList(); }catch(e){ $("nameSt").textContent = ""; $("err").textContent = e.message; }
+  }, 900));
+}
+// Claude proofreads Lao spelling / tone marks. Uses the existing generate-ai edge function ({prompt, system} -> {text}).
+const NAME_SYS = "You are a careful Lao-language proofreader for a Lao online shop whose product names are printed on advertising posters. Reply with valid JSON only, no other text.";
+function namePrompt(names){
+  return "Proofread each product name below. Names are written in Lao script and may contain Latin letters, numbers and brand names.\n"+
+  "Fix ONLY: missing or wrong tone marks (ໄມ້ເອກ ໄມ້ໂທ ໄມ້ຕີ ໄມ້ຈັດຕະວາ), wrong or missing vowels/consonants, Thai letters mixed in by mistake (replace with the correct Lao letter), plain typos, and add a space between a Lao word and a following number only when it clearly makes the name easier to read (example: ກອງຊຸມ29ພັນກີບ -> ກອງຊຸມ 29 ພັນກີບ). Never add spaces inside Latin codes or units such as SPF50 or 1000mg.\n"+
+  "Check every word letter by letter, including look-alike or easily confused letters (for example ບ/ນ, ຕ/ດ, ຍ/ຢ, ຜ/ຝ) and tone marks on common words (for example ນ້ຳ, ຍີ່ຫໍ້, ກະເປົາ).\n"+
+  "Do NOT translate. Do NOT change brand names, product-line names or transliterated foreign names (for example Labubu, Jabs), numbers, sizes, or Latin text. Do NOT rephrase or add or remove words. If you are not sure something is wrong, leave it unchanged.\n"+
+  "Reply with a JSON array only, listing only the names that need a change, like [{\"i\":0,\"fixed\":\"corrected name\",\"note\":\"very short reason in Lao\"}]. Reply [] if nothing needs to change.\n\nNames:\n"+
+  names.map((n,i)=>i+": "+n).join("\n");
+}
+async function askClaudeNames(names){
+  const r = await fetch(SUPABASE_URL+"/functions/v1/generate-ai", { method:"POST", headers:{ "Content-Type":"application/json", "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY }, body: JSON.stringify({ system:NAME_SYS, prompt:namePrompt(names) }) });
+  const d = await r.json().catch(()=>({})); if(d.error) throw new Error(d.error); if(!d.text) throw new Error("Claude ບໍ່ຕອບ (HTTP "+r.status+")");
+  const m = /\[[\s\S]*\]/.exec(d.text); if(!m) throw new Error("ອ່ານຄຳຕອບຂອງ Claude ບໍ່ໄດ້");
+  let arr; try{ arr = JSON.parse(m[0]); }catch(e){ throw new Error("ອ່ານຄຳຕອບຂອງ Claude ບໍ່ໄດ້"); }
+  return arr.filter(x=>x && Number.isInteger(x.i) && x.i>=0 && x.i<names.length && typeof x.fixed==="string" && x.fixed.trim() && x.fixed.trim()!==names[x.i].trim()).map(x=>({ i:x.i, fixed:x.fixed.trim(), note:String(x.note||"") }));
+}
+async function claudeCheckNames(ids){
+  ids = ids.filter(id=>P.byId.has(id)); if(!ids.length) return; const panel = $("namePanel"); panel.style.display = "block";
+  panel.innerHTML = "ກຳລັງໃຫ້ Claude ກວດຊື່ "+ids.length+" ລາຍການ…"; $("err").textContent = "";
+  const items = ids.map(id=>({ id, name: dname(P.byId.get(id)) })); const per = 8, jobs = [];
+  for(let k=0; k<items.length; k+=per){ const part = items.slice(k,k+per); jobs.push(Promise.allSettled([askClaudeNames(part.map(x=>x.name)), askClaudeNames(part.map(x=>x.name))]).then(rs=>{   // two independent passes, merged: one pass alone can miss an error
+      if(rs.every(r=>r.status!=="fulfilled")) throw rs[0].reason; const seen = new Map();
+      for(const r of rs) if(r.status==="fulfilled") for(const x of r.value) if(!seen.has(x.i)) seen.set(x.i, x);
+      return [...seen.values()].map(x=>({ id:part[x.i].id, old:part[x.i].name, fixed:x.fixed, note:x.note })); })); }
+  let out = [], failed = 0;
+  const settled = await Promise.allSettled(jobs); for(const s of settled){ if(s.status==="fulfilled") out.push(...s.value); else { failed++; $("err").textContent = s.reason.message; } }
+  renderNamePanel(out, items.length, failed);
+}
+function renderNamePanel(out, total, failed){
+  const panel = $("namePanel"); panel.style.display = "block";
+  if(!out.length){ panel.innerHTML = `<b>ກວດຊື່ ${total} ລາຍການ:</b> ${failed?"ກວດບໍ່ສຳເລັດບາງສ່ວນ (ລອງໃໝ່ອີກຄັ້ງ)":"✅ ບໍ່ພົບຈຸດທີ່ຄວນແກ້"} <button class="sec" id="nameClose" style="padding:3px 8px;font-size:12px;margin-left:6px">ປິດ</button>`; $("nameClose").onclick = () => { panel.style.display="none"; return false; }; return; }
+  panel.innerHTML = `<b>Claude ແນະນຳໃຫ້ແກ້ ${out.length} ຊື່</b> (ຈາກ ${total}). ກວດເບິ່ງກ່ອນ ແລ້ວຕິກອັນທີ່ຈະໃຊ້; ແກ້ຂໍ້ຄວາມໃນຊ່ອງໄດ້.${failed?" ⚠ ບາງສ່ວນກວດບໍ່ສຳເລັດ":""}
+    <table>`+out.map((r,k)=>`<tr><td style="width:26px"><input type="checkbox" data-nk="${k}" checked></td><td><div class="small">ເດີມ: ${esc(r.old)}</div><input type="text" data-nv="${k}" value="${esc(r.fixed)}"><div class="small">${esc(r.note)}</div></td></tr>`).join("")+`</table>
+    <div class="bar"><button id="nameApply">ໃຊ້ຊື່ທີ່ຕິກ</button><button class="sec" id="nameClose">ປິດ</button></div><div class="small">Claude ເກັ່ງວັນນະຍຸດ ແຕ່ອາດຜິດໄດ້ ໂດຍສະເພາະຊື່ຍີ່ຫໍ້. ກະລຸນາກວດກ່ອນໂຄສະນາ.</div>`;
+  $("nameClose").onclick = () => { panel.style.display = "none"; };
+  $("nameApply").onclick = async () => {
+    $("nameApply").disabled = true; let n = 0; const bad = [];
+    for(let k=0;k<out.length;k++){
+      if(!panel.querySelector('[data-nk="'+k+'"]').checked) continue; const v = panel.querySelector('[data-nv="'+k+'"]').value.trim(); if(!v) continue; const id = out[k].id;
+      const o = P.ov.get(id)||{}; o.name = v; P.ov.set(id,o);
+      try{ await saveNameOverride(id, v); n++; }catch(e){ bad.push(e.message); }
+    }
+    renderList(); if(P.cur){ const o=P.ov.get(P.cur)||{}; const p=P.byId.get(P.cur); $("ovName").value = o.name!=null ? o.name : p.name; renderPreview(); renderNameSt(); }
+    panel.style.display = "none"; $("msg").textContent = "ໃຊ້ຊື່ໃໝ່ແລ້ວ "+n+" ລາຍການ"; if(bad.length) $("err").textContent = bad[0];
+  };
+}
+
 // ---------- pre-check: which selected photos are usable, which must be re-shot ----------
 async function checkOne(p){
   let raw = null; try{ raw = await rawImage(p); }catch(e){}
@@ -425,7 +519,7 @@ async function init(){
   try{ const b = await loadImg("bg-thatluang.jpg?v="+Date.now()); if(b && b.width>300) P.bg = b; }catch(e){}
   draw($("cv").getContext("2d"),1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null));
   if(!token()){ $("count").textContent = ""; $("msg").textContent = "ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ ແລ້ວເປີດແທັບນີ້ໃໝ່"; return; }
-  try{ const [items, photos] = await Promise.all([fetchProducts(), fetchPosterPhotos()]); P.items = items; P.photos = photos; P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
+  try{ const [items, photos, names] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides()]); P.items = items; P.photos = photos; P.names = names; for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
   catch(e){ $("count").textContent = ""; $("err").textContent = "ດຶງສິນຄ້າຈາກ POS ບໍ່ໄດ້: "+e.message; }
 }
 
@@ -442,7 +536,10 @@ for(const id of ["pmode","fg"]) $(id).addEventListener("change", ()=>{ P.cut.cle
 $("enh").addEventListener("change", ()=>{ saveCfg(); renderPreview(); });
 $("tol").addEventListener("input", ()=>{ $("tolv").textContent=$("tol").value; saveCfg(); renderPreview(); });
 for(const id of ["esize","efmt"]) $(id).addEventListener("change", saveCfg);
-$("ovName").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.name=$("ovName").value; P.ov.set(P.cur,o); renderPreview(); });
+$("ovName").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.name=$("ovName").value; P.ov.set(P.cur,o); renderPreview(); queueNameSave(P.cur); });
+$("nameRevert").onclick = async () => { const id=P.cur, p=P.byId.get(id); if(!p) return; const o=P.ov.get(id)||{}; delete o.name; P.ov.set(id,o); $("ovName").value=p.name; try{ await saveNameOverride(id, p.name); }catch(e){ $("err").textContent=e.message; } renderList(); renderPreview(); renderNameSt(); };
+$("nameFix").onclick = () => { if(P.cur) claudeCheckNames([P.cur]); };
+$("nameFixSel").onclick = () => { const ids=[...P.selected]; if(ids.length) claudeCheckNames(ids); };
 $("ovPrice").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.price=Number($("ovPrice").value||0); P.ov.set(P.cur,o); renderPreview(); });
 $("ovMode").addEventListener("change", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.mode=$("ovMode").value; P.ov.set(P.cur,o); renderPreview(); });
 $("bgfile").addEventListener("change", e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ P.bg = await loadImg(r.result); renderPreview(); }; r.readAsDataURL(f); });
