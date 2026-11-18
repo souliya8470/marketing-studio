@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.84"; // v8.84 NEW (Tar 2026-11-16, "ຕັ້ງເວລາເປີດ-ປິດແລ້ວ ບໍ່ເຫັນຢູ່ແຄມເປນ ບໍ່ຮູ້ຈະເປີດ/ປິດເມື່ອໃດ — ຢາກໃຫ້ເຫັນຄືໃນ Ads Manager"): the ຄ່າໂຄສະນາລວມ board now shows a yellow badge on every campaign row that has an ENABLED schedule (🟢 open time, 🔴 close time, days) - ensureCampaignSchedulesLoaded() / campaignScheduleBadgeHtml(); clicking the badge opens the ⏰ schedule list (toggle/delete there); the cache refreshes when that list closes. Schedules themselves unchanged (table campaign_schedules, edge function run-campaign-schedules). The weekly schedule "ເປີດຈັນ 2/11" was also switched off in the DB the same day (Tar no longer wants it).
+const APP_VERSION = "8.85"; // v8.85 NEW (Tar 2026-11-18, "ໃຫ້ເປັນລະບົບອັດຕະໂນມັດ ດຶງສິນຄ້າຈາກ POS ແລ້ວສ້າງຮູບເອງ ບໍ່ຕ້ອງພິມ/ອັບໂຫຼດເທື່ອລະອັນ"): new sidebar page "🎉 ໂປສເຕີໂປຣ" = automatic promo-poster generator for the Boun That Luang festival (Facebook page posts). The page is /poster/index.html shown in an iframe (#ms-poster-frame, created when the tab opens, removed when you leave it so the product list is always fresh; syncPosterFrame). It reads pos_products (is_active, stock_qty>0, name, barcode, price_1 = ລາຄາ 1, image_url) with the same x-ms-token session + anon key as the Excel tab, shows a searchable list with checkboxes, previews the clicked product, and draws each poster in a canvas (engine in /poster/engine.js: red/gold festive layout, product cut-out from its POS photo on an arch + pedestal, price panel, dates today -> 30 Nov, shop name "Toukta Shop"). "ສ້າງທັງໝົດ" renders every ticked product and downloads ONE .zip (JSZip, JPG/PNG, 1080 or 2160). Per-product name/price override (does not write to POS), dok-chan pattern strength slider, optional background image upload (a real That Luang photo can be shipped as /poster/bg-thatluang.jpg and is auto-loaded). No DB change, no edge function. Page permission: appears for everyone by default; owner can hide it per staff in the permissions page like any other tab. Nothing else in index.html changed.
+// (previous text of this slot, kept) v8.84 NEW (Tar 2026-11-16, "ຕັ້ງເວລາເປີດ-ປິດແລ້ວ ບໍ່ເຫັນຢູ່ແຄມເປນ ບໍ່ຮູ້ຈະເປີດ/ປິດເມື່ອໃດ — ຢາກໃຫ້ເຫັນຄືໃນ Ads Manager"): the ຄ່າໂຄສະນາລວມ board now shows a yellow badge on every campaign row that has an ENABLED schedule (🟢 open time, 🔴 close time, days) - ensureCampaignSchedulesLoaded() / campaignScheduleBadgeHtml(); clicking the badge opens the ⏰ schedule list (toggle/delete there); the cache refreshes when that list closes. Schedules themselves unchanged (table campaign_schedules, edge function run-campaign-schedules). The weekly schedule "ເປີດຈັນ 2/11" was also switched off in the DB the same day (Tar no longer wants it).
 // (previous text of this slot, kept) // v8.83 CHANGE (Tar 2026-11-13, "ເພີ່ມຂະໜາດປຸ່ມເລີ່ມພັກ/ຈົບພັກ ໃຫ້ກົດງ່າຍຂຶ້ນ"): 🕒 ໂມງ page — the ▶ ເລີ່ມພັກ / ■ ຈົບພັກ button is now full-width and tall (min 70px, big text, red outline while running) so it is easy to tap between sets; ລ້າງທັງໝົດ stays small below it. CSS only.
 // (previous text of this slot, kept) v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ່ມຈັບເວລາ ໄວ້ໃສ່ກໍລະນີຟິດເນັດ ຫຼັງຈົບແຕ່ລະເຊັດ ກົດເບິ່ງວ່າພັກເທົ່າໃດ"): 🕒 ໂມງ page gets a rest stopwatch — ▶ ເລີ່ມພັກ starts, ■ ຈົບພັກ stops and logs "ເຊັດທີ N · ພັກ mm:ss" (newest first, with total + average rest), ລ້າງທັງໝົດ clears. Uses Date.now() so time stays right while the page is left and reopened (STATE.swStart / STATE.swLog, in memory only). Display refreshes with a self-rescheduling setTimeout (100 ms, only while running and only on this page, DOM-only, no render(), no setInterval, no network).
 // (previous text of this slot, kept) v8.81 CHANGE (Tar 2026-11-12, "ຖ້າໂອນເຂົ້າ LDB ຂອງຮ້ານ ບໍ່ຢາກໃຫ້ຂຶ້ນກ່ອງສີແດງ ຍັງບໍ່ເຫັນເງິນເຂົ້າ; ຖ້າ LDB ໂອນຫາ BCEL ໃຫ້ຂຶ້ນໄດ້"): in renderOnlinePaymentLine, orders whose payment bank (online_orders.payment_bank_name) is LDB now show a neutral grey line instead of the red "not seen in OnePay Shop" box, because that money never passes BCEL OnePay Shop. Orders paid into BCEL (even from an LDB customer account) keep the old green/yellow/red logic. mapOnlineOrderRow now carries paymentBankName. Nothing else changed.
@@ -1626,7 +1627,8 @@ const APP_VERSION = "8.84"; // v8.84 NEW (Tar 2026-11-16, "ຕັ້ງເວລ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.83"; // (v8.83 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.84"; // (v8.84 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) (v8.83 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.81 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) // 8.78 slot:  (v8.78 text kept in the history comment lines of APP_VERSION above)
@@ -1736,7 +1738,8 @@ const APP_VERSION_PREV = "8.83"; // (v8.83 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.82"; // (v8.82 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.83"; // (v8.83 text kept in the history comment lines above)
+// (previous text of this slot, kept) (v8.82 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.79 text kept in the history comment lines above)
 // (previous text of this slot, kept) // 8.77 slot:  (v8.77 text kept in the history comment lines above)
@@ -28831,6 +28834,7 @@ const BASE_NAV = [
   {id:"content", label:"Marketing Studio", icon:"&#9998;"},
   {id:"productChat", label:"ຖາມ AI ກ່ຽວກັບສິນຄ້າ", icon:"&#129302;"},
   {id:"costs", label:"ຕົ້ນທຶນ & ກຳໄລ", icon:"&#3647;"},
+  {id:"posters", label:"🎉 ໂປສເຕີໂປຣ", icon:"&#127881;"}, // v8.85: auto promo posters from POS (iframe /poster/index.html)
   {id:"sheets", label:"📊 Excel", icon:"&#128215;"}, // v8.64: Excel-like sheets (iframe /sheet/index.html, see APP_VERSION comment)
   {id:"myTasks", label:"📋 ໜ້າວຽກຂອງຂ້ອຍ", icon:"&#128203;"}, // v5.125 (Tar 2026-08-17): staff-facing counterpart to "ຄວບຄຸມແອັດມິນ" — everyone sees this, but each person's own view only ever shows rows matching their own login name (or rows Tar has explicitly marked visible_to_all)
   {id:"insights", label:"ຄວາມຄິດເຫັນລູກຄ້າ", icon:"&#128172;"},
@@ -28992,6 +28996,7 @@ function render(){
   // to no longer exist). Deferring the render until the drag's pointerup/pointercancel fixes
   // this for every resizable table at once, since they all share attachTableColumnResize.
   if(window.__resizeDragActive){ window.__renderPendingAfterDrag = true; return; }
+  if(!STATE.currentUser){ const _p = document.getElementById("ms-poster-frame"); if(_p) _p.remove(); } // v8.85
   if(!STATE.currentUser){ const _f = document.getElementById("ms-sheet-frame"); if(_f) _f.remove(); } // v8.64: Excel tab iframe does not outlive the login
   // v3.18: preserve scroll position of specific known-scrollable containers across
   // re-renders — realtime updates (new message, unread-count change, etc.) re-render the
@@ -29437,6 +29442,7 @@ function updateMainContent(){
   main.classList.add("main-fade");
   attachPageEvents();
   try{ syncSheetFrame(); }catch(e){ console.error("syncSheetFrame", e); } // v8.64
+  try{ syncPosterFrame(); }catch(e){ console.error("syncPosterFrame", e); } // v8.85
 }
 
 /* ---------- v8.64: EXCEL TAB (iframe /sheet/index.html) ----------
@@ -29473,6 +29479,34 @@ function syncSheetFrame(){
   if(!fresh && was==="none"){ try{ fr.contentWindow.postMessage("ms-sheet-show", location.origin); }catch(e){} } // pull others' edits once when the tab is reopened
 }
 window.addEventListener("resize", ()=>{ try{ syncSheetFrame(); }catch(e){} });
+/* ---------- v8.85: POSTERS TAB (iframe /poster/index.html) ----------
+   Same placement trick as the Excel tab, but the iframe is created on entry and removed on leaving the page,
+   so the POS product list is always loaded fresh. #poster-slot is the empty placeholder inside #main. */
+function renderPostersPage(){
+  return `<style>#poster-slot{margin:-32px -40px; height:100vh;} @media (max-width:1200px){ #poster-slot{margin:0 -12px -12px -12px; height:calc(100vh - 64px - env(safe-area-inset-top));} }</style><div id="poster-slot"></div>`;
+}
+function syncPosterFrame(){
+  let fr = document.getElementById("ms-poster-frame");
+  if(!STATE.currentUser){ if(fr) fr.remove(); return; }
+  const slot = document.getElementById("poster-slot");
+  if(STATE.page!=="posters" || !slot){ if(fr) fr.remove(); return; }
+  if(!fr){
+    fr = document.createElement("iframe");
+    fr.id = "ms-poster-frame";
+    fr.title = "Posters";
+    fr.src = "poster/index.html?v="+encodeURIComponent(APP_VERSION);
+    fr.style.cssText = "position:fixed;border:0;background:#f4f1ee;z-index:5;";
+    document.body.appendChild(fr);
+  }
+  const r = slot.getBoundingClientRect();
+  fr.style.display = "block";
+  fr.style.left = Math.max(0, r.left)+"px";
+  fr.style.top = Math.max(0, r.top)+"px";
+  fr.style.width = Math.max(0, r.width)+"px";
+  fr.style.height = Math.max(0, r.height)+"px";
+}
+window.addEventListener("resize", ()=>{ try{ syncPosterFrame(); }catch(e){} });
+
 
 function renderPage(){
   // Defense in depth: the nav already hides disabled pages, but also block direct
@@ -29487,6 +29521,7 @@ function renderPage(){
     case "productChat": return renderProductChat();
     case "costs": return renderCosts();
     case "sheets": return renderSheetsPage(); // v8.64
+    case "posters": return renderPostersPage(); // v8.85
     case "admin": return isOwner() ? renderAdmin() : renderDashboard(); // v5.128 (Tar 2026-08-17, "ໃນລະດັບພະນັກງານ ບໍ່ໃຫ້ສາມາດເພີ່ມໜ້າວຽກໄດ້ ມີແຕ່ເບິ່ງຂອງໂຕເອງໄດ້")
     case "myTasks": return renderMyTasks();
     case "insights": return renderInsights();

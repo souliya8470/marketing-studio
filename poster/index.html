@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ໂປສເຕີໂປຣໂມຊັນ</title>
+<style>
+  @font-face{font-family:"UIlao";src:url(fonts/lao800.woff2) format("woff2");}
+  @font-face{font-family:"UIlao";src:url(fonts/latin800.woff2) format("woff2");unicode-range:U+0000-00FF;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:"UIlao","Noto Sans Lao",system-ui,sans-serif;background:#f4f1ee;color:#2b1a22;font-size:14px}
+  #app{display:flex;height:100%;gap:14px;padding:14px}
+  #side{width:380px;min-width:320px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:auto;display:flex;flex-direction:column}
+  #main{flex:1;min-width:0;overflow:auto}
+  h2{margin:0 0 8px;font-size:18px}
+  details{border:1px solid #eadfe3;border-radius:10px;padding:8px 10px;margin:8px 0}
+  summary{cursor:pointer;font-weight:700}
+  label{display:block;font-size:13px;margin:8px 0 3px;font-weight:700}
+  input[type=text],input[type=number],input[type=date],select{width:100%;padding:8px 9px;border:1px solid #d8cfd3;border-radius:8px;font:inherit}
+  .row{display:flex;gap:8px}.row>div{flex:1}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:8px}.chk input{width:auto}
+  button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 12px;background:#b3124a;color:#fff;font-weight:700}
+  button.sec{background:#8a7a80}
+  button:disabled{opacity:.45;cursor:default}
+  #list{margin-top:8px;flex:1;min-height:200px;overflow:auto;border-top:1px solid #eee}
+  .item{display:flex;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid #f0e8eb;cursor:pointer;content-visibility:auto;contain-intrinsic-size:52px}
+  .item.cur{background:#fde9f0}
+  .item img{width:40px;height:40px;object-fit:contain;background:#faf6f4;border-radius:6px;flex:none}
+  .item .nm{flex:1;min-width:0;font-size:13px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .item .pr{font-size:12px;color:#7a0a3a;white-space:nowrap;font-weight:700}
+  .item .st{font-size:11px;color:#7a6a70}
+  .noimg{width:40px;height:40px;border-radius:6px;background:#eee;flex:none;font-size:10px;display:flex;align-items:center;justify-content:center;color:#999}
+  canvas#cv{width:100%;max-width:720px;height:auto;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.18);display:block;background:#b3124a}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+  #prog{height:10px;background:#eadfe3;border-radius:6px;overflow:hidden;margin-top:8px;display:none;max-width:720px}
+  #prog>i{display:block;height:100%;width:0;background:#b3124a}
+  #msg{margin:8px 0;color:#7a0a3a;font-weight:700;max-width:720px}
+  #err{color:#b00020;font-size:12px;max-width:720px;white-space:pre-wrap}
+  .small{font-size:12px;color:#7a6a70}
+  @media (max-width:900px){#app{flex-direction:column;height:auto}#side{width:auto;max-height:70vh}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <h2>🎉 ໂປສເຕີໂປຣໂມຊັນ ບຸນທາດຫຼວງ</h2>
+    <div class="small" id="count">ກຳລັງໂຫຼດສິນຄ້າຈາກ POS…</div>
+    <input type="text" id="q" placeholder="ຄົ້ນຫາຊື່ ຫຼື ບາໂຄດ" style="margin-top:8px">
+    <div class="chk"><input type="checkbox" id="onlyImg" checked><span>ສະເພາະທີ່ມີຮູບ</span></div>
+    <div class="chk"><input type="checkbox" id="onlyPrice" checked><span>ສະເພາະທີ່ມີລາຄາ 1</span></div>
+    <div class="bar">
+      <button class="sec" id="selAll">ເລືອກທັງໝົດທີ່ກອງ</button>
+      <button class="sec" id="selNone">ລ້າງການເລືອກ</button>
+    </div>
+    <div class="small" id="selCount">ເລືອກແລ້ວ: 0</div>
+    <div id="list"></div>
+    <details>
+      <summary>⚙️ ຕັ້ງຄ່າໂປສເຕີ</summary>
+      <div class="row">
+        <div><label>ເລີ່ມວັນທີ</label><input type="date" id="d1"></div>
+        <div><label>ຮອດວັນທີ</label><input type="date" id="d2" value="2026-11-30"></div>
+      </div>
+      <label>ຊື່ຮ້ານ (ແຖບຊ້າຍເທິງ)</label>
+      <input type="text" id="shop" value="Toukta Shop">
+      <label>ຟອນຊື່ຮ້ານ</label>
+      <select id="shopfont"><option value="pf">Playfair (ຫຼູຫຼາ ຕົວເອນ)</option><option value="gv">Great Vibes (ລາຍມື)</option><option value="cd">Cinzel (ຄລາສສິກ)</option></select>
+      <label>ຂໍ້ຄວາມປຸ່ມລຸ່ມ</label>
+      <input type="text" id="cta" value="ສັ່ງຊື້ໄດ້ແລ້ວ">
+      <label>ສີໂປສເຕີ</label>
+      <select id="theme"><option value="crimson">ແດງເລືອດໝູ + ທອງ</option><option value="royal">ມ່ວງ + ທອງ</option></select>
+      <label>ຄວາມເຂັ້ມລາຍດອກຈັນ: <span id="patv">30</span></label>
+      <input type="range" id="pat" min="0" max="80" value="30" style="width:100%">
+      <div class="chk"><input type="checkbox" id="ko" checked><span>ຕັດພື້ນຫຼັງຮູບສິນຄ້າ (ພື້ນຂາວ/ສີດຽວ)</span></div>
+      <div class="chk"><input type="checkbox" id="fg" checked><span>ເຕີມຊ່ອງຫວ່າງໃນຕົວສິນຄ້າ (ປິດ ຖ້າມີຮູທະລຸ)</span></div>
+      <label>ຄວາມແຮງການຕັດ: <span id="tolv">26</span></label>
+      <input type="range" id="tol" min="6" max="80" value="26" style="width:100%">
+      <label>ຮູບພື້ນຫຼັງ (ບໍ່ບັງຄັບ, ຮູບສີ່ຫຼ່ຽມ)</label>
+      <input type="file" id="bgfile" accept="image/*">
+      <label>ຂະໜາດພື້ນຫຼັງ</label><input type="range" id="bgz" min="100" max="200" value="130" style="width:100%">
+      <label>ເລື່ອນຊ້າຍ-ຂວາ</label><input type="range" id="bgx" min="0" max="100" value="0" style="width:100%">
+      <label>ເລື່ອນຂຶ້ນ-ລົງ</label><input type="range" id="bgy" min="0" max="100" value="0" style="width:100%">
+      <button class="sec" id="bgclear" type="button" style="margin-top:8px">ໃຊ້ພື້ນຫຼັງແບບແຕ້ມ (ລ້າງຮູບ)</button>
+      <div class="row">
+        <div><label>ຂະໜາດໄຟລ໌ ZIP</label><select id="esize"><option value="1">1080×1080</option><option value="2">2160×2160</option></select></div>
+        <div><label>ຮູບແບບ</label><select id="efmt"><option value="jpg">JPG (ເບົາ)</option><option value="png">PNG</option></select></div>
+      </div>
+    </details>
+  </aside>
+  <main id="main">
+    <div class="bar"><b id="curName">ເລືອກສິນຄ້າຈາກລາຍການເບື້ອງຊ້າຍ</b></div>
+    <canvas id="cv" width="1080" height="1080"></canvas>
+    <details style="max-width:720px;background:#fff">
+      <summary>✏️ ແກ້ຊື່/ລາຄາ ສະເພາະຮູບນີ້</summary>
+      <label>ຊື່ໃນໂປສເຕີ</label><input type="text" id="ovName">
+      <label>ລາຄາໃນໂປສເຕີ (ກີບ)</label><input type="number" id="ovPrice" inputmode="numeric">
+      <div class="small">ຄ່າເລີ່ມຕົ້ນມາຈາກ POS (ຊື່ + ລາຄາ 1). ແກ້ຢູ່ນີ້ບໍ່ປ່ຽນຂໍ້ມູນໃນ POS.</div>
+    </details>
+    <div class="bar">
+      <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້ (PNG)</button>
+      <button id="dlZip" disabled>ສ້າງທັງໝົດ ແລະ ດາວໂຫຼດ ZIP</button>
+      <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
+    </div>
+    <div id="prog"><i></i></div>
+    <div id="msg"></div>
+    <div id="err"></div>
+  </main>
+</div>
+<script src="jszip.min.js"></script>
+<script src="engine.js"></script>
+<script>
+"use strict";
+const SUPABASE_URL = "https://swrijpkkufarddsyqhrh.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3cmlqcGtrdWZhcmRkc3lxaHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDQ4ODYsImV4cCI6MjA5ODQ4MDg4Nn0.GoGsR4Z4u4UiCJ03-jZkJAgjJtjD8J4MosiBh4cpths";
+const TOKEN_KEY = "ms_token_v1";
+const CFG_KEY = "ms_poster_cfg_v1";
+const $ = id => document.getElementById(id);
+const P = { items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+
+function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function vientianeToday(){
+  const p = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Vientiane",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  return p; // YYYY-MM-DD
+}
+const CFG_FIELDS = ["d1","d2","shop","shopfont","cta","theme","pat","ko","fg","tol","bgz","bgx","bgy","esize","efmt"];
+function saveCfg(){ try{ const o={}; for(const k of CFG_FIELDS){ const el=$(k); o[k]= el.type==="checkbox" ? el.checked : el.value; } localStorage.setItem(CFG_KEY, JSON.stringify(o)); }catch(e){} }
+function loadCfg(){ try{ const o=JSON.parse(localStorage.getItem(CFG_KEY)||"null"); if(!o) return; for(const k of CFG_FIELDS){ if(!(k in o)) continue; const el=$(k); if(el.type==="checkbox") el.checked=!!o[k]; else el.value=o[k]; } }catch(e){} }
+
+async function fetchProducts(){
+  const out = []; const step = 1000;
+  for(let off=0; ; off+=step){
+    const url = SUPABASE_URL+"/rest/v1/pos_products?select=id,name,barcode,price_1,stock_qty,image_url,category&is_active=eq.true&stock_qty=gt.0&order=name.asc&limit="+step+"&offset="+off;
+    const r = await fetch(url, { headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token() } });
+    if(!r.ok){ const t = await r.text(); throw new Error("HTTP "+r.status+" "+t.slice(0,200)); }
+    const rows = await r.json(); out.push(...rows);
+    if(rows.length < step) break;
+  }
+  return out;
+}
+
+function filtered(){
+  const q = $("q").value.trim().toLowerCase(); const oi = $("onlyImg").checked, op = $("onlyPrice").checked;
+  return P.items.filter(p => (!oi || p.image_url) && (!op || Number(p.price_1)>0) && (!q || (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q)));
+}
+function renderList(){
+  const list = filtered(); const box = $("list");
+  $("count").textContent = "ສິນຄ້າທີ່ເປີດຂາຍ ແລະ ມີສະຕ໊ອກ: "+P.items.length+" ລາຍການ · ສະແດງ "+list.length;
+  box.innerHTML = list.map(p => {
+    const img = p.image_url ? `<img loading="lazy" src="${esc(p.image_url)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
+    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(p.name)}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
+  }).join("");
+  updateSelCount();
+}
+function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("dlZip").textContent = P.selected.size ? "ສ້າງທັງໝົດ ("+P.selected.size+") ແລະ ດາວໂຫຼດ ZIP" : "ສ້າງທັງໝົດ ແລະ ດາວໂຫຼດ ZIP"; }
+
+async function rawImage(p){
+  if(P.raw.has(p.id)) return P.raw.get(p.id);
+  const pr = loadImg(p.image_url, true).catch(()=>null); P.raw.set(p.id, pr); return pr;
+}
+async function cutImage(p){
+  const raw = await rawImage(p); if(!raw) return null;
+  if(!$("ko").checked) return raw;
+  const key = p.id+"|"+$("tol").value+"|"+$("fg").checked;
+  if(P.cut.has(key)) return P.cut.get(key);
+  const c = cutout(raw, +$("tol").value, $("fg").checked);
+  if(P.cut.size > 40) P.cut.clear();
+  P.cut.set(key, c); return c;
+}
+function optsFor(p, img){
+  const ov = P.ov.get(p.id) || {};
+  return { name: ov.name!=null ? ov.name : p.name, sub:"", price: ov.price!=null ? ov.price : p.price_1,
+    d1:$("d1").value, d2:$("d2").value, shop:$("shop").value, shopfont:$("shopfont").value, cta:$("cta").value, theme:$("theme").value,
+    pat:+$("pat").value, img, bg:P.bg, bgz:+$("bgz").value, bgx:+$("bgx").value, bgy:+$("bgy").value };
+}
+let renderSeq = 0;
+async function renderPreview(){
+  const my = ++renderSeq; const cv = $("cv"); const ctx = cv.getContext("2d");
+  const p = P.cur && P.byId.get(P.cur);
+  $("err").textContent = "";
+  if(!p){ draw(ctx,1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null)); return; }
+  $("curName").textContent = p.name + (p.barcode?"  ("+p.barcode+")":"");
+  let img = null; try{ img = await cutImage(p); }catch(e){ $("err").textContent = "ຕັດພື້ນຫຼັງບໍ່ໄດ້: "+e.message; }
+  if(my !== renderSeq) return;
+  if(!img && p.image_url) $("err").textContent = "ໂຫຼດຮູບສິນຄ້ານີ້ບໍ່ໄດ້ (ກວດລິ້ງຮູບໃນ POS)";
+  draw(ctx,1,optsFor(p,img));
+  $("dl1").disabled = false;
+}
+function setCur(id){
+  P.cur = id; const p = P.byId.get(id); const ov = P.ov.get(id) || {};
+  $("ovName").value = p ? (ov.name!=null?ov.name:p.name) : ""; $("ovPrice").value = p ? (ov.price!=null?ov.price:Number(p.price_1||0)) : "";
+  document.querySelectorAll(".item.cur").forEach(e=>e.classList.remove("cur"));
+  const el = document.querySelector('.item[data-id="'+id+'"]'); if(el) el.classList.add("cur");
+  renderPreview();
+}
+function fileName(p, ext){
+  const base = ((p.barcode||p.id.slice(0,8))+"_"+(p.name||"")).replace(/[\\/:*?"<>|\s]+/g,"-").slice(0,70);
+  return base+"."+ext;
+}
+function toBlob(canvas, type, q){ return new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error("toBlob failed (CORS?)")), type, q)); }
+function download(blob, name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),8000); }
+
+async function downloadOne(){
+  const p = P.cur && P.byId.get(P.cur); if(!p) return;
+  try{
+    const img = await cutImage(p); const c = document.createElement("canvas"); c.width=W*2; c.height=H*2; draw(c.getContext("2d"),2,optsFor(p,img));
+    download(await toBlob(c,"image/png"), fileName(p,"png"));
+  }catch(e){ $("err").textContent = "ດາວໂຫຼດບໍ່ສຳເລັດ: "+e.message; }
+}
+async function downloadZip(){
+  if(P.busy || !P.selected.size) return;
+  const ids = [...P.selected].filter(id=>P.byId.has(id)); const S = +$("esize").value; const fmt = $("efmt").value;
+  if(ids.length > 150 && !confirm("ເລືອກ "+ids.length+" ຮູບ ອາດໃຊ້ເວລານານ ແລະ ໄຟລ໌ໃຫຍ່. ສືບຕໍ່ບໍ?")) return;
+  P.busy = true; P.cancel = false; updateSelCount(); $("cancel").style.display = ""; $("prog").style.display = "block"; $("err").textContent = "";
+  const zip = new JSZip(); const failed = []; let done = 0;
+  for(const id of ids){
+    if(P.cancel) break;
+    const p = P.byId.get(id); $("msg").textContent = "ກຳລັງສ້າງ "+(done+1)+" / "+ids.length+" …";
+    try{
+      const img = await cutImage(p); if(!img) throw new Error("no image");
+      const c = document.createElement("canvas"); c.width=W*S; c.height=H*S; draw(c.getContext("2d"),S,optsFor(p,img));
+      const blob = await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92);
+      zip.file(fileName(p, fmt==="png"?"png":"jpg"), blob);
+    }catch(e){ failed.push(p.name+" — "+e.message); }
+    done++; $("prog").firstElementChild.style.width = Math.round(done/ids.length*100)+"%";
+    await new Promise(r=>setTimeout(r,0));
+  }
+  if(!P.cancel && done > failed.length){
+    $("msg").textContent = "ກຳລັງຮວມເປັນ ZIP …";
+    const out = await zip.generateAsync({type:"blob", compression:"STORE"});
+    download(out, "poster-bountatluang-"+vientianeToday()+".zip");
+    $("msg").textContent = "ສຳເລັດ: "+(done-failed.length)+" ຮູບ"+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"");
+  } else $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ບໍ່ມີຮູບທີ່ສ້າງໄດ້";
+  if(failed.length) $("err").textContent = "ຮູບທີ່ບໍ່ສຳເລັດ:\n"+failed.slice(0,30).join("\n");
+  P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount();
+}
+
+async function init(){
+  $("d1").value = vientianeToday(); loadCfg(); if(!$("d1").value) $("d1").value = vientianeToday();
+  $("patv").textContent = $("pat").value; $("tolv").textContent = $("tol").value;
+  try{ await loadFonts(); }catch(e){ $("err").textContent = "ໂຫຼດຟອນບໍ່ໄດ້: "+e.message; }
+  // optional default That Luang background shipped with the app
+  try{ const b = await loadImg("bg-thatluang.jpg?v="+Date.now()); if(b && b.width>300) P.bg = b; }catch(e){}
+  draw($("cv").getContext("2d"),1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null));
+  if(!token()){ $("count").textContent = ""; $("msg").textContent = "ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ ແລ້ວເປີດແທັບນີ້ໃໝ່"; return; }
+  try{ P.items = await fetchProducts(); P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
+  catch(e){ $("count").textContent = ""; $("err").textContent = "ດຶງສິນຄ້າຈາກ POS ບໍ່ໄດ້: "+e.message; }
+}
+
+$("list").addEventListener("click", e => {
+  const cb = e.target.closest("input[data-sel]");
+  if(cb){ const id = cb.dataset.sel; cb.checked ? P.selected.add(id) : P.selected.delete(id); updateSelCount(); return; }
+  const it = e.target.closest(".item"); if(it) setCur(it.dataset.id);
+});
+$("selAll").onclick = () => { filtered().forEach(p=>P.selected.add(p.id)); renderList(); };
+$("selNone").onclick = () => { P.selected.clear(); renderList(); };
+for(const id of ["q","onlyImg","onlyPrice"]) $(id).addEventListener("input", renderList);
+for(const id of ["d1","d2","shop","shopfont","cta","theme","pat","bgz","bgx","bgy"]) $(id).addEventListener("input", ()=>{ if(id==="pat") $("patv").textContent=$("pat").value; saveCfg(); renderPreview(); });
+for(const id of ["ko","fg"]) $(id).addEventListener("change", ()=>{ P.cut.clear(); saveCfg(); renderPreview(); });
+$("tol").addEventListener("input", ()=>{ $("tolv").textContent=$("tol").value; saveCfg(); renderPreview(); });
+for(const id of ["esize","efmt"]) $(id).addEventListener("change", saveCfg);
+$("ovName").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.name=$("ovName").value; P.ov.set(P.cur,o); renderPreview(); });
+$("ovPrice").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.price=Number($("ovPrice").value||0); P.ov.set(P.cur,o); renderPreview(); });
+$("bgfile").addEventListener("change", e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ P.bg = await loadImg(r.result); renderPreview(); }; r.readAsDataURL(f); });
+$("bgclear").onclick = () => { P.bg = null; $("bgfile").value=""; renderPreview(); };
+$("dl1").onclick = downloadOne; $("dlZip").onclick = downloadZip; $("cancel").onclick = () => { P.cancel = true; };
+init();
+</script>
+</body>
+</html>

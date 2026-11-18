@@ -233,3 +233,10 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## v8.84 — campaign schedule badge on the ຄ່າໂຄສະນາລວມ board (2026-11-16)
 - Tar: saved ON/OFF schedules were invisible on the campaigns, so he couldn't tell what would open/close. Each campaign row with an ENABLED row in `campaign_schedules` now shows a yellow ⏰ badge (🟢 on / 🔴 off time + days); click opens the schedule list. Loaded lazily (STATE.campaignSchedules), refreshed when the list closes. Not live-tested (syntax only).
 - Data: schedule "ເປີດຈັນ 2/11" (14 campaigns, Mondays 00:00) set enabled=false by Claude on Tar's request (not deleted; offered permanent delete). 3 "ກາເຟງາດຳ 11/10" campaigns also had a Facebook permission error (ad account status, subcode 4841021) — separate, not fixed.
+
+## v8.85 — Promo poster tab "🎉 ໂປສເຕີໂປຣ" (2026-11-18, poster chat)
+- Owner of `poster/` (engine.js, index.html, fonts/, jszip.min.js) = the poster chat. `index.html` only has: nav item `posters`, `renderPostersPage` / `syncPosterFrame` (iframe `poster/index.html`, created on entry, removed on leave), logout cleanup, `case "posters"`.
+- Reads `pos_products` (is_active, stock_qty>0; name, barcode, price_1, image_url) with the staff token (`x-ms-token`) + anon key, like `sheet/`. No DB/edge function change.
+- Batch: tick products → one ZIP (JSZip, JPG/PNG, 1080/2160). Per-product name/price override is local only (not written to POS).
+- Tested in headless Chrome with mocked POS data (list, preview, 2-item ZIP). NOT yet tested with real POS photos / real Supabase Storage CORS (images are loaded with `crossOrigin="anonymous"`; if the bucket sends no CORS header the poster cannot be exported — then switch to fetching the image through a blob).
+- Open: full-resolution That Luang background from Tar → save as `poster/bg-thatluang.jpg` (auto-loaded if present; tune `bgz/bgx/bgy` defaults). Open: which products Tar wants (default = all in stock with photo).
