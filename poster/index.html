@@ -104,9 +104,12 @@
     <div class="bar">
       <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້</button>
       <button id="dlZip" disabled>ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)</button>
+      <button id="camBtn" disabled>📷 ຖ່າຍຮູບສິນຄ້ານີ້</button>
       <button class="sec" id="chk" disabled>🔍 ກວດຮູບທີ່ເລືອກ</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
     </div>
+    <div class="small" style="max-width:720px">📷 ເທິງໂທລະສັບ: ກົດ "ຖ່າຍຮູບສິນຄ້ານີ້" ແລ້ວຖ່າຍສິນຄ້າເທິງເຈ້ຍ ຫຼື ຜ້າຂາວ ໃກ້ປ່ອງຢ້ຽມ (ແສງສະຫວ່າງ), ໃຫ້ສິນຄ້າເຕັມເຟຣມ ແລະ ຕັ້ງຕົງ. ລະບົບຕັດພື້ນຫຼັງໃຫ້ເອງ.</div>
+    <input type="file" id="cam" accept="image/*" capture="environment" hidden>
     <div id="chkPanel"></div>
     <div id="prog"><i></i></div>
     <div class="small" id="modeNote" style="margin-top:6px"></div>
@@ -122,7 +125,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -152,12 +155,12 @@ function filtered(){
   return P.items.filter(p => (!oi || p.image_url) && (!op || Number(p.price_1)>0) && (!q || (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q)));
 }
 const CHK_TXT = { ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຄວນຖ່າຍໃໝ່","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
-function badgeHtml(id){ const c = P.check.get(id); if(!c) return ""; const t = CHK_TXT[c.s]; return `<span class="badge ${t[1]}">${t[0]}</span>`; }
+function badgeHtml(id){ let h = P.photos.has(id) ? `<span class="badge b-ok">📷 ຮູບໃໝ່</span>` : ""; const c = P.check.get(id); if(!c) return h; const t = CHK_TXT[c.s]; return h+`<span class="badge ${t[1]}">${t[0]}</span>`; }
 function renderList(){
   const list = filtered(); const box = $("list");
   $("count").textContent = "ສິນຄ້າທີ່ເປີດຂາຍ ແລະ ມີສະຕ໊ອກ: "+P.items.length+" ລາຍການ · ສະແດງ "+list.length;
   box.innerHTML = list.map(p => {
-    const img = p.image_url ? `<img loading="lazy" src="${esc(p.image_url)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
+    const thumb = (P.photos.get(p.id)||{}).url || p.image_url; const img = thumb ? `<img loading="lazy" src="${esc(thumb)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
     return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(p.name)}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
   }).join("");
   updateSelCount();
@@ -166,7 +169,8 @@ function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້
 
 async function rawImage(p){
   if(P.raw.has(p.id)) return P.raw.get(p.id);
-  const pr = loadImg(p.image_url, true).catch(()=>null); P.raw.set(p.id, pr); return pr;
+  const ph = P.photos.get(p.id); const src = ph ? ph.url : p.image_url;
+  const pr = loadImg(src, true).catch(()=>null); P.raw.set(p.id, pr); return pr;
 }
 async function cutImage(p){
   const raw = await rawImage(p); if(!raw) return null;
@@ -258,7 +262,7 @@ async function renderPreview(){
   $("dl1").disabled = false;
 }
 function setCur(id){
-  P.cur = id; const p = P.byId.get(id); const ov = P.ov.get(id) || {};
+  P.cur = id; $("camBtn").disabled = false; const p = P.byId.get(id); const ov = P.ov.get(id) || {};
   $("ovName").value = p ? (ov.name!=null?ov.name:p.name) : ""; $("ovPrice").value = p ? (ov.price!=null?ov.price:Number(p.price_1||0)) : ""; $("ovMode").value = ov.mode||"";
   document.querySelectorAll(".item.cur").forEach(e=>e.classList.remove("cur"));
   const el = document.querySelector('.item[data-id="'+id+'"]'); if(el) el.classList.add("cur");
@@ -302,6 +306,43 @@ async function downloadAll(){
   P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount();
 }
 
+// ---------- staff "quick photo": a fresh photo per product, kept in the same public bucket under poster/ (no DB change) ----------
+const PHOTO_BUCKET = "pos-product-images";
+async function fetchPosterPhotos(){
+  const m = new Map();
+  try{
+    for(let off=0; ; ){
+      const r = await fetch(SUPABASE_URL+"/storage/v1/object/list/"+PHOTO_BUCKET, { method:"POST", headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "Content-Type":"application/json" }, body: JSON.stringify({ prefix:"poster", limit:1000, offset:off, sortBy:{column:"name",order:"asc"} }) });
+      if(!r.ok) break; const rows = await r.json(); if(!Array.isArray(rows)) break;
+      for(const o of rows){ const mm = /^(.+)_(\d+)\.jpg$/.exec(o.name||""); if(!mm) continue; const cur = m.get(mm[1]); if(!cur || +mm[2] > cur.ts) m.set(mm[1], { ts:+mm[2], url: SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/poster/"+o.name }); }
+      if(rows.length < 1000) break; off += rows.length;
+    }
+  }catch(e){}
+  return m;
+}
+async function uploadPosterPhoto(p, file){
+  const url = URL.createObjectURL(file); let img; try{ img = await loadImg(url); } finally { setTimeout(()=>URL.revokeObjectURL(url), 5000); }
+  const k = Math.min(1, 1600/Math.max(img.naturalWidth, img.naturalHeight)); const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth*k); c.height = Math.round(img.naturalHeight*k); const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height);
+  const blob = await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("toBlob")),"image/jpeg",.9));
+  const ts = Date.now(), name = p.id+"_"+ts+".jpg";
+  const r = await fetch(SUPABASE_URL+"/storage/v1/object/"+PHOTO_BUCKET+"/poster/"+name, { method:"POST", headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token(), "Content-Type":"image/jpeg", "cache-control":"max-age=3600" }, body: blob });
+  if(!r.ok){ const t = await r.text(); throw new Error("ອັບໂຫຼດບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,120)); }
+  P.photos.set(p.id, { ts, url: SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/poster/"+name });
+  P.raw.delete(p.id); P.ai.delete(p.id); for(const key of [...P.cut.keys()]) if(key.startsWith(p.id+"|")) P.cut.delete(key); P.check.delete(p.id);
+}
+function askPhoto(id){ P.camFor = id; $("cam").value = ""; $("cam").click(); }
+async function onPhotoPicked(){
+  const f = $("cam").files[0]; const p = P.camFor && P.byId.get(P.camFor); if(!f || !p) return;
+  $("msg").textContent = "ກຳລັງອັບໂຫຼດຮູບ…"; $("err").textContent = "";
+  try{
+    await uploadPosterPhoto(p, f); $("msg").textContent = "ອັບໂຫຼດແລ້ວ ກຳລັງຕັດພື້ນຫຼັງ…"; renderList();
+    if(P.cur !== p.id) setCur(p.id); else await renderPreview();
+    if(P.selected.has(p.id)){ P.check.set(p.id, await checkOne(p)); renderList(); if($("chkPanel").style.display==="block") renderChk(); }
+    $("msg").textContent = "ສຳເລັດ ຮູບໃໝ່ຂອງ "+p.name;
+  }catch(e){ $("msg").textContent = ""; $("err").textContent = e.message; }
+}
+
 // ---------- pre-check: which selected photos are usable, which must be re-shot ----------
 async function checkOne(p){
   let raw = null; try{ raw = await rawImage(p); }catch(e){}
@@ -326,7 +367,8 @@ function renderChk(){
   const panel = $("chkPanel"); const wasHidden = panel.style.display !== "block"; panel.style.display = "block";
   panel.innerHTML = `<b>ຜົນການກວດ ${all.length} ຮູບ:</b> ✅ ${n("ok")} · ⚠ ${n("low")+n("ai")} · ❌ ${n("ad")+n("err")}
     <div class="bar"><button id="chkCopy" class="sec" ${bad.length?"":"disabled"}>ຄັດລອກລາຍການທີ່ຕ້ອງຖ່າຍໃໝ່ (${bad.length})</button><button id="chkDrop" class="sec" ${bad.length?"":"disabled"}>ເອົາທີ່ບໍ່ຜ່ານອອກຈາກການເລືອກ</button></div>
-    <table>`+all.sort((a,b)=>(a.c.s==="ok")-(b.c.s==="ok")).map(r=>`<tr><td style="width:40px">${r.p.image_url?`<img src="${esc(r.p.image_url)}" alt="">`:""}</td><td>${esc(r.p.name)}<div class="small">${esc(r.p.barcode||"")} · ${esc(r.c.why)}</div></td><td style="width:110px"><span class="badge ${CHK_TXT[r.c.s][1]}">${CHK_TXT[r.c.s][0]}</span></td></tr>`).join("")+`</table>`;
+    <table>`+all.sort((a,b)=>(a.c.s==="ok")-(b.c.s==="ok")).map(r=>`<tr><td style="width:40px">${r.p.image_url?`<img src="${esc(r.p.image_url)}" alt="">`:""}</td><td>${esc(r.p.name)}<div class="small">${esc(r.p.barcode||"")} · ${esc(r.c.why)}</div></td><td style="width:150px"><span class="badge ${CHK_TXT[r.c.s][1]}">${CHK_TXT[r.c.s][0]}</span>${r.c.s!=="ok"?` <button class="sec" data-cam="${r.p.id}" style="padding:3px 8px;font-size:12px">📷 ຖ່າຍ</button>`:""}</td></tr>`).join("")+`</table>`;
+  panel.querySelectorAll("button[data-cam]").forEach(b=>b.onclick=()=>askPhoto(b.dataset.cam));
   if(wasHidden) panel.scrollIntoView({behavior:"smooth", block:"start"});
   $("chkCopy").onclick = async () => {
     const txt = "ສິນຄ້າທີ່ຕ້ອງຖ່າຍຮູບໃໝ່ (ພື້ນຂາວ, ຮູບໃຫຍ່ ≥1000 ຈຸດ):\n"+bad.map((r,i)=>(i+1)+". "+(r.p.barcode||"")+" "+r.p.name+" — "+r.c.why).join("\n");
@@ -357,7 +399,7 @@ async function init(){
   try{ const b = await loadImg("bg-thatluang.jpg?v="+Date.now()); if(b && b.width>300) P.bg = b; }catch(e){}
   draw($("cv").getContext("2d"),1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null));
   if(!token()){ $("count").textContent = ""; $("msg").textContent = "ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ ແລ້ວເປີດແທັບນີ້ໃໝ່"; return; }
-  try{ P.items = await fetchProducts(); P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
+  try{ const [items, photos] = await Promise.all([fetchProducts(), fetchPosterPhotos()]); P.items = items; P.photos = photos; P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
   catch(e){ $("count").textContent = ""; $("err").textContent = "ດຶງສິນຄ້າຈາກ POS ບໍ່ໄດ້: "+e.message; }
 }
 
@@ -378,7 +420,7 @@ $("ovPrice").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get
 $("ovMode").addEventListener("change", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.mode=$("ovMode").value; P.ov.set(P.cur,o); renderPreview(); });
 $("bgfile").addEventListener("change", e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ P.bg = await loadImg(r.result); renderPreview(); }; r.readAsDataURL(f); });
 $("bgclear").onclick = () => { P.bg = null; $("bgfile").value=""; renderPreview(); };
-$("chk").onclick = checkSelected; $("dl1").onclick = downloadOne; $("dlZip").onclick = downloadAll; $("cancel").onclick = () => { P.cancel = true; };
+$("camBtn").onclick = () => { if(P.cur) askPhoto(P.cur); }; $("cam").addEventListener("change", onPhotoPicked); $("chk").onclick = checkSelected; $("dl1").onclick = downloadOne; $("dlZip").onclick = downloadAll; $("cancel").onclick = () => { P.cancel = true; };
 init();
 </script>
 </body>
