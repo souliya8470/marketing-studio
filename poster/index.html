@@ -129,12 +129,13 @@ function loadCfg(){ try{ const o=JSON.parse(localStorage.getItem(CFG_KEY)||"null
 
 async function fetchProducts(){
   const out = []; const step = 1000;
-  for(let off=0; ; off+=step){
+  for(let off=0; ; ){
     const url = SUPABASE_URL+"/rest/v1/pos_products?select=id,name,barcode,price_1,stock_qty,image_url,category&is_active=eq.true&stock_qty=gt.0&order=name.asc&limit="+step+"&offset="+off;
     const r = await fetch(url, { headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token() } });
     if(!r.ok){ const t = await r.text(); throw new Error("HTTP "+r.status+" "+t.slice(0,200)); }
     const rows = await r.json(); out.push(...rows);
-    if(rows.length < step) break;
+    if(!rows.length) break;
+    off += rows.length; // server may cap rows per page below `step`
   }
   return out;
 }
