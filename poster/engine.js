@@ -59,36 +59,52 @@ function cutout(img, tol, fillgaps){
 }
 
 // ---------- drawing helpers ----------
-// ad-style retouch of a cut-out product: auto levels + gentle white balance + a little saturation, cleaner edge, soft rim/top light.
-// Pure canvas maths (no AI). Returns a new canvas of the same size; cached on the source canvas.
-function enhanceCut(src){
-  if(src._enh) return src._enh;
+// Studio-style retouch of a cut-out product (no AI model, pure canvas maths), for photos taken in dim / uneven shop light:
+//  1) auto exposure to a bright target, 2) local tone-mapping (lifts the dark side/shadows, keeps highlights),
+//  3) white balance from near-neutral pixels only, 4) soft S-curve + vibrance, 5) clean edge, 6) soft rim/top light.
+// lvl 1 = gentle, 2 = normal, 3 = strong. Result cached per level on the source canvas.
+function enhanceCut(src,lvl){
+  lvl=lvl||2; src._enh=src._enh||{}; if(src._enh[lvl]) return src._enh[lvl];
+  const K={1:{tgt:132,loc:.28,sl:.04,sat:1.12,gmin:.80},2:{tgt:146,loc:.42,sl:.06,sat:1.17,gmin:.70},3:{tgt:160,loc:.55,sl:.09,sat:1.22,gmin:.60}}[lvl]||{tgt:146,loc:.42,sl:.06,sat:1.17,gmin:.70};
   const w=src.width,h=src.height; const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0);
-  const d=x.getImageData(0,0,w,h), p=d.data; const hist=new Uint32Array(256); let n=0, sr=0,sg=0,sb=0;
-  for(let i=0;i<p.length;i+=4){ if(p[i+3]<200) continue; const l=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0; hist[l]++; n++; sr+=p[i]; sg+=p[i+1]; sb+=p[i+2]; }
-  if(n<50){ src._enh=src; return src; }
+  const d=x.getImageData(0,0,w,h), p=d.data; const hist=new Uint32Array(256); let n=0;
+  for(let i=0;i<p.length;i+=4){ if(p[i+3]<200) continue; hist[(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0]++; n++; }
+  if(n<50){ src._enh[lvl]=src; return src; }
   const pct=f=>{ let a=0; for(let k=0;k<256;k++){ a+=hist[k]; if(a>=n*f) return k; } return 255; };
-  const lo=pct(.015), hi=pct(.985); const span=Math.max(60,hi-lo);
-  const mr=sr/n, mg=sg/n, mb=sb/n, m=(mr+mg+mb)/3;
-  // gray-world white balance, limited to +-2% so coloured packaging keeps its colour
-  const cl=v=>Math.max(.98,Math.min(1.02,v)); const gr=cl(m/mr), gg=cl(m/mg), gb=cl(m/mb);
-  const lm=(lo+hi)/2; const gam = lm<118 ? Math.max(.72,lm/118*.35+.65) : (lm>165?1.08:1);   // brighten dim photos
-  const lut=new Uint8Array(256); for(let k=0;k<256;k++){ let v=(k-lo)/span; v=Math.max(0,Math.min(1,v)); v=Math.pow(v,gam); lut[k]=Math.round(6+v*246); }
-  const sat=1.14;
-  for(let i=0;i<p.length;i+=4){ if(p[i+3]===0) continue;
-    let r=lut[Math.min(255,p[i]*gr|0)], g=lut[Math.min(255,p[i+1]*gg|0)], b=lut[Math.min(255,p[i+2]*gb|0)];
-    const l=r*.299+g*.587+b*.114; r=l+(r-l)*sat; g=l+(g-l)*sat; b=l+(b-l)*sat;
-    p[i]=r<0?0:r>255?255:r; p[i+1]=g<0?0:g>255?255:g; p[i+2]=b<0?0:b>255?255:b; }
+  const lo=pct(.01), med=pct(.5), hi=pct(.99);
+  // white balance: only from near-neutral (white/grey/black) pixels, so coloured packaging keeps its colour; max +-15%
+  let nr=0,ng=0,nb=0,nn=0; for(let i=0;i<p.length;i+=4){ if(p[i+3]<200) continue; const r=p[i],g=p[i+1],b=p[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b); if(mx>70 && mx-mn<mx*.16){ nr+=r; ng+=g; nb+=b; nn++; } }
+  let gr=1,gg=1,gb=1; if(nn>n*.04){ const m=(nr+ng+nb)/3; const cl=v=>Math.max(.85,Math.min(1.15,v)); gr=cl(m/nr); gg=cl(m/ng); gb=cl(m/nb); }
+  // local tone map grid (mean luminance of opaque pixels per cell)
+  const GW=Math.max(4,Math.min(28,Math.round(w/14))), GH=Math.max(4,Math.min(28,Math.round(h/14))); const sum=new Float32Array(GW*GH), cnt=new Float32Array(GW*GH);
+  for(let b=0;b<h;b++){ const gy=Math.min(GH-1,(b*GH/h)|0); for(let a=0;a<w;a++){ const o=(b*w+a)*4; if(p[o+3]<200) continue; const gi=gy*GW+Math.min(GW-1,(a*GW/w)|0); sum[gi]+=p[o]*.299+p[o+1]*.587+p[o+2]*.114; cnt[gi]++; } }
+  const gm=new Float32Array(GW*GH); let gmean=0,gc=0; for(let i=0;i<gm.length;i++){ if(cnt[i]>0){ gm[i]=sum[i]/cnt[i]; gmean+=gm[i]; gc++; } else gm[i]=-1; } gmean=gc?gmean/gc:med;
+  for(let i=0;i<gm.length;i++) if(gm[i]<0) gm[i]=gmean;
+  const gb2=new Float32Array(gm.length); for(let gy=0;gy<GH;gy++)for(let gx=0;gx<GW;gx++){ let s=0,k=0; for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const yy=gy+dy,xx=gx+dx; if(yy<0||xx<0||yy>=GH||xx>=GW) continue; s+=gm[yy*GW+xx]; k++; } gb2[gy*GW+gx]=s/k; }
+  const samp=(a,b)=>{ const fx=Math.max(0,Math.min(GW-1,a*GW/w-.5)), fy=Math.max(0,Math.min(GH-1,b*GH/h-.5)); const x0=fx|0,y0=fy|0,x1=Math.min(GW-1,x0+1),y1=Math.min(GH-1,y0+1),tx=fx-x0,ty=fy-y0; return (gb2[y0*GW+x0]*(1-tx)+gb2[y0*GW+x1]*tx)*(1-ty)+(gb2[y1*GW+x0]*(1-tx)+gb2[y1*GW+x1]*tx)*ty; };
+  // global exposure: gamma so the median lands near the target (never darkens), plus a shadow lift and a gentle S-curve
+  const gam=Math.max(K.gmin,Math.min(1,Math.log(K.tgt/255)/Math.log(Math.max(30,med)/255)));
+  const lut=new Float32Array(256); for(let k=0;k<256;k++){ let v=Math.max(0,Math.min(1,(k-lo*.6)/Math.max(80,hi-lo*.6))); v=Math.pow(v,gam); v=v+K.sl*Math.pow(1-v,3); v=v+.10*(v-.5)*(1-Math.abs(2*v-1)); if(v>.84) v=.84+(v-.84)*.55; lut[k]=Math.max(0,Math.min(1,v))*255; }
+  const tg=K.tgt;
+  for(let b=0;b<h;b++)for(let a=0;a<w;a++){ const o=(b*w+a)*4; if(p[o+3]===0) continue;
+    let r=Math.min(255,p[o]*gr), g=Math.min(255,p[o+1]*gg), bl=Math.min(255,p[o+2]*gb);
+    // local gain: dark areas of the product are lifted towards the target, bright areas are left alone
+    const ll=samp(a,b); const gl=Math.max(1,Math.min(1.7,Math.pow(tg/Math.max(40,ll),K.loc))); r*=gl; g*=gl; bl*=gl;
+    r=Math.min(255,r); g=Math.min(255,g); bl=Math.min(255,bl);
+    r=lut[r|0]; g=lut[g|0]; bl=lut[bl|0];
+    const l=r*.299+g*.587+bl*.114; const mx=Math.max(r,g,bl),mn=Math.min(r,g,bl); const vib=1+(K.sat-1)*(1.4-(mx-mn)/255);   // low-saturation pixels get more boost (vibrance)
+    r=l+(r-l)*vib; g=l+(g-l)*vib; bl=l+(bl-l)*vib;
+    p[o]=r<0?0:r>255?255:r; p[o+1]=g<0?0:g>255?255:g; p[o+2]=bl<0?0:bl>255?255:bl; }
   // edge clean-up: halve alpha of pixels touching transparency (removes the light fringe left by the old background)
   const a0=new Uint8Array(w*h); for(let i=0;i<w*h;i++) a0[i]=p[i*4+3];
   for(let b=1;b<h-1;b++)for(let a=1;a<w-1;a++){ const i=b*w+a; if(a0[i]>0 && (a0[i-1]<40||a0[i+1]<40||a0[i-w]<40||a0[i+w]<40)) p[i*4+3]=a0[i]>>1; }
   x.putImageData(d,0,0);
   // soft light: warm rim on the left edge, golden on the right, faint top gloss (only on product pixels)
   x.save(); x.globalCompositeOperation='source-atop';
-  let g=x.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(255,236,190,.30)'); g.addColorStop(.22,'rgba(255,236,190,0)'); g.addColorStop(.78,'rgba(255,196,120,0)'); g.addColorStop(1,'rgba(255,196,120,.22)'); x.fillStyle=g; x.fillRect(0,0,w,h);
-  g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,.14)'); g.addColorStop(.25,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+  let g=x.createLinearGradient(0,0,w,0); g.addColorStop(0,'rgba(255,240,205,.26)'); g.addColorStop(.22,'rgba(255,240,205,0)'); g.addColorStop(.78,'rgba(255,205,140,0)'); g.addColorStop(1,'rgba(255,205,140,.18)'); x.fillStyle=g; x.fillRect(0,0,w,h);
+  g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(255,255,255,.16)'); g.addColorStop(.3,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,w,h);
   x.restore();
-  src._enh=c; return c;
+  src._enh[lvl]=c; return c;
 }
 // faint mirror image of the product on the plinth (drawn before the product itself)
 function reflectionOf(img,dw,dh){
@@ -296,7 +312,7 @@ function draw(ctx,S,o){
     ctx.save(); archPath(bx,by,bw2,bh2,RY-pad); ctx.clip();
     const sc=Math.max(bw2/iw,bh2/ih), dw=iw*sc, dh=ih*sc; ctx.drawImage(r,bx+(bw2-dw)/2,by+(bh2-dh)/2,dw,dh); ctx.restore();
     ctx.save(); ctx.strokeStyle='#f0c24a'; ctx.lineWidth=7; archPath(ax,ay,aw,ah,RY); ctx.stroke(); ctx.restore();
-  } else if(o.img){ const pimg=(o.enh!==false && o.mode!=='photo')?enhanceCut(o.img):o.img; const iw=o.img.width, ih=o.img.height; const bw=300, bh=470; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc; const baseY=yb+6;
+  } else if(o.img){ const pimg=(o.enh!==false && o.mode!=='photo')?enhanceCut(o.img,o.lvl):o.img; const iw=o.img.width, ih=o.img.height; const bw=300, bh=470; const sc=Math.min(bw/iw,bh/ih); const dw=iw*sc, dh=ih*sc; const baseY=yb+6;
     if(o.enh!==false){   // soft warm glow behind the product + mirror reflection on the plinth, both kept inside the arch
       ctx.save(); archPath(ax,ay,aw,ah,RY); ctx.clip();
       const gl=ctx.createRadialGradient(cx0,baseY-dh*.5,10,cx0,baseY-dh*.5,Math.max(dw,dh)*.75); gl.addColorStop(0,'rgba(255,250,228,.50)'); gl.addColorStop(1,'rgba(255,250,228,0)'); ctx.fillStyle=gl; ctx.fillRect(ax,ay,aw,ah);
