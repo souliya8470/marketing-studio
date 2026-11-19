@@ -200,12 +200,11 @@ function ribbonCurl(ctx,x,y,len,rot){
   ctx.beginPath(); ctx.moveTo(0,0); ctx.bezierCurveTo(len*.3,-38,len*.6,38,len,-6); ctx.stroke(); ctx.restore();
 }
 
+// promo end date only (no start date): "ໝົດກຳນົດ 30 ພະຈິກ 2026"
 function fmtDates(a,b){
-  if(!a||!b) return '';
-  const A=new Date(a+'T00:00:00'), B=new Date(b+'T00:00:00');
-  const sameMonth=A.getMonth()===B.getMonth()&&A.getFullYear()===B.getFullYear();
-  if(sameMonth) return `ວັນທີ ${A.getDate()} – ${B.getDate()} ${LAO_MONTHS[B.getMonth()]} ${B.getFullYear()}`;
-  return `ວັນທີ ${A.getDate()} ${LAO_MONTHS[A.getMonth()]} – ${B.getDate()} ${LAO_MONTHS[B.getMonth()]} ${B.getFullYear()}`;
+  if(!b) return '';
+  const B=new Date(b+'T00:00:00'); if(isNaN(B)) return '';
+  return `ໝົດກຳນົດ ${B.getDate()} ${LAO_MONTHS[B.getMonth()]} ${B.getFullYear()}`;
 }
 
 // ---------- main render ----------
