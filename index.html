@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.85"; // v8.85 NEW (Tar 2026-11-18, "ໃຫ້ເປັນລະບົບອັດຕະໂນມັດ ດຶງສິນຄ້າຈາກ POS ແລ້ວສ້າງຮູບເອງ ບໍ່ຕ້ອງພິມ/ອັບໂຫຼດເທື່ອລະອັນ"): new sidebar page "🎉 ໂປສເຕີໂປຣ" = automatic promo-poster generator for the Boun That Luang festival (Facebook page posts). The page is /poster/index.html shown in an iframe (#ms-poster-frame, created when the tab opens, removed when you leave it so the product list is always fresh; syncPosterFrame). It reads pos_products (is_active, stock_qty>0, name, barcode, price_1 = ລາຄາ 1, image_url) with the same x-ms-token session + anon key as the Excel tab, shows a searchable list with checkboxes, previews the clicked product, and draws each poster in a canvas (engine in /poster/engine.js: red/gold festive layout, product cut-out from its POS photo on an arch + pedestal, price panel, dates today -> 30 Nov, shop name "Toukta Shop"). "ສ້າງທັງໝົດ" renders every ticked product and downloads ONE .zip (JSZip, JPG/PNG, 1080 or 2160). Per-product name/price override (does not write to POS), dok-chan pattern strength slider, optional background image upload (a real That Luang photo can be shipped as /poster/bg-thatluang.jpg and is auto-loaded). No DB change, no edge function. Page permission: appears for everyone by default; owner can hide it per staff in the permissions page like any other tab. Nothing else in index.html changed.
+const APP_VERSION = "8.86"; // v8.86 NEW (Tar 2026-11-19, "ຫຼັງຈາກດາວໂຫຼດແລ້ວ ຢາກໃຫ້ອັບວິດີໂອເຂົ້າ Marketing Studio ເພື່ອໃຫ້ແອດມິນຄົນອື່ນເອົາໄປໃຊ້ໄດ້"): new sidebar page "🎬 ວິດີໂອສຳເລັດ" (id editedVideos, staff-visible by default) = library of finished product videos, mirror of the 🖼️ page. In the Sykhai Editor (editor.touktashop.online) a person presses ✅ ອະນຸມັດ on a project; the shop server exports the MP4 by itself and sends it here through the edge function editor-video-intake (secret key in table editor_intake_keys, no staff session) into the public bucket product-assets under edited/videos/<product_id>/, one row per file in table edited_product_videos (product, title, size, duration, uploaded_by = approver, soft delete is_deleted). Page: filter by product, inline player (poster = thumb_url, preload none), per-video ⬇️ download (original file name kept) / 🔗 copy link / 🗑️ soft delete (owner or the approver, via customConfirm), ⬇️ download all for the filter. Loads once when the page is opened and again only on 🔄 refreshAll() if already opened — no polling. Read-only here: videos arrive only from the editor.
+// (previous text of this slot, kept) v8.85 NEW (Tar 2026-11-18, "ໃຫ້ເປັນລະບົບອັດຕະໂນມັດ ດຶງສິນຄ້າຈາກ POS ແລ້ວສ້າງຮູບເອງ ບໍ່ຕ້ອງພິມ/ອັບໂຫຼດເທື່ອລະອັນ"): new sidebar page "🎉 ໂປສເຕີໂປຣ" = automatic promo-poster generator for the Boun That Luang festival (Facebook page posts). The page is /poster/index.html shown in an iframe (#ms-poster-frame, created when the tab opens, removed when you leave it so the product list is always fresh; syncPosterFrame). It reads pos_products (is_active, stock_qty>0, name, barcode, price_1 = ລາຄາ 1, image_url) with the same x-ms-token session + anon key as the Excel tab, shows a searchable list with checkboxes, previews the clicked product, and draws each poster in a canvas (engine in /poster/engine.js: red/gold festive layout, product cut-out from its POS photo on an arch + pedestal, price panel, dates today -> 30 Nov, shop name "Toukta Shop"). "ສ້າງທັງໝົດ" renders every ticked product and downloads ONE .zip (JSZip, JPG/PNG, 1080 or 2160). Per-product name/price override (does not write to POS), dok-chan pattern strength slider, optional background image upload (a real That Luang photo can be shipped as /poster/bg-thatluang.jpg and is auto-loaded). No DB change, no edge function. Page permission: appears for everyone by default; owner can hide it per staff in the permissions page like any other tab. Nothing else in index.html changed.
 // (previous text of this slot, kept) v8.84 NEW (Tar 2026-11-16, "ຕັ້ງເວລາເປີດ-ປິດແລ້ວ ບໍ່ເຫັນຢູ່ແຄມເປນ ບໍ່ຮູ້ຈະເປີດ/ປິດເມື່ອໃດ — ຢາກໃຫ້ເຫັນຄືໃນ Ads Manager"): the ຄ່າໂຄສະນາລວມ board now shows a yellow badge on every campaign row that has an ENABLED schedule (🟢 open time, 🔴 close time, days) - ensureCampaignSchedulesLoaded() / campaignScheduleBadgeHtml(); clicking the badge opens the ⏰ schedule list (toggle/delete there); the cache refreshes when that list closes. Schedules themselves unchanged (table campaign_schedules, edge function run-campaign-schedules). The weekly schedule "ເປີດຈັນ 2/11" was also switched off in the DB the same day (Tar no longer wants it).
 // (previous text of this slot, kept) // v8.83 CHANGE (Tar 2026-11-13, "ເພີ່ມຂະໜາດປຸ່ມເລີ່ມພັກ/ຈົບພັກ ໃຫ້ກົດງ່າຍຂຶ້ນ"): 🕒 ໂມງ page — the ▶ ເລີ່ມພັກ / ■ ຈົບພັກ button is now full-width and tall (min 70px, big text, red outline while running) so it is easy to tap between sets; ລ້າງທັງໝົດ stays small below it. CSS only.
 // (previous text of this slot, kept) v8.82 NEW (Tar 2026-11-13, "ເພີ່ມປຸ່ມຈັບເວລາ ໄວ້ໃສ່ກໍລະນີຟິດເນັດ ຫຼັງຈົບແຕ່ລະເຊັດ ກົດເບິ່ງວ່າພັກເທົ່າໃດ"): 🕒 ໂມງ page gets a rest stopwatch — ▶ ເລີ່ມພັກ starts, ■ ຈົບພັກ stops and logs "ເຊັດທີ N · ພັກ mm:ss" (newest first, with total + average rest), ລ້າງທັງໝົດ clears. Uses Date.now() so time stays right while the page is left and reopened (STATE.swStart / STATE.swLog, in memory only). Display refreshes with a self-rescheduling setTimeout (100 ms, only while running and only on this page, DOM-only, no render(), no setInterval, no network).
@@ -1627,7 +1628,7 @@ const APP_VERSION = "8.85"; // v8.85 NEW (Tar 2026-11-18, "ໃຫ້ເປັນ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.84"; // (v8.84 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.85"; // (v8.85 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.83 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.81 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines of APP_VERSION above)
@@ -1738,7 +1739,7 @@ const APP_VERSION_PREV = "8.84"; // (v8.84 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.83"; // (v8.83 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.84"; // (v8.84 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.82 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.79 text kept in the history comment lines above)
@@ -7951,6 +7952,8 @@ async function refreshAll(){
 
     // 5) v8.52: 🖼️ ຮູບສິນຄ້າ library — only if it was already opened this session.
     if(STATE.editedImagesLoaded){ try{ await loadEditedImages(true); }catch(e){} }
+    // 6) v8.86: 🎬 ວິດີໂອສຳເລັດ library — only if it was already opened this session.
+    if(STATE.editedVideosLoaded){ try{ await loadEditedVideos(true); }catch(e){} }
   }catch(e){}
   STATE.refreshing = false;
   render();
@@ -28831,6 +28834,7 @@ const BASE_NAV = [
   {id:"dashboard", label:"ພາບລວມ", icon:"&#9633;"},
   {id:"products", label:"ສິນຄ້າ", icon:"&#9638;"},
   {id:"editedImages", label:"🖼️ ຮູບສິນຄ້າ", icon:"&#128444;"}, // v8.52: library of finished (Lao-text) product images for staff to download (see APP_VERSION comment)
+  {id:"editedVideos", label:"🎬 ວິດີໂອສຳເລັດ", icon:"&#127916;"}, // v8.86: finished videos approved in the Sykhai Editor (see APP_VERSION comment)
   {id:"content", label:"Marketing Studio", icon:"&#9998;"},
   {id:"productChat", label:"ຖາມ AI ກ່ຽວກັບສິນຄ້າ", icon:"&#129302;"},
   {id:"costs", label:"ຕົ້ນທຶນ & ກຳໄລ", icon:"&#3647;"},
@@ -29218,6 +29222,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="barcodeScanLog") loadBarcodeScanLog();
   if(STATE.page==="arrivalTagReport") loadArrivalTagReport();
   if(STATE.page==="editedImages") loadEditedImages(); // v8.52: one load per page open (no polling)
+  if(STATE.page==="editedVideos") loadEditedVideos(); // v8.86: one load per page open (no polling)
   if(STATE.page==="codReviewHistory") loadCodReviewHistory();
   if(STATE.page==="editLog") loadEditLog();
   if(STATE.page==="pancakeCrm"){ loadCrmCount(); loadCrmResults(true); loadCodReceivedMap(); loadSyncStatus(); }
@@ -29561,6 +29566,7 @@ function renderPage(){
     case "barcodeScanLog": return renderBarcodeScanLog();
     case "arrivalTagReport": return renderArrivalTagReport();
     case "editedImages": return renderEditedImages(); // v8.52
+    case "editedVideos": return renderEditedVideos(); // v8.86
     case "clockPage": return renderClockPage(); // v8.56
     case "codReviewHistory": return renderCodReviewHistory();
     case "editLog": return renderEditLog();
@@ -36501,6 +36507,134 @@ function attachEditedImagesEvents(){
   document.querySelectorAll("[data-edited-del]").forEach(b=>b.addEventListener("click", ()=>deleteEditedImage(b.dataset.editedDel)));
 }
 
+/* ====================== FINISHED VIDEOS (🎬 ວິດີໂອສຳເລັດ) — v8.86 ======================
+   Videos approved in the Sykhai Editor arrive here by themselves (edge function editor-video-intake ->
+   bucket product-assets/edited/videos/<product_id>/ + one row in edited_product_videos, soft delete via
+   is_deleted). Read-only page: download / copy link / delete. Loads when the page is opened and on the
+   global 🔄 refreshAll() only — no polling (standing rule). */
+function editedVidDur(sec){
+  const n = Math.round(Number(sec)||0); if(!n) return "";
+  return Math.floor(n/60) + ":" + String(n%60).padStart(2,"0");
+}
+function editedVidSize(b){
+  const n = Number(b)||0; if(!n) return "";
+  return n>=1e6 ? (n/1e6).toFixed(1) + " MB" : Math.max(1,Math.round(n/1e3)) + " KB";
+}
+async function loadEditedVideos(quiet){
+  if(!quiet){ STATE.editedVideosLoading = true; render(); }
+  try{
+    const {data, error} = await sb.from("edited_product_videos").select("*")
+      .eq("is_deleted", false).order("created_at", {ascending:false}).limit(1000);
+    if(error) throw error;
+    STATE.editedVideosList = data||[];
+    STATE.editedVideosLoaded = true;
+  }catch(err){
+    console.error("loadEditedVideos failed:", err);
+    if(!quiet) showToast("⚠️ ໂຫຼດວິດີໂອບໍ່ສຳເລັດ: " + (err.message||""), "error");
+  }
+  STATE.editedVideosLoading = false;
+  if(!quiet) render();
+}
+function editedVideosFiltered(){
+  const pid = STATE.editedVideosProduct || "";
+  return (STATE.editedVideosList||[]).filter(r=> !pid || (pid==="__none" ? !r.product_id : r.product_id===pid));
+}
+function renderEditedVideos(){
+  const all = STATE.editedVideosList || [];
+  const products = STATE.data.products || [];
+  const pid = STATE.editedVideosProduct || "";
+  const list = editedVideosFiltered();
+  const counts = {};
+  all.forEach(r=>{ const k = r.product_id || "__none"; counts[k] = (counts[k]||0)+1; });
+  const productsWithVideos = products.filter(p=>counts[p.id]);
+  const groups = []; const byKey = {};
+  list.forEach(r=>{
+    const k = r.product_id || "__none";
+    if(!byKey[k]){ byKey[k] = {key:k, name: r.product_name || (products.find(p=>p.id===r.product_id)||{}).name || "ບໍ່ລະບຸສິນຄ້າ", items:[]}; groups.push(byKey[k]); }
+    byKey[k].items.push(r);
+  });
+  const canDelete = (r)=> isOwner() || (STATE.currentUser && r.uploaded_by===STATE.currentUser.name);
+  const card = (r)=>`
+    <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column;">
+      <video src="${esc(r.public_url)}" ${r.thumb_url?`poster="${esc(r.thumb_url)}"`:""} controls preload="none" playsinline style="width:100%; max-height:420px; background:#000; display:block;"></video>
+      <div style="padding:8px 10px; display:flex; flex-direction:column; gap:6px; flex:1;">
+        <div style="font-weight:600; font-size:13px; word-break:break-all;">${esc(r.title||r.file_name)}</div>
+        <div class="small-muted" style="font-size:11px;">${[r.width&&r.height?`${r.width}×${r.height}`:"", editedVidDur(r.duration_sec), editedVidSize(r.size_bytes)].filter(Boolean).join(" · ")}${r.width||r.duration_sec||r.size_bytes?" · ":""}ອະນຸມັດໂດຍ ${esc(r.uploaded_by||"-")} · ${esc(editedImgTime(r.created_at))}</div>
+        ${r.note?`<div class="small-muted" style="font-size:11px;">ℹ️ ${esc(r.note)}</div>`:""}
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:auto;">
+          <button class="btn btn-primary btn-sm" data-edited-vid-dl="${esc(r.id)}">⬇️ ດາວໂຫຼດ</button>
+          <button class="btn btn-outline btn-sm" data-edited-vid-copy="${esc(r.id)}">🔗 ສຳເນົາລິ້ງ</button>
+          ${canDelete(r) ? `<button class="btn btn-outline btn-sm" data-edited-vid-del="${esc(r.id)}">🗑️ ລຶບ</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+  return `
+    <div class="page-head">
+      <h1>🎬 ວິດີໂອສຳເລັດແລ້ວ</h1>
+      <p>ວິດີໂອທີ່ຕັດຕໍ່ ແລະ ອະນຸມັດແລ້ວ — ເລືອກສິນຄ້າ ແລ້ວກົດດາວໂຫຼດໄປໃຊ້ໄດ້ເລີຍ</p>
+    </div>
+    <div class="card">
+      <div class="flex-between" style="flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="edited-vid-filter" style="margin-bottom:0;">
+            <option value="" ${pid===""?"selected":""}>ທຸກສິນຄ້າ (${all.length})</option>
+            ${productsWithVideos.map(p=>`<option value="${esc(p.id)}" ${pid===p.id?"selected":""}>${esc(p.name)} (${counts[p.id]})</option>`).join("")}
+            ${counts.__none ? `<option value="__none" ${pid==="__none"?"selected":""}>ບໍ່ລະບຸສິນຄ້າ (${counts.__none})</option>` : ""}
+          </select>
+          <button class="btn btn-outline btn-sm" id="btn-edited-vid-reload">🔄 ໂຫຼດຄືນໃໝ່</button>
+        </div>
+        ${list.length ? `<button class="btn btn-primary btn-sm" id="btn-edited-vid-dl-all">⬇️ ດາວໂຫຼດທັງໝົດ (${list.length} ວິດີໂອ)</button>` : ""}
+      </div>
+      ${STATE.editedVideosLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` :
+        (list.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີວິດີໂອ</p>` :
+          groups.map(g=>`
+            <h3 style="margin:14px 0 8px;">${esc(g.name)} <span class="small-muted" style="font-weight:400;">(${g.items.length} ວິດີໂອ)</span></h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px;">
+              ${g.items.map(card).join("")}
+            </div>`).join(""))}
+    </div>`;
+}
+function editedVidDownload(r){
+  const a = document.createElement("a");
+  a.href = r.public_url + (r.public_url.includes("?")?"&":"?") + "download=" + encodeURIComponent(r.file_name||"video.mp4");
+  a.download = r.file_name || "video.mp4";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function editedVidDownloadAll(){
+  const list = editedVideosFiltered();
+  for(let i=0; i<list.length; i++){
+    editedVidDownload(list[i]);
+    await new Promise(res=>setTimeout(res, 1200));
+  }
+}
+async function deleteEditedVideo(id){
+  const r = (STATE.editedVideosList||[]).find(x=>x.id===id);
+  if(!r) return;
+  const okDel = await customConfirm("ລຶບວິດີໂອ \"" + (r.title||r.file_name) + "\" ອອກຈາກລາຍການບໍ?", {okLabel:"ລຶບ", danger:true});
+  if(!okDel) return;
+  const {error} = await sb.from("edited_product_videos").update({is_deleted:true}).eq("id", id);
+  if(error){ showToast("⚠️ ລຶບບໍ່ສຳເລັດ: " + (error.message||""), "error"); return; }
+  showToast("✅ ລຶບແລ້ວ");
+  STATE.editedVideosList = (STATE.editedVideosList||[]).filter(x=>x.id!==id);
+  render();
+}
+function attachEditedVideosEvents(){
+  const filterEl = document.getElementById("edited-vid-filter");
+  if(filterEl) filterEl.addEventListener("change", ()=>{ STATE.editedVideosProduct = filterEl.value; render(); });
+  const reloadBtn = document.getElementById("btn-edited-vid-reload");
+  if(reloadBtn) reloadBtn.addEventListener("click", ()=>loadEditedVideos());
+  const dlAll = document.getElementById("btn-edited-vid-dl-all");
+  if(dlAll) dlAll.addEventListener("click", editedVidDownloadAll);
+  const find = (id)=>(STATE.editedVideosList||[]).find(x=>x.id===id);
+  document.querySelectorAll("[data-edited-vid-dl]").forEach(b=>b.addEventListener("click", ()=>{ const r = find(b.dataset.editedVidDl); if(r) editedVidDownload(r); }));
+  document.querySelectorAll("[data-edited-vid-copy]").forEach(b=>b.addEventListener("click", async ()=>{
+    const r = find(b.dataset.editedVidCopy); if(!r) return;
+    try{ await navigator.clipboard.writeText(r.public_url); showToast("✅ ສຳເນົາລິ້ງແລ້ວ"); }
+    catch(e){ showToast("⚠️ ສຳເນົາບໍ່ໄດ້", "error"); }
+  }));
+  document.querySelectorAll("[data-edited-vid-del]").forEach(b=>b.addEventListener("click", ()=>deleteEditedVideo(b.dataset.editedVidDel)));
+}
+
 function renderArrivalTagReport(){
   const q = (STATE.arrivalTagLogSearch||"").trim().toLowerCase();
   const statusFilter = STATE.arrivalTagLogStatusFilter||"unsent"; // "unsent" (default), "all", or an exact status value
@@ -40023,6 +40157,7 @@ function attachPageEvents(){
   if(STATE.page==="barcodeScanLog") attachBarcodeScanLogEvents();
   if(STATE.page==="arrivalTagReport") attachArrivalTagReportEvents();
   if(STATE.page==="editedImages") attachEditedImagesEvents(); // v8.52
+  if(STATE.page==="editedVideos") attachEditedVideosEvents(); // v8.86
   if(STATE.page==="clockPage") attachClockPageEvents(); // v8.56
   if(STATE.page==="codReviewHistory") attachCodReviewHistoryEvents();
   if(STATE.page==="editLog") attachEditLogEvents();
