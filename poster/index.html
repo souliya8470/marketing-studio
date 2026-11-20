@@ -60,7 +60,7 @@
 <div id="app">
   <aside id="side">
     <h2>🎉 ໂປສເຕີໂປຣໂມຊັນ ບຸນທາດຫຼວງ</h2>
-    <div class="bar"><button class="sec" id="histBtn">📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</button><span style="font-size:11px;color:#8a8f98;align-self:center;margin-left:8px">ໂປສເຕີ v1.5 · 20/11</span></div>
+    <div class="bar"><button class="sec" id="histBtn">📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</button><span style="font-size:11px;color:#8a8f98;align-self:center;margin-left:8px">ໂປສເຕີ v1.6 · 20/11</span></div>
     <div class="small" id="count">ກຳລັງໂຫຼດສິນຄ້າຈາກ POS…</div>
     <input type="text" id="q" placeholder="ຄົ້ນຫາຊື່ ຫຼື ບາໂຄດ" style="margin-top:8px">
     <div class="chk"><input type="checkbox" id="onlyImg" checked><span>ສະເພາະທີ່ມີຮູບ</span></div>
@@ -146,7 +146,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { crops: new Map(), hist: [], histLatest: new Map(), names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { mobile: (()=>{ try{ return matchMedia('(pointer:coarse)').matches && Math.min(innerWidth, innerHeight) < 900; }catch(e){ return false; } })(), crops: new Map(), hist: [], histLatest: new Map(), names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -175,7 +175,7 @@ function filtered(){
   const q = $("q").value.trim().toLowerCase(); const oi = $("onlyImg").checked, op = $("onlyPrice").checked;
   return P.items.filter(p => (!oi || p.image_url) && (!op || Number(p.price_1)>0) && (!q || (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q)));
 }
-const CHK_TXT = { ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຄວນຖ່າຍໃໝ່","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
+const CHK_TXT = { pend:["⏳ ລໍ AI ຕັດ","b-low"], ok:["✅ ໃຊ້ໄດ້","b-ok"], low:["⚠ ຄວນຖ່າຍໃໝ່","b-low"], ad:["❌ ຮູບໂຄສະນາ","b-ad"], err:["❌ ໂຫຼດບໍ່ໄດ້","b-ad"], ai:["⚠ AI ບໍ່ພ້ອມ","b-low"] };
 function dname(p){ const o = P.ov.get(p.id); return (o && o.name!=null && o.name!=='') ? o.name : p.name; }
 function badgeHtml(id){ let h = P.photos.has(id) ? `<span class="badge b-ok">📷 ຮູບໃໝ່</span>` : ""; const c = P.check.get(id); if(!c) return h; const t = CHK_TXT[c.s]; return h+`<span class="badge ${t[1]}">${t[0]}</span>`; }
 function renderList(){
@@ -183,7 +183,7 @@ function renderList(){
   $("count").textContent = "ສິນຄ້າທີ່ເປີດຂາຍ ແລະ ມີສະຕ໊ອກ: "+P.items.length+" ລາຍການ · ສະແດງ "+list.length;
   box.innerHTML = list.map(p => {
     const thumb = (P.photos.get(p.id)||{}).url || p.image_url; const img = thumb ? `<img loading="lazy" src="${esc(thumb)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
-    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(dname(p))}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${P.names.has(p.id)?`<span class="badge b-ok">✏️ ແກ້ຊື່</span>`:""}${P.histLatest.has(p.id)?`<span class="badge b-ok">☁️ ບັນທຶກແລ້ວ</span>`:""}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
+    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(dname(p))}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${P.names.has(p.id)?`<span class="badge b-ok">✏️ ແກ້ຊື່</span>`:""}${P.histLatest.has(p.id)?`<span class="badge b-ok">${P.histLatest.get(p.id).status==="pending"?"⏳ ລໍ AI ຕັດ":"☁️ ບັນທຶກແລ້ວ"}</span>`:""}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
   }).join("");
   updateSelCount();
 }
@@ -261,6 +261,7 @@ async function prepare(p, force){
   if(cr && cr.src===curSrc && want!=="photo"){ const c = cropCanvas(raw, cr); if(c) return {img:c, raw, mode:"cut", how:"crop"}; }   // staff drew the box by hand (white box on white stand etc.)
   if(want==="photo") return {img:null, raw, mode:"photo"};
   if(want!=="ai"){ const cut = await cutImage(p); if(want==="cut" || (cut.cutOk && cutStats(cut).solid>=0.82)) return {img:cut, raw, mode:"cut", how:"fast"}; }
+  if(P.mobile) return {img:null, raw, mode:"photo", how:"pending"};   // phone: never wait for the AI (44MB model). The computer cuts it later (history -> pending)
   $("modeNote").textContent = "ກຳລັງໃຫ້ AI ຕັດພື້ນຫຼັງ… (ເທື່ອທຳອິດຕ້ອງໂຫຼດໂມເດວ ~44MB ອາດໃຊ້ເວລາຫຼາຍນາທີ)";
   const ai = await aiImage(p);
   if(ai && ai.cutOk && cutStats(ai).solid>=0.82) return {img:ai, raw, mode:"cut", how:"ai"};
@@ -283,7 +284,7 @@ async function renderPreview(){
   let pr = null; try{ pr = await prepare(p); }catch(e){ $("err").textContent = "ຕັດພື້ນຫຼັງບໍ່ໄດ້: "+e.message; }
   if(my !== renderSeq) return;
   if(pr && !pr.raw && p.image_url) $("err").textContent = "ໂຫຼດຮູບສິນຄ້ານີ້ບໍ່ໄດ້ (ກວດລິ້ງຮູບໃນ POS)";
-  if(pr && pr.raw) $("modeNote").textContent = pr.mode==="cut" ? (pr.how==="ai" ? "ຮູບນີ້: AI ຕັດພື້ນຫຼັງແລ້ວ" : pr.how==="crop" ? "ຮູບນີ້: ໃຊ້ກອບທີ່ກຳນົດເອງ" : "ຮູບນີ້: ຕັດພື້ນຫຼັງແລ້ວ") : (pr.how==="aifail" ? "ຮູບນີ້: ໃຫ້ AI ຕັດບໍ່ໄດ້ ("+(P.aiErr||"ຜິດພາດ")+") ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : pr.how==="aibad" ? "ຮູບນີ້: ແຍກຕົວສິນຄ້າອອກບໍ່ໄດ້ (ເປັນຮູບໂຄສະນາ) ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : "ຮູບນີ້: ໃສ່ຮູບເຕັມໃນກອບ");
+  if(pr && pr.raw) $("modeNote").textContent = pr.mode==="cut" ? (pr.how==="ai" ? "ຮູບນີ້: AI ຕັດພື້ນຫຼັງແລ້ວ" : pr.how==="crop" ? "ຮູບນີ້: ໃຊ້ກອບທີ່ກຳນົດເອງ" : "ຮູບນີ້: ຕັດພື້ນຫຼັງແລ້ວ") : (pr.how==="pending" ? "ຮູບນີ້: ຈະໃຫ້ AI ຕັດຢູ່ຄອມພິວເຕີ (ດຽວນີ້ສະແດງຮູບເຕັມ)" : pr.how==="aifail" ? "ຮູບນີ້: ໃຫ້ AI ຕັດບໍ່ໄດ້ ("+(P.aiErr||"ຜິດພາດ")+") ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : pr.how==="aibad" ? "ຮູບນີ້: ແຍກຕົວສິນຄ້າອອກບໍ່ໄດ້ (ເປັນຮູບໂຄສະນາ) ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : "ຮູບນີ້: ໃສ່ຮູບເຕັມໃນກອບ");
   draw(ctx,1,optsFor(p,pr));
   $("dl1").disabled = false;
 }
@@ -535,7 +536,7 @@ async function fetchHistory(){
   const rows = [];
   try{
     for(let off=0; off<5000; ){
-      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history?select=id,product_id,product_name,price,end_date,file_name,url,thumb_url,file_path,bytes,created_at&order=created_at.desc&limit=1000&offset="+off, { headers:nameHeaders() });
+      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history?select=id,product_id,product_name,price,end_date,file_name,url,thumb_url,file_path,bytes,created_at,status,cfg&order=created_at.desc&limit=1000&offset="+off, { headers:nameHeaders() });
       if(!r.ok) break; const part = await r.json(); if(!Array.isArray(part)||!part.length) break; rows.push(...part); off += part.length; if(part.length<1000) break;
     }
   }catch(e){}
@@ -547,16 +548,52 @@ async function putObject(path, blob, type){
   if(!r.ok){ const t = await r.text(); throw new Error("ອັບໂຫຼດບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,120)); }
   return SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/"+path;
 }
+function cfgSnapshot(){ const o={}; for(const k of CFG_FIELDS){ const el=$(k); o[k]= el.type==="checkbox" ? el.checked : el.value; } return o; }
+function cfgApply(o){ for(const k of CFG_FIELDS){ if(!(k in o)) continue; const el=$(k); if(el.type==="checkbox") el.checked=!!o[k]; else el.value=o[k]; } }
+// a phone cannot run the AI cutter: it saves the job (product, name, price, date, settings) and the computer finishes it later
+async function savePending(p, pr, ext){
+  const o = optsFor(p,pr); const row = { product_id:p.id, product_name:o.name, price:+o.price||null, end_date:$("d2").value||null, file_name:fileName(p,ext), status:"pending", cfg:JSON.stringify(cfgSnapshot()) };
+  await fetch(SUPABASE_URL+"/rest/v1/poster_history?product_id=eq."+encodeURIComponent(p.id)+"&status=eq.pending", { method:"DELETE", headers:nameHeaders() });
+  P.hist = P.hist.filter(h=>!(h.product_id===p.id && h.status==="pending"));
+  const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history", { method:"POST", headers:nameHeaders({ "Prefer":"return=representation" }), body:JSON.stringify(row) });
+  if(!r.ok){ const t = await r.text(); throw new Error("ບັນທຶກບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,100)); }
+  const saved = (await r.json())[0] || row; P.hist.unshift(saved); P.histLatest.set(p.id, saved);
+}
+async function processPending(){
+  if(P.busy || P.mobile) return; const rows = P.hist.filter(h=>h.status==="pending"); if(!rows.length) return;
+  P.busy = true; P.cancel = false; updateSelCount(); const msg = $("msg"), keep = cfgSnapshot(); let ok = 0; const bad = [];
+  const S = +$("esize").value, fmt = $("efmt").value, ext = fmt==="png"?"png":"jpg";
+  for(let k=0;k<rows.length;k++){
+    const h = rows[k], p = P.byId.get(h.product_id); msg.textContent = "ກຳລັງໃຫ້ AI ຕັດ ແລະ ເຮັດໂປສເຕີທີ່ຄ້າງ "+(k+1)+" / "+rows.length+" …"; if(hs.open && $("hmsg")) $("hmsg").textContent = msg.textContent;
+    try{
+      if(!p) throw new Error("ບໍ່ພົບສິນຄ້າ");
+      try{ cfgApply(JSON.parse(h.cfg||"{}")); }catch(e){}
+      const pr = await prepare(p); if(!pr.raw) throw new Error("no image");
+      const o = optsFor(p,pr); if(h.product_name) o.name = h.product_name; if(h.price!=null) o.price = h.price;
+      const c = document.createElement("canvas"); c.width=W*S; c.height=H*S; draw(c.getContext("2d"),S,o);
+      const blob = await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92);
+      const tc = document.createElement("canvas"); tc.width = 360; tc.height = 360; tc.getContext("2d").drawImage(c,0,0,360,360); const tb = await toBlob(tc,"image/jpeg",.8);
+      const key = p.id+"_"+Date.now(), ct = fmt==="png"?"image/png":"image/jpeg";
+      const url = await putObject("poster-out/"+key+"."+ext, blob, ct), thumb = await putObject("poster-out/"+key+"_t.jpg", tb, "image/jpeg");
+      const upd = { url, thumb_url:thumb, file_path:"poster-out/"+key+"."+ext, bytes:blob.size, file_name:fileName(p,ext), status:"done" };
+      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history?id=eq."+encodeURIComponent(h.id), { method:"PATCH", headers:nameHeaders({ "Prefer":"return=minimal" }), body:JSON.stringify(upd) });
+      if(!r.ok) throw new Error("HTTP "+r.status); Object.assign(h, upd); ok++;
+    }catch(e){ bad.push((h.product_name||"")+" — "+e.message); }
+  }
+  cfgApply(keep); setHistory(P.hist); P.busy = false; updateSelCount(); renderList(); if(hs.open) renderHist();
+  msg.textContent = "ເຮັດໂປສເຕີທີ່ຄ້າງແລ້ວ "+ok+" ຮູບ"+(bad.length?" · ບໍ່ສຳເລັດ "+bad.length+": "+bad.slice(0,3).join("; "):"");
+}
 async function saveSelected(){
   if(P.busy || !P.selected.size) return;
   const ids = [...P.selected].filter(id=>P.byId.has(id)); const S = +$("esize").value, fmt = $("efmt").value, ext = fmt==="png"?"png":"jpg";
   P.busy = true; P.cancel = false; updateSelCount(); $("cancel").style.display = ""; $("prog").style.display = "block"; $("err").textContent = "";
-  const failed = []; let done = 0, ok = 0;
+  const failed = []; let done = 0, ok = 0, pend = 0;
   for(const id of ids){
     if(P.cancel) break;
     const p = P.byId.get(id); $("msg").textContent = "ກຳລັງສ້າງ ແລະ ບັນທຶກ "+(done+1)+" / "+ids.length+" …";
     try{
       const pr = await prepare(p); if(!pr.raw) throw new Error("no image");
+      if(pr.how==="pending"){ await savePending(p, pr, ext); pend++; done++; $("prog").firstElementChild.style.width = Math.round(done/ids.length*100)+"%"; continue; }   // phone: save the job now, the computer cuts it with AI later
       const c = document.createElement("canvas"); c.width=W*S; c.height=H*S; draw(c.getContext("2d"),S,optsFor(p,pr));
       const blob = await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92);
       const tc = document.createElement("canvas"); tc.width = 360; tc.height = 360; tc.getContext("2d").drawImage(c,0,0,360,360); const tb = await toBlob(tc,"image/jpeg",.8);
@@ -568,9 +605,10 @@ async function saveSelected(){
     }catch(e){ failed.push(p.name+" — "+e.message); }
     done++; $("prog").firstElementChild.style.width = Math.round(done/ids.length*100)+"%";
   }
-  $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ບັນທຶກແລ້ວ "+ok+" ຮູບ"+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"")+" — ເບິ່ງ/ດາວໂຫຼດໄດ້ທີ່ປຸ່ມ 📁 ປະຫວັດໂປສເຕີ";
+  $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ບັນທຶກແລ້ວ "+ok+" ຮູບ"+(pend?" · ລໍ AI ຕັດ "+pend+" ຮູບ (ຄອມພິວເຕີຈະເຮັດໃຫ້ ບໍ່ຕ້ອງລໍ)":"")+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"")+" — ເບິ່ງ/ດາວໂຫຼດໄດ້ທີ່ປຸ່ມ 📁 ປະຫວັດໂປສເຕີ";
   if(failed.length) $("err").textContent = "ຮູບທີ່ບໍ່ສຳເລັດ:\n"+failed.slice(0,30).join("\n");
   P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount(); renderList();
+  if(pend && !P.mobile) processPending();
 }
 const hs = { latestOnly:true, q:"", sel:new Set(), shown:60, open:false };
 function fmtTime(iso){ try{ const d=new Date(iso); const p2=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }catch(e){ return ""; } }
@@ -583,24 +621,24 @@ function renderHist(){
   const box = $("hist"), rows = histRows(), shown = rows.slice(0, hs.shown);
   box.innerHTML = `<div class="bar"><b>📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</b> <span class="small">ທັງໝົດ ${P.hist.length} ຮູບ · ສະແດງ ${rows.length}</span></div>
     <div class="bar"><input type="text" id="hq" placeholder="ຄົ້ນຫາຊື່ສິນຄ້າ" value="${esc(hs.q)}" style="max-width:260px"><label class="chk" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hlatest" ${hs.latestOnly?"checked":""}><span>ສະເພາະຮູບລ່າສຸດຂອງແຕ່ລະສິນຄ້າ</span></label></div>
-    <div class="bar"><button class="sec" id="hall">ເລືອກທັງໝົດ (${rows.length})</button><button class="sec" id="hnone">ລ້າງການເລືອກ</button><button id="hdl" ${hs.sel.size?"":"disabled"}>⬇ ດາວໂຫຼດທີ່ເລືອກ (${hs.sel.size}) ແຍກເປັນຮູບໆ</button><button class="sec" id="hdel" ${hs.sel.size?"":"disabled"}>🗑 ລຶບທີ່ເລືອກ</button><button class="sec" id="hrefresh">🔄 ໂຫຼດໃໝ່</button></div>
+    <div class="bar"><button class="sec" id="hall">ເລືອກທັງໝົດ (${rows.length})</button><button class="sec" id="hnone">ລ້າງການເລືອກ</button><button id="hdl" ${hs.sel.size?"":"disabled"}>⬇ ດາວໂຫຼດທີ່ເລືອກ (${hs.sel.size}) ແຍກເປັນຮູບໆ</button><button class="sec" id="hdel" ${hs.sel.size?"":"disabled"}>🗑 ລຶບທີ່ເລືອກ</button><button class="sec" id="hrefresh">🔄 ໂຫຼດໃໝ່</button>${P.hist.some(h=>h.status==="pending")?(P.mobile?`<span class="small">⏳ ມີຮູບລໍ AI ຕັດ ${P.hist.filter(h=>h.status==="pending").length} ຮູບ — ເປີດໜ້ານີ້ຢູ່ຄອມພິວເຕີ ລະບົບຈະເຮັດໃຫ້</span>`:`<button id="hproc">▶ ໃຫ້ AI ເຮັດທີ່ຄ້າງ (${P.hist.filter(h=>h.status==="pending").length})</button>`):""}</div>
     <div class="small" id="hmsg"></div>
-    <div class="grid">`+shown.map(h=>`<div class="card"><input type="checkbox" data-h="${esc(h.id)}" ${hs.sel.has(h.id)?"checked":""}><img loading="lazy" src="${esc(h.thumb_url||h.url)}" alt=""><div class="nm">${esc(h.product_name||"")}</div><div class="small">${h.price?Number(h.price).toLocaleString("en-US")+" ກີບ · ":""}${esc(fmtTime(h.created_at))}</div><button class="sec" data-dl="${esc(h.id)}">⬇ ດາວໂຫຼດ</button><button class="sec" data-open="${esc(h.id)}">🔍 ເບິ່ງ</button></div>`).join("")+`</div>`+
+    <div class="grid">`+shown.map(h=>`<div class="card"><input type="checkbox" data-h="${esc(h.id)}" ${hs.sel.has(h.id)?"checked":""}>${h.status==="pending"?`<div class="noimg" style="height:150px;display:flex;align-items:center;justify-content:center;text-align:center">⏳ ລໍ AI ຕັດ</div>`:`<img loading="lazy" src="${esc(h.thumb_url||h.url)}" alt="">`}<div class="nm">${esc(h.product_name||"")}</div><div class="small">${h.price?Number(h.price).toLocaleString("en-US")+" ກີບ · ":""}${esc(fmtTime(h.created_at))}</div>${h.status==="pending"?"":`<button class="sec" data-dl="${esc(h.id)}">⬇ ດາວໂຫຼດ</button><button class="sec" data-open="${esc(h.id)}">🔍 ເບິ່ງ</button>`}</div>`).join("")+`</div>`+
     (rows.length>shown.length?`<div class="bar"><button class="sec" id="hmore">ສະແດງເພີ່ມ (${rows.length-shown.length})</button></div>`:"")+(rows.length?"":`<div class="small" style="margin-top:12px">ຍັງບໍ່ມີໂປສເຕີທີ່ບັນທຶກ. ຕິກສິນຄ້າ ແລ້ວກົດ "☁️ ບັນທຶກທີ່ເລືອກ".</div>`);
   $("hq").oninput = e => { hs.q = e.target.value; hs.shown = 60; renderHist(); const el=$("hq"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); };
   $("hlatest").onchange = e => { hs.latestOnly = e.target.checked; hs.shown = 60; renderHist(); };
   $("hall").onclick = () => { for(const h of rows) hs.sel.add(h.id); renderHist(); };
   $("hnone").onclick = () => { hs.sel.clear(); renderHist(); };
-  $("hrefresh").onclick = async () => { $("hmsg").textContent = "ກຳລັງໂຫຼດ…"; setHistory(await fetchHistory()); renderHist(); renderList(); };
+  $("hrefresh").onclick = async () => { $("hmsg").textContent = "ກຳລັງໂຫຼດ…"; setHistory(await fetchHistory()); renderHist(); renderList(); if(!P.mobile && P.hist.some(h=>h.status==="pending")) processPending(); };
   if($("hmore")) $("hmore").onclick = () => { hs.shown += 60; renderHist(); };
   box.querySelectorAll("[data-h]").forEach(el=>el.onchange = () => { if(el.checked) hs.sel.add(el.dataset.h); else hs.sel.delete(el.dataset.h); $("hdl").disabled = $("hdel").disabled = !hs.sel.size; $("hdl").textContent = "⬇ ດາວໂຫຼດທີ່ເລືອກ ("+hs.sel.size+") ແຍກເປັນຮູບໆ"; });
   box.querySelectorAll("[data-dl]").forEach(el=>el.onclick = () => dlHist([el.dataset.dl]));
   box.querySelectorAll("[data-open]").forEach(el=>el.onclick = () => { const h = P.hist.find(x=>x.id===el.dataset.open); if(h) window.open(h.url,"_blank"); });
   $("hdl").onclick = () => dlHist([...hs.sel]);
-  $("hdel").onclick = delHist;
+  $("hdel").onclick = delHist; if($("hproc")) $("hproc").onclick = processPending;
 }
 async function dlHist(ids){
-  ids = ids.filter(id=>P.hist.some(h=>h.id===id)); if(!ids.length) return;
+  ids = ids.filter(id=>P.hist.some(h=>h.id===id && h.url)); if(!ids.length) return;
   if(ids.length > 30 && !confirm("ເລືອກ "+ids.length+" ຮູບ. ບຣາວເຊີຈະດາວໂຫຼດຫຼາຍໄຟລ໌ຕິດກັນ. ສືບຕໍ່ບໍ?")) return;
   const msg = $("hmsg"); let ok = 0; const bad = [];
   for(let k=0;k<ids.length;k++){
@@ -640,12 +678,13 @@ async function checkOne(p){
     if(st.area < 0.27) return {s:"low", why:"ຕົວສິນຄ້າຈະນ້ອຍເກີນໃນກອບ (ເຫັນພຽງ "+Math.round(st.area*100)+"% ຂອງກອບ) ຮູບຮ່າງຍາວ/ແບນ ຫຼື ເປັນຮູບຫຼາຍອັນລວມກັນ", dim};
     return {s:"ok", why:"ຕັດຕົວສິນຄ້າໄດ້ ("+how+")", dim};
   }
+  if(pr.how==="pending") return {s:"pend", why:"ຕ້ອງໃຫ້ AI ຕັດ — ຄອມພິວເຕີຈະເຮັດໃຫ້ຫຼັງຈາກບັນທຶກ", dim};
   if(pr.how==="aifail") return {s:"ai", why:"ໂມເດວ AI ໂຫຼດບໍ່ໄດ້ ("+(P.aiErr||"ກວດອິນເຕີເນັດ")+")", dim};
   return {s:"ad", why:"ຕັດຕົວສິນຄ້າບໍ່ສະອາດ (ຮູບໂຄສະນາ, ຮູບລວມຫຼາຍຮູບ, ພື້ນຫຼັງລົກ ຫຼື ຕົວສິນຄ້າໂປ່ງແສງ). ຖ້າເປັນກ່ອງສີ່ຫຼ່ຽມ ລອງ ✂️ ກຳນົດກອບສິນຄ້າເອງ", dim};
 }
 function chkRows(onlyBad){
   const rows = [...P.selected].filter(id=>P.check.has(id)).map(id=>({p:P.byId.get(id), c:P.check.get(id)}));
-  return onlyBad ? rows.filter(r=>r.c.s!=="ok") : rows;
+  return onlyBad ? rows.filter(r=>r.c.s!=="ok" && r.c.s!=="pend") : rows;
 }
 function renderChk(){
   const all = chkRows(false), bad = chkRows(true); const n = k => all.filter(r=>r.c.s===k).length;
@@ -684,7 +723,7 @@ async function init(){
   try{ const b = await loadImg("bg-thatluang.jpg?v="+Date.now()); if(b && b.width>300) P.bg = b; }catch(e){}
   draw($("cv").getContext("2d"),1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null));
   if(!token()){ $("count").textContent = ""; $("msg").textContent = "ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ ແລ້ວເປີດແທັບນີ້ໃໝ່"; return; }
-  try{ const [items, photos, names, hist, crops] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides(), fetchHistory(), fetchCrops()]); P.crops = crops; P.items = items; P.photos = photos; P.names = names; setHistory(hist); for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
+  try{ const [items, photos, names, hist, crops] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides(), fetchHistory(), fetchCrops()]); P.crops = crops; P.items = items; P.photos = photos; P.names = names; setHistory(hist); for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); if(!P.mobile && P.hist.some(h=>h.status==="pending")) setTimeout(processPending, 1200); }
   catch(e){ $("count").textContent = ""; $("err").textContent = "ດຶງສິນຄ້າຈາກ POS ບໍ່ໄດ້: "+e.message; }
 }
 
