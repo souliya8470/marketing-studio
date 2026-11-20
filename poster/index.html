@@ -43,6 +43,13 @@
   #namePanel{display:none;max-width:720px;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:8px}
   #namePanel table{width:100%;border-collapse:collapse;font-size:13px}#namePanel td{padding:5px 4px;border-bottom:1px solid #f0e8eb;vertical-align:top}
   #namePanel input[type=text]{width:100%;margin:2px 0}
+  #hist{display:none;padding:4px}
+  #hist .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:10px}
+  #hist .card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:8px;font-size:12px;position:relative}
+  #hist .card img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#eee;display:block}
+  #hist .card input[type=checkbox]{position:absolute;left:14px;top:14px;width:20px;height:20px}
+  #hist .card .nm{font-weight:700;margin-top:6px;word-break:break-word}
+  #hist .card button{padding:4px 8px;font-size:12px;margin:4px 4px 0 0}
   #chkPanel{display:none;max-width:720px;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:8px}
   #chkPanel table{width:100%;border-collapse:collapse;font-size:13px}#chkPanel td{padding:5px 4px;border-bottom:1px solid #f0e8eb;vertical-align:middle}
   #chkPanel img{width:36px;height:36px;object-fit:contain;background:#faf6f4;border-radius:5px}
@@ -53,6 +60,7 @@
 <div id="app">
   <aside id="side">
     <h2>🎉 ໂປສເຕີໂປຣໂມຊັນ ບຸນທາດຫຼວງ</h2>
+    <div class="bar"><button class="sec" id="histBtn">📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</button></div>
     <div class="small" id="count">ກຳລັງໂຫຼດສິນຄ້າຈາກ POS…</div>
     <input type="text" id="q" placeholder="ຄົ້ນຫາຊື່ ຫຼື ບາໂຄດ" style="margin-top:8px">
     <div class="chk"><input type="checkbox" id="onlyImg" checked><span>ສະເພາະທີ່ມີຮູບ</span></div>
@@ -97,6 +105,8 @@
     </details>
   </aside>
   <main id="main">
+    <div id="hist"></div>
+    <div id="studio">
     <div class="bar"><b id="curName">ເລືອກສິນຄ້າຈາກລາຍການເບື້ອງຊ້າຍ</b></div>
     <canvas id="cv" width="1080" height="1080"></canvas>
     <details open style="max-width:720px;background:#fff">
@@ -110,6 +120,7 @@
       <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້</button>
       <button id="dlZip" disabled>ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)</button>
       <button id="camBtn" disabled>📷 ຖ່າຍຮູບສິນຄ້ານີ້</button>
+      <button id="saveSel" disabled>☁️ ບັນທຶກທີ່ເລືອກ ໄວ້ໃນປະຫວັດ (ບໍ່ດາວໂຫຼດ)</button>
       <button class="sec" id="chk" disabled>🔍 ກວດຮູບທີ່ເລືອກ</button>
       <button class="sec" id="nameFixSel" disabled>✨ ກວດຊື່ທີ່ເລືອກ</button>
       <button class="sec" id="cancel" style="display:none">ຍົກເລີກ</button>
@@ -121,6 +132,7 @@
     <div id="chkPanel"></div>
     <div id="prog"><i></i></div>
     <div class="small" id="modeNote" style="margin-top:6px"></div>
+    </div>
     <div id="msg"></div>
     <div id="err"></div>
   </main>
@@ -133,7 +145,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { hist: [], histLatest: new Map(), names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -170,11 +182,11 @@ function renderList(){
   $("count").textContent = "ສິນຄ້າທີ່ເປີດຂາຍ ແລະ ມີສະຕ໊ອກ: "+P.items.length+" ລາຍການ · ສະແດງ "+list.length;
   box.innerHTML = list.map(p => {
     const thumb = (P.photos.get(p.id)||{}).url || p.image_url; const img = thumb ? `<img loading="lazy" src="${esc(thumb)}" alt="">` : `<div class="noimg">ບໍ່ມີຮູບ</div>`;
-    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(dname(p))}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${P.names.has(p.id)?`<span class="badge b-ok">✏️ ແກ້ຊື່</span>`:""}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
+    return `<div class="item${P.cur===p.id?" cur":""}" data-id="${p.id}"><input type="checkbox" data-sel="${p.id}" ${P.selected.has(p.id)?"checked":""}>${img}<div class="nm">${esc(dname(p))}<div class="st">ສະຕ໊ອກ ${Number(p.stock_qty)}${P.names.has(p.id)?`<span class="badge b-ok">✏️ ແກ້ຊື່</span>`:""}${P.histLatest.has(p.id)?`<span class="badge b-ok">☁️ ບັນທຶກແລ້ວ</span>`:""}${badgeHtml(p.id)}</div></div><div class="pr">${Number(p.price_1||0).toLocaleString("en-US")}</div></div>`;
   }).join("");
   updateSelCount();
 }
-function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("chk").disabled = P.busy || !P.selected.size; $("nameFixSel").disabled = !P.selected.size; $("nameFixSel").textContent = P.selected.size ? "✨ ກວດຊື່ທີ່ເລືອກ ("+P.selected.size+")" : "✨ ກວດຊື່ທີ່ເລືອກ"; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
+function updateSelCount(){ $("selCount").textContent = "ເລືອກແລ້ວ: "+P.selected.size; $("dlZip").disabled = P.busy || !P.selected.size; $("saveSel").disabled = P.busy || !P.selected.size; $("saveSel").textContent = P.selected.size ? "☁️ ບັນທຶກທີ່ເລືອກ ("+P.selected.size+") ໄວ້ໃນປະຫວັດ (ບໍ່ດາວໂຫຼດ)" : "☁️ ບັນທຶກທີ່ເລືອກ ໄວ້ໃນປະຫວັດ (ບໍ່ດາວໂຫຼດ)"; $("chk").disabled = P.busy || !P.selected.size; $("nameFixSel").disabled = !P.selected.size; $("nameFixSel").textContent = P.selected.size ? "✨ ກວດຊື່ທີ່ເລືອກ ("+P.selected.size+")" : "✨ ກວດຊື່ທີ່ເລືອກ"; $("dlZip").textContent = P.selected.size ? "ດາວໂຫຼດຮູບທີ່ເລືອກ ("+P.selected.size+") ແຍກເປັນຮູບໆ" : "ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)"; }
 
 async function rawImage(p){
   if(P.raw.has(p.id)) return P.raw.get(p.id);
@@ -463,6 +475,104 @@ function renderNamePanel(out, total, failed){
   };
 }
 
+// ---------- poster history: finished posters are saved to the bucket (poster-out/) + table poster_history, so they can be downloaded later on a computer ----------
+async function fetchHistory(){
+  const rows = [];
+  try{
+    for(let off=0; off<5000; ){
+      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history?select=id,product_id,product_name,price,end_date,file_name,url,thumb_url,file_path,bytes,created_at&order=created_at.desc&limit=1000&offset="+off, { headers:nameHeaders() });
+      if(!r.ok) break; const part = await r.json(); if(!Array.isArray(part)||!part.length) break; rows.push(...part); off += part.length; if(part.length<1000) break;
+    }
+  }catch(e){}
+  return rows;
+}
+function setHistory(rows){ P.hist = rows; P.histLatest = new Map(); for(const h of rows) if(h.product_id && !P.histLatest.has(h.product_id)) P.histLatest.set(h.product_id, h); }
+async function putObject(path, blob, type){
+  const r = await fetch(SUPABASE_URL+"/storage/v1/object/"+PHOTO_BUCKET+"/"+path, { method:"POST", headers:{ "apikey":SUPABASE_KEY, "Authorization":"Bearer "+SUPABASE_KEY, "x-ms-token":token(), "Content-Type":type, "cache-control":"max-age=31536000" }, body:blob });
+  if(!r.ok){ const t = await r.text(); throw new Error("ອັບໂຫຼດບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,120)); }
+  return SUPABASE_URL+"/storage/v1/object/public/"+PHOTO_BUCKET+"/"+path;
+}
+async function saveSelected(){
+  if(P.busy || !P.selected.size) return;
+  const ids = [...P.selected].filter(id=>P.byId.has(id)); const S = +$("esize").value, fmt = $("efmt").value, ext = fmt==="png"?"png":"jpg";
+  P.busy = true; P.cancel = false; updateSelCount(); $("cancel").style.display = ""; $("prog").style.display = "block"; $("err").textContent = "";
+  const failed = []; let done = 0, ok = 0;
+  for(const id of ids){
+    if(P.cancel) break;
+    const p = P.byId.get(id); $("msg").textContent = "ກຳລັງສ້າງ ແລະ ບັນທຶກ "+(done+1)+" / "+ids.length+" …";
+    try{
+      const pr = await prepare(p); if(!pr.raw) throw new Error("no image");
+      const c = document.createElement("canvas"); c.width=W*S; c.height=H*S; draw(c.getContext("2d"),S,optsFor(p,pr));
+      const blob = await toBlob(c, fmt==="png"?"image/png":"image/jpeg", .92);
+      const tc = document.createElement("canvas"); tc.width = 360; tc.height = 360; tc.getContext("2d").drawImage(c,0,0,360,360); const tb = await toBlob(tc,"image/jpeg",.8);
+      const key = id+"_"+Date.now(); const url = await putObject("poster-out/"+key+"."+ext, blob, fmt==="png"?"image/png":"image/jpeg"); const thumb = await putObject("poster-out/"+key+"_t.jpg", tb, "image/jpeg");
+      const o = optsFor(p,pr); const row = { product_id:id, product_name:o.name, price:+o.price||null, end_date:$("d2").value||null, file_name:fileName(p,ext), url, thumb_url:thumb, file_path:"poster-out/"+key+"."+ext, bytes:blob.size };
+      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history", { method:"POST", headers:nameHeaders({ "Prefer":"return=representation" }), body:JSON.stringify(row) });
+      if(!r.ok){ const t = await r.text(); throw new Error("ບັນທຶກປະຫວັດບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,100)); }
+      const saved = (await r.json())[0] || row; P.hist.unshift(saved); P.histLatest.set(id, saved); ok++;
+    }catch(e){ failed.push(p.name+" — "+e.message); }
+    done++; $("prog").firstElementChild.style.width = Math.round(done/ids.length*100)+"%";
+  }
+  $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ບັນທຶກແລ້ວ "+ok+" ຮູບ"+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"")+" — ເບິ່ງ/ດາວໂຫຼດໄດ້ທີ່ປຸ່ມ 📁 ປະຫວັດໂປສເຕີ";
+  if(failed.length) $("err").textContent = "ຮູບທີ່ບໍ່ສຳເລັດ:\n"+failed.slice(0,30).join("\n");
+  P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount(); renderList();
+}
+const hs = { latestOnly:true, q:"", sel:new Set(), shown:60, open:false };
+function fmtTime(iso){ try{ const d=new Date(iso); const p2=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }catch(e){ return ""; } }
+function histRows(){
+  let rows = P.hist; if(hs.latestOnly){ const seen = new Set(); rows = rows.filter(h=>{ const k = h.product_id||h.id; if(seen.has(k)) return false; seen.add(k); return true; }); }
+  const q = hs.q.trim().toLowerCase(); if(q) rows = rows.filter(h=>((h.product_name||"")+" "+(h.file_name||"")).toLowerCase().includes(q));
+  return rows;
+}
+function renderHist(){
+  const box = $("hist"), rows = histRows(), shown = rows.slice(0, hs.shown);
+  box.innerHTML = `<div class="bar"><b>📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</b> <span class="small">ທັງໝົດ ${P.hist.length} ຮູບ · ສະແດງ ${rows.length}</span></div>
+    <div class="bar"><input type="text" id="hq" placeholder="ຄົ້ນຫາຊື່ສິນຄ້າ" value="${esc(hs.q)}" style="max-width:260px"><label class="chk" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hlatest" ${hs.latestOnly?"checked":""}><span>ສະເພາະຮູບລ່າສຸດຂອງແຕ່ລະສິນຄ້າ</span></label></div>
+    <div class="bar"><button class="sec" id="hall">ເລືອກທັງໝົດ (${rows.length})</button><button class="sec" id="hnone">ລ້າງການເລືອກ</button><button id="hdl" ${hs.sel.size?"":"disabled"}>⬇ ດາວໂຫຼດທີ່ເລືອກ (${hs.sel.size}) ແຍກເປັນຮູບໆ</button><button class="sec" id="hdel" ${hs.sel.size?"":"disabled"}>🗑 ລຶບທີ່ເລືອກ</button><button class="sec" id="hrefresh">🔄 ໂຫຼດໃໝ່</button></div>
+    <div class="small" id="hmsg"></div>
+    <div class="grid">`+shown.map(h=>`<div class="card"><input type="checkbox" data-h="${esc(h.id)}" ${hs.sel.has(h.id)?"checked":""}><img loading="lazy" src="${esc(h.thumb_url||h.url)}" alt=""><div class="nm">${esc(h.product_name||"")}</div><div class="small">${h.price?Number(h.price).toLocaleString("en-US")+" ກີບ · ":""}${esc(fmtTime(h.created_at))}</div><button class="sec" data-dl="${esc(h.id)}">⬇ ດາວໂຫຼດ</button><button class="sec" data-open="${esc(h.id)}">🔍 ເບິ່ງ</button></div>`).join("")+`</div>`+
+    (rows.length>shown.length?`<div class="bar"><button class="sec" id="hmore">ສະແດງເພີ່ມ (${rows.length-shown.length})</button></div>`:"")+(rows.length?"":`<div class="small" style="margin-top:12px">ຍັງບໍ່ມີໂປສເຕີທີ່ບັນທຶກ. ຕິກສິນຄ້າ ແລ້ວກົດ "☁️ ບັນທຶກທີ່ເລືອກ".</div>`);
+  $("hq").oninput = e => { hs.q = e.target.value; hs.shown = 60; renderHist(); const el=$("hq"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); };
+  $("hlatest").onchange = e => { hs.latestOnly = e.target.checked; hs.shown = 60; renderHist(); };
+  $("hall").onclick = () => { for(const h of rows) hs.sel.add(h.id); renderHist(); };
+  $("hnone").onclick = () => { hs.sel.clear(); renderHist(); };
+  $("hrefresh").onclick = async () => { $("hmsg").textContent = "ກຳລັງໂຫຼດ…"; setHistory(await fetchHistory()); renderHist(); renderList(); };
+  if($("hmore")) $("hmore").onclick = () => { hs.shown += 60; renderHist(); };
+  box.querySelectorAll("[data-h]").forEach(el=>el.onchange = () => { if(el.checked) hs.sel.add(el.dataset.h); else hs.sel.delete(el.dataset.h); $("hdl").disabled = $("hdel").disabled = !hs.sel.size; $("hdl").textContent = "⬇ ດາວໂຫຼດທີ່ເລືອກ ("+hs.sel.size+") ແຍກເປັນຮູບໆ"; });
+  box.querySelectorAll("[data-dl]").forEach(el=>el.onclick = () => dlHist([el.dataset.dl]));
+  box.querySelectorAll("[data-open]").forEach(el=>el.onclick = () => { const h = P.hist.find(x=>x.id===el.dataset.open); if(h) window.open(h.url,"_blank"); });
+  $("hdl").onclick = () => dlHist([...hs.sel]);
+  $("hdel").onclick = delHist;
+}
+async function dlHist(ids){
+  ids = ids.filter(id=>P.hist.some(h=>h.id===id)); if(!ids.length) return;
+  if(ids.length > 30 && !confirm("ເລືອກ "+ids.length+" ຮູບ. ບຣາວເຊີຈະດາວໂຫຼດຫຼາຍໄຟລ໌ຕິດກັນ. ສືບຕໍ່ບໍ?")) return;
+  const msg = $("hmsg"); let ok = 0; const bad = [];
+  for(let k=0;k<ids.length;k++){
+    const h = P.hist.find(x=>x.id===ids[k]); msg.textContent = "ກຳລັງດາວໂຫຼດ "+(k+1)+" / "+ids.length+" …";
+    try{ const r = await fetch(h.url); if(!r.ok) throw new Error("HTTP "+r.status); download(await r.blob(), h.file_name || (h.product_name||"poster")+".png"); ok++; await new Promise(r=>setTimeout(r,700)); }
+    catch(e){ bad.push((h.product_name||"")+" — "+e.message); }
+  }
+  msg.textContent = "ດາວໂຫຼດແລ້ວ "+ok+" ຮູບ"+(bad.length?" · ບໍ່ສຳເລັດ "+bad.length+": "+bad.slice(0,3).join("; "):"")+" (ເບິ່ງໃນໂຟນເດີ Downloads)";
+}
+async function delHist(){
+  const ids = [...hs.sel]; if(!ids.length || !confirm("ລຶບ "+ids.length+" ຮູບອອກຈາກປະຫວັດບໍ? (ລຶບແລ້ວກູ້ຄືນບໍ່ໄດ້)")) return;
+  const msg = $("hmsg"); let ok = 0;
+  for(const id of ids){
+    try{
+      const r = await fetch(SUPABASE_URL+"/rest/v1/poster_history?id=eq."+encodeURIComponent(id), { method:"DELETE", headers:nameHeaders() }); if(!r.ok) throw new Error("HTTP "+r.status);
+      P.hist = P.hist.filter(h=>h.id!==id); hs.sel.delete(id); ok++;
+    }catch(e){ msg.textContent = "ລຶບບໍ່ໄດ້: "+e.message; }
+  }
+  setHistory(P.hist); renderHist(); renderList(); $("hmsg").textContent = "ລຶບແລ້ວ "+ok+" ຮູບ";
+}
+function toggleHist(open){
+  hs.open = open; $("hist").style.display = open ? "block" : "none"; $("studio").style.display = open ? "none" : "";
+  $("histBtn").textContent = open ? "← ກັບໄປສ້າງໂປສເຕີ" : "📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ"; if(open) renderHist();
+}
+$("histBtn").onclick = () => toggleHist(!hs.open);
+$("saveSel").onclick = saveSelected;
+
 // ---------- pre-check: which selected photos are usable, which must be re-shot ----------
 async function checkOne(p){
   let raw = null; try{ raw = await rawImage(p); }catch(e){}
@@ -519,7 +629,7 @@ async function init(){
   try{ const b = await loadImg("bg-thatluang.jpg?v="+Date.now()); if(b && b.width>300) P.bg = b; }catch(e){}
   draw($("cv").getContext("2d"),1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null));
   if(!token()){ $("count").textContent = ""; $("msg").textContent = "ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ ແລ້ວເປີດແທັບນີ້ໃໝ່"; return; }
-  try{ const [items, photos, names] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides()]); P.items = items; P.photos = photos; P.names = names; for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
+  try{ const [items, photos, names, hist] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides(), fetchHistory()]); P.items = items; P.photos = photos; P.names = names; setHistory(hist); for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
   catch(e){ $("count").textContent = ""; $("err").textContent = "ດຶງສິນຄ້າຈາກ POS ບໍ່ໄດ້: "+e.message; }
 }
 
