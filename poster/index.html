@@ -60,7 +60,7 @@
 <div id="app">
   <aside id="side">
     <h2>🎉 ໂປສເຕີໂປຣໂມຊັນ ບຸນທາດຫຼວງ</h2>
-    <div class="bar"><button class="sec" id="histBtn">📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</button><span style="font-size:11px;color:#8a8f98;align-self:center;margin-left:8px">ໂປສເຕີ v1.4 · 20/11</span></div>
+    <div class="bar"><button class="sec" id="histBtn">📁 ປະຫວັດໂປສເຕີທີ່ບັນທຶກ</button><span style="font-size:11px;color:#8a8f98;align-self:center;margin-left:8px">ໂປສເຕີ v1.5 · 20/11</span></div>
     <div class="small" id="count">ກຳລັງໂຫຼດສິນຄ້າຈາກ POS…</div>
     <input type="text" id="q" placeholder="ຄົ້ນຫາຊື່ ຫຼື ບາໂຄດ" style="margin-top:8px">
     <div class="chk"><input type="checkbox" id="onlyImg" checked><span>ສະເພາະທີ່ມີຮູບ</span></div>
@@ -120,6 +120,7 @@
       <button id="dl1" disabled>ດາວໂຫຼດຮູບນີ້</button>
       <button id="dlZip" disabled>ດາວໂຫຼດຮູບທີ່ເລືອກ (ແຍກເປັນຮູບໆ)</button>
       <button id="camBtn" disabled>📷 ຖ່າຍຮູບສິນຄ້ານີ້</button>
+      <button id="cropBtn" class="sec" disabled title="ໃຊ້ເມື່ອກ່ອງສີຂາວວາງເທິງແທ່ນຂາວ ແລະ ລະບົບຕັດບໍ່ໄດ້">✂️ ກຳນົດກອບສິນຄ້າເອງ</button>
       <button id="saveSel" disabled>☁️ ບັນທຶກທີ່ເລືອກ ໄວ້ໃນປະຫວັດ (ບໍ່ດາວໂຫຼດ)</button>
       <button class="sec" id="chk" disabled>🔍 ກວດຮູບທີ່ເລືອກ</button>
       <button class="sec" id="nameFixSel" disabled>✨ ກວດຊື່ທີ່ເລືອກ</button>
@@ -145,7 +146,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TOKEN_KEY = "ms_token_v1";
 const CFG_KEY = "ms_poster_cfg_v2";
 const $ = id => document.getElementById(id);
-const P = { hist: [], histLatest: new Map(), names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
+const P = { crops: new Map(), hist: [], histLatest: new Map(), names: new Map(), photos: new Map(), camFor: null, check: new Map(), ai: new Map(), aiErr: "", items: [], byId: new Map(), selected: new Set(), cur: null, ov: new Map(), raw: new Map(), cut: new Map(), bg: null, busy: false, cancel: false };
 
 function token(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -256,6 +257,8 @@ async function aiImage(p){
 async function prepare(p, force){
   const raw = await rawImage(p); if(!raw) return {img:null, raw:null, mode:"cut"};
   const ov = P.ov.get(p.id) || {}; const want = force || ov.mode || $("pmode").value;
+  const cr = P.crops.get(p.id), curSrc = (P.photos.get(p.id)||{}).url || p.image_url;
+  if(cr && cr.src===curSrc && want!=="photo"){ const c = cropCanvas(raw, cr); if(c) return {img:c, raw, mode:"cut", how:"crop"}; }   // staff drew the box by hand (white box on white stand etc.)
   if(want==="photo") return {img:null, raw, mode:"photo"};
   if(want!=="ai"){ const cut = await cutImage(p); if(want==="cut" || (cut.cutOk && cutStats(cut).solid>=0.82)) return {img:cut, raw, mode:"cut", how:"fast"}; }
   $("modeNote").textContent = "ກຳລັງໃຫ້ AI ຕັດພື້ນຫຼັງ… (ເທື່ອທຳອິດຕ້ອງໂຫຼດໂມເດວ ~44MB ອາດໃຊ້ເວລາຫຼາຍນາທີ)";
@@ -280,12 +283,12 @@ async function renderPreview(){
   let pr = null; try{ pr = await prepare(p); }catch(e){ $("err").textContent = "ຕັດພື້ນຫຼັງບໍ່ໄດ້: "+e.message; }
   if(my !== renderSeq) return;
   if(pr && !pr.raw && p.image_url) $("err").textContent = "ໂຫຼດຮູບສິນຄ້ານີ້ບໍ່ໄດ້ (ກວດລິ້ງຮູບໃນ POS)";
-  if(pr && pr.raw) $("modeNote").textContent = pr.mode==="cut" ? (pr.how==="ai" ? "ຮູບນີ້: AI ຕັດພື້ນຫຼັງແລ້ວ" : "ຮູບນີ້: ຕັດພື້ນຫຼັງແລ້ວ") : (pr.how==="aifail" ? "ຮູບນີ້: ໃຫ້ AI ຕັດບໍ່ໄດ້ ("+(P.aiErr||"ຜິດພາດ")+") ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : pr.how==="aibad" ? "ຮູບນີ້: ແຍກຕົວສິນຄ້າອອກບໍ່ໄດ້ (ເປັນຮູບໂຄສະນາ) ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : "ຮູບນີ້: ໃສ່ຮູບເຕັມໃນກອບ");
+  if(pr && pr.raw) $("modeNote").textContent = pr.mode==="cut" ? (pr.how==="ai" ? "ຮູບນີ້: AI ຕັດພື້ນຫຼັງແລ້ວ" : pr.how==="crop" ? "ຮູບນີ້: ໃຊ້ກອບທີ່ກຳນົດເອງ" : "ຮູບນີ້: ຕັດພື້ນຫຼັງແລ້ວ") : (pr.how==="aifail" ? "ຮູບນີ້: ໃຫ້ AI ຕັດບໍ່ໄດ້ ("+(P.aiErr||"ຜິດພາດ")+") ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : pr.how==="aibad" ? "ຮູບນີ້: ແຍກຕົວສິນຄ້າອອກບໍ່ໄດ້ (ເປັນຮູບໂຄສະນາ) ຈຶ່ງໃສ່ຮູບເຕັມໃນກອບ" : "ຮູບນີ້: ໃສ່ຮູບເຕັມໃນກອບ");
   draw(ctx,1,optsFor(p,pr));
   $("dl1").disabled = false;
 }
 function setCur(id){
-  P.cur = id; $("camBtn").disabled = false; const p = P.byId.get(id); const ov = P.ov.get(id) || {};
+  P.cur = id; $("camBtn").disabled = false; $("cropBtn").disabled = false; const p = P.byId.get(id); const ov = P.ov.get(id) || {};
   $("ovName").value = p ? (ov.name!=null?ov.name:p.name) : ""; $("ovPrice").value = p ? (ov.price!=null?ov.price:Number(p.price_1||0)) : ""; $("ovMode").value = ov.mode||"";
   $("nameFix").disabled = false; renderNameSt();
   document.querySelectorAll(".item.cur").forEach(e=>e.classList.remove("cur"));
@@ -328,6 +331,46 @@ async function downloadAll(){
   $("msg").textContent = P.cancel ? "ຍົກເລີກແລ້ວ" : "ສຳເລັດ: "+ok+" ຮູບ"+(failed.length?" · ບໍ່ສຳເລັດ "+failed.length:"")+" (ເບິ່ງໃນໂຟນເດີ Downloads)";
   if(failed.length) $("err").textContent = "ຮູບທີ່ບໍ່ສຳເລັດ:\n"+failed.slice(0,30).join("\n");
   P.busy = false; $("cancel").style.display = "none"; setTimeout(()=>{ $("prog").style.display="none"; $("prog").firstElementChild.style.width="0"; },1500); updateSelCount();
+}
+
+// ---------- manual crop: when the product cannot be separated by colour (white box on a white stand), staff draw a rectangle around it ----------
+function cropCanvas(raw, cr){
+  const iw = raw.naturalWidth||raw.width, ih = raw.naturalHeight||raw.height;
+  const x0 = Math.round(cr.l*iw), y0 = Math.round(cr.t*ih), w = Math.round((cr.r-cr.l)*iw), h = Math.round((cr.b-cr.t)*ih); if(w<20||h<20) return null;
+  const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(raw,x0,y0,w,h,0,0,w,h); c.cutOk = true; return c;
+}
+async function fetchCrops(){
+  const m = new Map();
+  try{ const r = await fetch(SUPABASE_URL+"/rest/v1/poster_crops?select=product_id,src,l,t,r,b&limit=2000", { headers:nameHeaders() });
+    if(r.ok){ const rows = await r.json(); if(Array.isArray(rows)) for(const o of rows) m.set(o.product_id, o); } }catch(e){}
+  return m;
+}
+async function saveCrop(id, cr){
+  if(!cr){ const r = await fetch(SUPABASE_URL+"/rest/v1/poster_crops?product_id=eq."+encodeURIComponent(id), { method:"DELETE", headers:nameHeaders() }); if(!r.ok) throw new Error("HTTP "+r.status); P.crops.delete(id); return; }
+  const row = Object.assign({ product_id:id, updated_at:new Date().toISOString() }, cr);
+  const r = await fetch(SUPABASE_URL+"/rest/v1/poster_crops?on_conflict=product_id", { method:"POST", headers:nameHeaders({ "Prefer":"resolution=merge-duplicates,return=minimal" }), body:JSON.stringify(row) });
+  if(!r.ok){ const t = await r.text(); throw new Error("ບັນທຶກກອບບໍ່ໄດ້ (HTTP "+r.status+") "+t.slice(0,100)); } P.crops.set(id, row);
+}
+async function openCrop(){
+  const id = P.cur, p = id && P.byId.get(id); if(!p) return; const raw = await rawImage(p); if(!raw){ $("err").textContent = "ໂຫຼດຮູບບໍ່ໄດ້"; return; }
+  const src = (P.photos.get(id)||{}).url || p.image_url, old = P.crops.get(id); let rc = old && old.src===src ? {l:old.l,t:old.t,r:old.r,b:old.b} : null;
+  const iw = raw.naturalWidth||raw.width, ih = raw.naturalHeight||raw.height, k = Math.min((innerWidth*.92)/iw, (innerHeight*.66)/ih), cw = Math.round(iw*k), ch = Math.round(ih*k);
+  const ov = document.createElement("div"); ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px";
+  ov.innerHTML = `<div style="color:#fff;font-size:14px;text-align:center">ລາກນິ້ວ/ເມົ້າ ແຕ້ມກອບສີ່ຫຼ່ຽມໃຫ້ພໍດີກັບ <b>ຕົວກ່ອງສິນຄ້າ</b> (ບໍ່ເອົາແທ່ນ ແລະ ພື້ນຫຼັງ)</div><canvas id="cropCv" width="${cw}" height="${ch}" style="touch-action:none;border-radius:8px;cursor:crosshair;max-width:100%"></canvas>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button id="cropOk">✅ ໃຊ້ກອບນີ້</button><button id="cropClr" class="sec">🗑 ລ້າງກອບ (ໃຫ້ລະບົບຕັດເອງ)</button><button id="cropX" class="sec">ປິດ</button></div>`;
+  document.body.appendChild(ov); const cv = ov.querySelector("#cropCv"), x = cv.getContext("2d");
+  const paint = () => { x.clearRect(0,0,cw,ch); x.drawImage(raw,0,0,cw,ch); if(rc){ const X=rc.l*cw,Y=rc.t*ch,W=(rc.r-rc.l)*cw,H=(rc.b-rc.t)*ch; x.fillStyle="rgba(0,0,0,.55)"; x.fillRect(0,0,cw,Y); x.fillRect(0,Y+H,cw,ch-Y-H); x.fillRect(0,Y,X,H); x.fillRect(X+W,Y,cw-X-W,H); x.strokeStyle="#ffd54a"; x.lineWidth=3; x.strokeRect(X,Y,W,H); } };
+  paint(); let a = null;
+  const pt = e => { const b = cv.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)), Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))]; };
+  cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); a = pt(e); rc = {l:a[0],t:a[1],r:a[0],b:a[1]}; paint(); };
+  cv.onpointermove = e => { if(!a) return; const q = pt(e); rc = {l:Math.min(a[0],q[0]), t:Math.min(a[1],q[1]), r:Math.max(a[0],q[0]), b:Math.max(a[1],q[1])}; paint(); };
+  cv.onpointerup = () => { a = null; };
+  const close = () => ov.remove();
+  ov.querySelector("#cropX").onclick = close;
+  ov.querySelector("#cropClr").onclick = async () => { try{ await saveCrop(id, null); }catch(e){ $("err").textContent = e.message; } close(); P.check.delete(id); renderList(); if(P.cur===id) renderPreview(); };
+  ov.querySelector("#cropOk").onclick = async () => {
+    if(!rc || rc.r-rc.l<.05 || rc.b-rc.t<.05){ alert("ກອບນ້ອຍເກີນໄປ ລອງແຕ້ມໃໝ່"); return; }
+    try{ await saveCrop(id, Object.assign({src}, rc)); }catch(e){ $("err").textContent = e.message; } close(); P.check.delete(id); renderList(); if(P.cur===id) renderPreview(); if(P.selected.has(id)){ P.check.set(id, await checkOne(p)); renderList(); if($("chkPanel").style.display==="block") renderChk(); } };
 }
 
 // ---------- staff "quick photo": a fresh photo per product, kept in the same public bucket under poster/ (no DB change) ----------
@@ -592,13 +635,13 @@ async function checkOne(p){
   const rw = raw.naturalWidth||raw.width, rh = raw.naturalHeight||raw.height, dim = rw+"×"+rh;
   const pr = await prepare(p, "auto");
   if(pr.mode==="cut"){
-    const c = pr.img, st = cutStats(c), how = pr.how==="ai" ? "ໃຊ້ AI" : "ແບບໄວ";
+    const c = pr.img, st = cutStats(c), how = pr.how==="ai" ? "ໃຊ້ AI" : pr.how==="crop" ? "ກອບທີ່ກຳນົດເອງ" : "ແບບໄວ";
     if(st.sc > 1.3) return {s:"low", why:"ຕົວສິນຄ້າໃນຮູບນ້ອຍເກີນ ("+c.width+"×"+c.height+" ຈຸດ) ຈະເບລີ", dim};
     if(st.area < 0.27) return {s:"low", why:"ຕົວສິນຄ້າຈະນ້ອຍເກີນໃນກອບ (ເຫັນພຽງ "+Math.round(st.area*100)+"% ຂອງກອບ) ຮູບຮ່າງຍາວ/ແບນ ຫຼື ເປັນຮູບຫຼາຍອັນລວມກັນ", dim};
     return {s:"ok", why:"ຕັດຕົວສິນຄ້າໄດ້ ("+how+")", dim};
   }
   if(pr.how==="aifail") return {s:"ai", why:"ໂມເດວ AI ໂຫຼດບໍ່ໄດ້ ("+(P.aiErr||"ກວດອິນເຕີເນັດ")+")", dim};
-  return {s:"ad", why:"ຕັດຕົວສິນຄ້າບໍ່ສະອາດ (ຮູບໂຄສະນາ, ຮູບລວມຫຼາຍຮູບ, ພື້ນຫຼັງລົກ ຫຼື ຕົວສິນຄ້າໂປ່ງແສງ)", dim};
+  return {s:"ad", why:"ຕັດຕົວສິນຄ້າບໍ່ສະອາດ (ຮູບໂຄສະນາ, ຮູບລວມຫຼາຍຮູບ, ພື້ນຫຼັງລົກ ຫຼື ຕົວສິນຄ້າໂປ່ງແສງ). ຖ້າເປັນກ່ອງສີ່ຫຼ່ຽມ ລອງ ✂️ ກຳນົດກອບສິນຄ້າເອງ", dim};
 }
 function chkRows(onlyBad){
   const rows = [...P.selected].filter(id=>P.check.has(id)).map(id=>({p:P.byId.get(id), c:P.check.get(id)}));
@@ -641,7 +684,7 @@ async function init(){
   try{ const b = await loadImg("bg-thatluang.jpg?v="+Date.now()); if(b && b.width>300) P.bg = b; }catch(e){}
   draw($("cv").getContext("2d"),1,optsFor({name:"ຊື່ສິນຄ້າ",price_1:0,id:"-"},null));
   if(!token()){ $("count").textContent = ""; $("msg").textContent = "ກະລຸນາເຂົ້າສູ່ລະບົບ Marketing Studio ກ່ອນ ແລ້ວເປີດແທັບນີ້ໃໝ່"; return; }
-  try{ const [items, photos, names, hist] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides(), fetchHistory()]); P.items = items; P.photos = photos; P.names = names; setHistory(hist); for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
+  try{ const [items, photos, names, hist, crops] = await Promise.all([fetchProducts(), fetchPosterPhotos(), fetchNameOverrides(), fetchHistory(), fetchCrops()]); P.crops = crops; P.items = items; P.photos = photos; P.names = names; setHistory(hist); for(const [id,nm] of names){ const o=P.ov.get(id)||{}; o.name=nm; P.ov.set(id,o); } P.items.forEach(p=>P.byId.set(p.id,p)); renderList(); }
   catch(e){ $("count").textContent = ""; $("err").textContent = "ດຶງສິນຄ້າຈາກ POS ບໍ່ໄດ້: "+e.message; }
 }
 
@@ -663,6 +706,7 @@ $("nameRevert").onclick = async () => { const id=P.cur, p=P.byId.get(id); if(!p)
 $("nameFix").onclick = () => { if(P.cur) claudeCheckNames([P.cur]); };
 $("nameFixSel").onclick = () => { const ids=[...P.selected]; if(ids.length) claudeCheckNames(ids); };
 $("ovPrice").addEventListener("input", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.price=Number($("ovPrice").value||0); P.ov.set(P.cur,o); renderPreview(); });
+$("cropBtn").onclick = openCrop;
 $("ovMode").addEventListener("change", ()=>{ if(!P.cur) return; const o=P.ov.get(P.cur)||{}; o.mode=$("ovMode").value; P.ov.set(P.cur,o); renderPreview(); });
 $("bgfile").addEventListener("change", e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ P.bg = await loadImg(r.result); renderPreview(); }; r.readAsDataURL(f); });
 $("bgclear").onclick = () => { P.bg = null; $("bgfile").value=""; renderPreview(); };
