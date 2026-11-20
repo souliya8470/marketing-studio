@@ -247,8 +247,10 @@ async function aiCut(raw){
 async function aiImage(p){
   if(P.ai.has(p.id)) return P.ai.get(p.id);
   const raw = await rawImage(p); if(!raw) return null;
-  let res = null; try{ res = await aiCut(raw); }catch(e){ P.aiErr = e.message; res = null; }
-  if(P.ai.size > 40) P.ai.clear(); P.ai.set(p.id, res); return res;
+  P.aiP = P.aiP || new Map(); if(P.aiP.has(p.id)) return P.aiP.get(p.id);   // same photo asked twice at once (preview + background) -> run the AI only once
+  const job = (async()=>{ let res = null; try{ res = await aiCut(raw); }catch(e){ P.aiErr = e.message; res = null; }
+    if(P.ai.size > 40) P.ai.clear(); P.ai.set(p.id, res); return res; })();
+  P.aiP.set(p.id, job); try{ return await job; } finally { P.aiP.delete(p.id); }
 }
 // decides how the product photo is used: {img: cut-out canvas | null, raw, mode: "cut"|"photo", how: text}
 async function prepare(p, force){
@@ -377,15 +379,25 @@ function renderPhotoBar(){
   bar.innerHTML = `<img src="${esc(ph.url)}" alt="" style="height:54px;border-radius:8px;vertical-align:middle;margin-right:8px"> ໃຊ້ຮູບທີ່ຖ່າຍໃໝ່ຢູ່. ບໍ່ງາມ? ກົດ "ຖ່າຍຮູບໃໝ່" ເພື່ອຖ່າຍທັບ ຫຼື <button class="sec" id="revertBtn" style="padding:4px 10px;font-size:12px">↩ ກັບໄປໃຊ້ຮູບ POS ເດີມ</button>`;
   $("revertBtn").onclick = () => revertPhoto(id);
 }
+// background queue: cut-out + check of freshly shot photos, one after another, never blocking the UI
+P.bgq = Promise.resolve(); P.bgN = 0;
+function bgPrepare(p){
+  P.bgN++;
+  P.bgq = P.bgq.then(async()=>{
+    try{ if(P.selected.has(p.id)){ P.check.set(p.id, await checkOne(p)); renderList(); if($("chkPanel").style.display==="block") renderChk(); } else await prepare(p); }catch(e){}
+    P.bgN--; if(!P.bgN && !P.busy && /ຕັດພື້ນຫຼັງໃຫ້ຢູ່ເບື້ອງຫຼັງ/.test($("msg").textContent)) $("msg").textContent = "✅ ຕັດພື້ນຫຼັງຮູບທີ່ຖ່າຍໃໝ່ຄົບແລ້ວ";
+  });
+}
 function askPhoto(id){ P.camFor = id; $("cam").value = ""; $("cam").click(); }
 async function onPhotoPicked(){
   const f = $("cam").files[0]; const p = P.camFor && P.byId.get(P.camFor); if(!f || !p) return;
   $("msg").textContent = "ກຳລັງອັບໂຫຼດຮູບ…"; $("err").textContent = "";
   try{
-    await uploadPosterPhoto(p, f); $("msg").textContent = "ອັບໂຫຼດແລ້ວ ກຳລັງຕັດພື້ນຫຼັງ…"; renderList();
-    if(P.cur !== p.id) setCur(p.id); else await renderPreview();
-    if(P.selected.has(p.id)){ P.check.set(p.id, await checkOne(p)); renderList(); if($("chkPanel").style.display==="block") renderChk(); }
-    renderPhotoBar(); $("msg").textContent = "ສຳເລັດ ຮູບໃໝ່ຂອງ "+p.name+" — ຖ້າບໍ່ງາມ ກົດ ຖ່າຍຮູບໃໝ່ ໄດ້ເລີຍ";
+    await uploadPosterPhoto(p, f); renderList();
+    // the photo is saved now: do NOT wait for the cut-out. The cut-out / check runs in the background, one product at a time, so staff can shoot the next product at once.
+    if(P.cur !== p.id) setCur(p.id); else renderPreview();
+    renderPhotoBar(); $("msg").textContent = "✅ ບັນທຶກຮູບ "+p.name+" ແລ້ວ — ຖ່າຍສິນຄ້າຕໍ່ໄປໄດ້ເລີຍ (ລະບົບຕັດພື້ນຫຼັງໃຫ້ຢູ່ເບື້ອງຫຼັງ)";
+    bgPrepare(p);
   }catch(e){ $("msg").textContent = ""; $("err").textContent = e.message; }
 }
 

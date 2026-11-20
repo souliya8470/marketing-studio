@@ -30,16 +30,50 @@ function cutout(img, tol, fillgaps){
   const cs=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]].map(([a,b])=>{const i=(b*w+a)*4;return [p[i],p[i+1],p[i+2],p[i+3]];});
   const transparentAlready = cs.every(v=>v[3]<10); let quality = transparentAlready;
   if(!transparentAlready){
-    const bg=[0,1,2].map(k=>cs.reduce((s,v)=>s+v[k],0)/4);
-    const dist=(i)=>{const dr=p[i*4]-bg[0],dg=p[i*4+1]-bg[1],db=p[i*4+2]-bg[2];return Math.sqrt(dr*dr+dg*dg+db*db);};
+    // background colour = median of the whole border ring (robust to a shadow in one corner)
+    const ring=[]; for(let a2=0;a2<w;a2++){ring.push(a2);ring.push((h-1)*w+a2);} for(let b2=0;b2<h;b2++){ring.push(b2*w);ring.push(b2*w+w-1);}
+    const med=k=>{ const v=ring.map(i=>p[i*4+k]).sort((m,n)=>m-n); return v[v.length>>1]; };
+    const bg=[med(0),med(1),med(2)]; const bgL=(bg[0]+bg[1]+bg[2])/3, bgC=Math.max(...bg)-Math.min(...bg);
+    // smooth backdrop model: quadratic surface per channel fitted to the border ring (robust, trims product pixels touching the border)
+    // -> handles gradient / vignette / colour cast / uneven light without any per-pixel guessing
+    const model=(()=>{ try{
+      const step=Math.max(1,Math.floor(ring.length/700)), pts=[]; for(let q=0;q<ring.length;q+=step){ const i=ring[q]; pts.push([ (i%w)/(w-1)*2-1, ((i/w)|0)/(h-1)*2-1, i ]); }
+      const bas=(x,y)=>[1,x,y,x*x,x*y,y*y];
+      const solve=(A,bv)=>{ const n=6; const M=A.map((r,i)=>r.concat([bv[i]])); for(let c=0;c<n;c++){ let m=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[m][c])) m=r; [M[c],M[m]]=[M[m],M[c]]; if(Math.abs(M[c][c])<1e-9) return null; for(let r=0;r<n;r++){ if(r===c) continue; const f=M[r][c]/M[c][c]; for(let k=c;k<=n;k++) M[r][k]-=f*M[c][k]; } } return M.map((r,i)=>r[n]/r[i]); };
+      const coef=[]; for(let k=0;k<3;k++){ let use=pts.slice(); let cf=null;
+        for(let it=0;it<3;it++){ const A=Array.from({length:6},()=>new Array(6).fill(0)), bv=new Array(6).fill(0);
+          for(const [x,y,i] of use){ const b=bas(x,y), v=p[i*4+k]; for(let r=0;r<6;r++){ bv[r]+=b[r]*v; for(let c2=0;c2<6;c2++) A[r][c2]+=b[r]*b[c2]; } }
+          cf=solve(A,bv); if(!cf) return null;
+          const res=pts.map(([x,y,i])=>Math.abs(bas(x,y).reduce((s,v,t)=>s+v*cf[t],0)-p[i*4+k]));
+          const sr=res.slice().sort((m,n2)=>m-n2); const lim=Math.max(6,sr[Math.floor(sr.length*.5)]*3.5);
+          use=pts.filter((pt,t)=>res[t]<=lim); if(use.length<30) return null; }
+        coef.push(cf); }
+      return (a,b)=>{ const x=a/(w-1)*2-1, y=b/(h-1)*2-1, bb=[1,x,y,x*x,x*y,y*y]; return coef.map(cf=>bb[0]*cf[0]+bb[1]*cf[1]+bb[2]*cf[2]+bb[3]*cf[3]+bb[4]*cf[4]+bb[5]*cf[5]); };
+    }catch(_){ return null; } })();
+    const dist=(i)=>{ let r0=bg[0],g0=bg[1],b0=bg[2]; if(model){ const m=model(i%w,(i/w)|0); r0=m[0];g0=m[1];b0=m[2]; } const dr=p[i*4]-r0,dg=p[i*4+1]-g0,db=p[i*4+2]-b0;return Math.sqrt(dr*dr+dg*dg+db*db);};
+    // a plain light backdrop (paper / wall) often has a soft gradient, vignette or shadow: such pixels are also background when they are
+    // reached from the background by tiny steps, stay neutral and not much darker than the backdrop. Product edges are sharp steps, so growth stops there.
+    const lightBg = bgL>=150 && bgC<=60;
     const seen=new Uint8Array(w*h), st=[];
-    const push=(i)=>{ if(!seen[i]&&dist(i)<=tol){seen[i]=1;st.push(i);} };
-    for(let a=0;a<w;a++){push(a);push((h-1)*w+a);} for(let b=0;b<h;b++){push(b*w);push(b*w+w-1);}
+    const stepOK=(i,j)=>{ const dr=p[i*4]-p[j*4],dg=p[i*4+1]-p[j*4+1],db=p[i*4+2]-p[j*4+2]; return dr*dr+dg*dg+db*db<=64; };   // step <= 8
+    const rl=ring.map(i=>(p[i*4]+p[i*4+1]+p[i*4+2])/3).sort((m,n)=>m-n), bgHi=rl[Math.floor(rl.length*.95)];   // brightest normal backdrop value on the border
+    const soft=(j,from)=>{ if(!lightBg) return false; const L=(p[j*4]+p[j*4+1]+p[j*4+2])/3, C=Math.max(p[j*4],p[j*4+1],p[j*4+2])-Math.min(p[j*4],p[j*4+1],p[j*4+2]);
+      if(!(L>=bgL*.52 && Math.abs(C-bgC)<=34 && dist(j)<=tol*3.4)) return false;
+      if(L<=bgL+2) return true;                                   // darker than the backdrop = shadow / vignette
+      const Lf=(p[from*4]+p[from*4+1]+p[from*4+2])/3; return L<=bgHi+3 && L-Lf<=2.5; };   // slightly brighter centre of a vignette: only tiny steps, never brighter than the brightest backdrop
+    const push=(i,from)=>{ if(seen[i]) return; if(dist(i)<=tol || (from>=0 && stepOK(from,i) && soft(i,from))){ seen[i]=1; st.push(i); } };
+    for(let a=0;a<w;a++){push(a,-1);push((h-1)*w+a,-1);} for(let b=0;b<h;b++){push(b*w,-1);push(b*w+w-1,-1);}
     while(st.length){ const i=st.pop(); const a=i%w,b=(i/w)|0;
-      if(a>0)push(i-1); if(a<w-1)push(i+1); if(b>0)push(i-w); if(b<h-1)push(i+w); }
+      if(a>0)push(i-1,i); if(a<w-1)push(i+1,i); if(b>0)push(i-w,i); if(b<h-1)push(i+w,i); }
     { let rem=0,bd=0; for(let i=0;i<w*h;i++) if(seen[i]) rem++;
       for(let a=0;a<w;a++){ if(seen[a])bd++; if(seen[(h-1)*w+a])bd++; } for(let b=0;b<h;b++){ if(seen[b*w])bd++; if(seen[b*w+w-1])bd++; }
-      const rf=rem/(w*h), bf=bd/(2*(w+h)); quality=(bf>=.9 && rf>=.12 && rf<=.93); }
+      const rf=rem/(w*h), bf=bd/(2*(w+h)); quality=(bf>=.9 && rf>=.12 && rf<=.93);
+      // leak guard: a real product outline is a sharp step. If much of the cut line runs through smooth, low-contrast colour
+      // (white box on a white stand / white wall), the cut went INTO the product -> not trustworthy, let the AI cutter handle it.
+      if(quality){ let nb=0,weak=0; const R=Math.max(3,Math.round(Math.min(w,h)/160)); for(let b=R+1;b<h-R-1;b+=2)for(let a=R+1;a<w-R-1;a+=2){ const i=b*w+a; if(seen[i]) continue;
+          for(const dd of [-1,1,-w,w]){ const j=i+dd; if(!seen[j]) continue; nb++;   // contrast across the cut line, R px each side (so soft/blurry real edges still count as strong)
+            const o1=i-dd*R, o2=i+dd*R, dr=p[o1*4]-p[o2*4],dg=p[o1*4+1]-p[o2*4+1],db=p[o1*4+2]-p[o2*4+2]; if(dr*dr+dg*dg+db*db<=196) weak++; break; } }
+        if(nb>60 && weak/nb>.3) quality=false; } }
     // optional: restore gaps inside the product (rows between leftmost and rightmost product pixel)
     if(fillgaps){
       for(let b=0;b<h;b++){ let l=-1,r=-1; for(let a=0;a<w;a++) if(!seen[b*w+a]){ if(l<0)l=a; r=a; }
@@ -55,7 +89,7 @@ function cutout(img, tol, fillgaps){
   for(let b=0;b<h;b++)for(let a=0;a<w;a++) if(q[(b*w+a)*4+3]>20){ if(a<x0)x0=a; if(a>x1)x1=a; if(b<y0)y0=b; if(b>y1)y1=b; }
   if(x1<=x0||y1<=y0){ c.cutOk=false; return c; }
   const o=document.createElement('canvas'); o.width=x1-x0+1; o.height=y1-y0+1;
-  o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); o.cutOk=quality; return o;
+  o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); o.cutOk=quality; o.box=[x0,y0]; return o;
 }
 
 // ---------- drawing helpers ----------
