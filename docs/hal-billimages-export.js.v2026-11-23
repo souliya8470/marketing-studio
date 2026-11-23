@@ -232,12 +232,32 @@ async function countRowsSince(msPage, sinceISO) {
 // already matches the file count, those "missing" tracking numbers are really just unreadable,
 // not unsaved -- treated as verified rather than retried forever / alerted on falsely. A genuine
 // upload failure still shows up as a real row-count shortfall.
+// v(2026-11-23) SELF-HEAL: HAL bills (tracking VTE...) sometimes got saved with the wrong courier
+// (ອານຸສິດ) when the page's courier state flipped during OCR. If any expected tracking number exists
+// under another courier AND is still pending/unsent, delete just those rows so the retry upload
+// re-creates them as ຮຸ່ງອາລຸນ. Never touches sent rows. Returns how many rows were removed.
+async function healMislabeled(msPage, trackingNumbers) {
+  const wanted = trackingNumbers.filter(Boolean);
+  if (!wanted.length) return 0;
+  return msPage.evaluate(async (numbers) => {
+    const { data, error } = await window.sb.from('courier_bill_import_pages')
+      .select('id').neq('courier_name', 'ຮຸ່ງອາລຸນ').eq('send_status', 'pending').is('sent_at', null)
+      .in('courier_bill_number', numbers);
+    if (error || !data || !data.length) return 0;
+    const ids = data.map(r => r.id);
+    const del = await window.sb.from('courier_bill_import_pages').delete().in('id', ids);
+    return del.error ? 0 : ids.length;
+  }, wanted);
+}
+
 async function verifyAndRetry(msPage, downloadedFiles, sinceISO) {
   const byTracking = new Map(downloadedFiles.map(f => [trackingFromFilename(f), f]));
   const allTracking = Array.from(byTracking.keys());
   let result = await verifyUploaded(msPage, allTracking);
   if (result.missing.length > 0 && !result.queryFailed) {
     const retryFiles = result.missing.map(t => byTracking.get(t)).filter(Boolean);
+    const healed = await healMislabeled(msPage, result.missing);
+    if (healed) { console.error('[heal] removed ' + healed + ' mislabeled rows, re-uploading'); try { await sendTelegram('\u2705 ແກ້ບິນ HAL ຊື່ຂົນສົ່ງຜິດ ' + healed + ' ໃບ ແລະ ອັບໂຫລດໃໝ່ເອງ'); } catch (e) {} }
     if (retryFiles.length) {
       await uploadFilesToMarketingStudio(msPage, retryFiles);
       result = await verifyUploaded(msPage, allTracking);
