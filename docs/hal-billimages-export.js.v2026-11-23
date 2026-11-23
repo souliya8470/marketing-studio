@@ -1,0 +1,595 @@
+// [cleanup 2026-09-27] delete stale Playwright temp dirs (GUID-named download copies in %TEMP%) older than 30 min
+(function(){try{var f=require('fs'),p=require('path'),t=require('os').tmpdir(),n=Date.now();f.readdirSync(t).forEach(function(d){if(d.indexOf('playwright-artifacts-')!==0)return;var q=p.join(t,d);try{if(n-f.statSync(q).mtimeMs>1800000)f.rmSync(q,{recursive:true,force:true});}catch(e){}});}catch(e){}})();
+const { chromium } = require('playwright-core');
+// v(2026-09-30, tab-pileup fix) Chrome profiles were accumulating duplicate tabs over the day --
+// per Tar, this was slowing down / freezing the automation PC. Root cause: a few scripts create a
+// fresh tab via newPage() only when no existing tab matches yet, but if a race (two scripts on two
+// different ports both reaching into the SAME shared Marketing-Studio tab at once) or a past Chrome
+// relaunch ever left more than one tab matching the same site open at the same time, every later
+// find() just keeps grabbing whichever one happens to match first -- the other sits there
+// forgotten forever. dedupTabs() is a drop-in replacement for `context.pages().find(...)`: same
+// match, but if MORE than one tab already matches, it closes every extra one and keeps only the
+// oldest (first-opened) survivor, so duplicates never build up and any already-existing leftover
+// duplicates get cleaned up the next time each script runs. Never closes the sole survivor, and
+// never touches a tab of any OTHER site.
+function dedupTabs(ctx, matchFn) {
+  const matches = ctx.pages().filter(matchFn);
+  for (let i = 1; i < matches.length; i++) matches[i].close().catch(() => {});
+  return matches[0] || null;
+}
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+
+// ===== v(2026-10-03) CAPTURE-SAFETY GUARDS (same root cause as the Anousith bill images) =====
+// Chrome's page zoom on the site was not 100% (80% seen on the Anousith site; HAL 55279515 captures came
+// out shifted: the right part of the card + empty grey page). Playwright's boundingBox() is in CSS px but
+// Chrome's screenshot clip is in device-independent px, so at zoom != 100% the crop is in the wrong place.
+// Fix: convert by zf = emulatedViewportWidth / innerWidth, and validate every saved image.
+const TELEGRAM_BOT_TOKEN = '8869572182:AAHy-t0Uob1taqZ9ZletoFzjpuTecea-YJE'; // same bot/chat as bridge-server.js
+const TELEGRAM_CHAT_ID = '8978288067';
+const EMU_W = 1600, EMU_H = 1000;
+const MIN_FILE_BYTES = 25000;       // good HAL cards are ~41-48 KB; shifted/blank ones ~18 KB
+const OK_IMG_W = [330, 480];        // good cards are ~366 px wide
+const OK_IMG_H = [450, 900];        // good cards are ~593-596 px tall
+let SHOT_CDP = null;
+let DIAG_KEPT = 0;
+function sendTelegram(text) {
+  return new Promise((resolve) => {
+    try {
+      const body = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML' });
+      const req = https.request(
+        { hostname: 'api.telegram.org', path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 15000 },
+        (res) => { res.on('data', () => {}); res.on('end', resolve); }
+      );
+      req.on('error', () => resolve());
+      req.on('timeout', () => { req.destroy(); resolve(); });
+      req.write(body);
+      req.end();
+    } catch (e) { resolve(); }
+  });
+}
+function jpegSize(file) {
+  try {
+    const b = fs.readFileSync(file);
+    if (b.length < 4 || b[0] !== 0xFF || b[1] !== 0xD8) return null;
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xFF) { i++; continue; }
+      const m = b[i + 1];
+      if (m === 0xFF) { i++; continue; }
+      if ((m >= 0xC0 && m <= 0xCF) && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
+      i += 2 + b.readUInt16BE(i + 2);
+    }
+  } catch (e) {}
+  return null;
+}
+function imageProblem(file) {
+  let st;
+  try { st = fs.statSync(file); } catch (e) { return 'NO_FILE'; }
+  if (st.size < MIN_FILE_BYTES) return `TOO_SMALL_${st.size}B`;
+  const d = jpegSize(file);
+  if (!d) return 'NOT_JPEG';
+  if (d.w < OK_IMG_W[0] || d.w > OK_IMG_W[1] || d.h < OK_IMG_H[0] || d.h > OK_IMG_H[1]) return `BAD_DIMS_${d.w}x${d.h}`;
+  return null;
+}
+async function readViewport(page) {
+  try { return await page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight })); } catch (e) { return { w: 0, h: 0 }; }
+}
+// capture clip (viewport-relative CSS px) to tmpPath, compensating for browser zoom
+async function captureClip(page, clip, tmpPath, vp) {
+  const zf = EMU_W / vp.w;
+  console.error('[zoom] zf=' + zf.toFixed(3) + ' innerW=' + vp.w);
+  if (!(zf > 0.4 && zf < 2.5)) throw new Error('ZOOM_FACTOR_ODD_' + zf.toFixed(3));
+  if (Math.abs(zf - 1) < 0.005) {
+    await page.screenshot({ path: tmpPath, type: 'jpeg', quality: 90, clip });
+    return;
+  }
+  if (!SHOT_CDP) SHOT_CDP = await page.context().newCDPSession(page);
+  const sc = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
+  const extraL = Math.min(8, Math.max(0, clip.x));
+  const extraR = Math.min(16, Math.max(0, vp.w - (clip.x + clip.width)));
+  const r = await SHOT_CDP.send('Page.captureScreenshot', {
+    format: 'jpeg', quality: 90, fromSurface: true, captureBeyondViewport: false, // the drawer is position:fixed and the card is fully inside the viewport (guarded)
+    clip: { x: (clip.x - extraL + sc.x) * zf, y: (clip.y + sc.y) * zf, width: (clip.width + extraL + extraR) * zf, height: clip.height * zf, scale: 1 / zf },
+  });
+  fs.writeFileSync(tmpPath, Buffer.from(r.data, 'base64'));
+}
+
+function todayISO() {
+  const d = new Date();
+  const tz = new Date(d.getTime() + 7 * 3600 * 1000);
+  return tz.toISOString().slice(0, 10);
+}
+
+// v(2026-09-25) 01:00 catch-up round: process.argv[3] === 'yesterday' targets YESTERDAY's date
+// instead of today throughout this script, since by the time this runs it's already the new day.
+// CAVEAT (not yet live-verified): unlike the other scripts, this one does NOT set an explicit
+// date-range filter on halexpress.la's outbound list -- it relies on the page's own default view
+// "already spanning through today". Whether that default view still includes yesterday's rows
+// once the real clock has ticked into a new day (01:00) is UNCONFIRMED -- needs a live test.
+function targetDateISO(mode) {
+  const d = new Date();
+  const tz = new Date(d.getTime() + 7 * 3600 * 1000);
+  if (mode === 'yesterday') tz.setUTCDate(tz.getUTCDate() - 1);
+  return tz.toISOString().slice(0, 10);
+}
+
+const PORT_TO_PHONE = { '9222': '52906969', '9223': '55279515' };
+// v(2026-09-25): per-day subfolder (D:\CourierBills\YYYY-MM-DD\) instead of one flat folder --
+// see anousith-cod-export.js's BASE_DIR comment for the full reasoning.
+const BASE_DIR = 'D:\\CourierBills';
+
+async function realClick(page, elHandle) {
+  const r = await elHandle.boundingBox();
+  if (!r) throw new Error('NO_BOUNDING_BOX');
+  await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+}
+
+async function getMsPage(browser) {
+  const context = browser.contexts()[0];
+  let page = dedupTabs(context, p => p.url().includes('marketing.touktashop.online'));
+  if (!page) {
+    page = await context.newPage();
+    await page.goto('https://marketing.touktashop.online/', { waitUntil: 'networkidle', timeout: 30000 });
+  }
+  await page.bringToFront();
+  return page;
+}
+
+// v(2026-09-29) FIX -- CONFIRMED LIVE ROOT CAUSE of silently-lost ຮຸ່ງອາລຸນ deposit bills for
+// account 55279515 (port 9223): the "how far did we already get today" reference point queried
+// above (courier_bill_import_pages, courier_name='ຮຸ່ງອາລຸນ', no phone/account filter) is GLOBAL
+// across BOTH ຮຸ່ງອາລຸນ accounts (52906969 AND 55279515), even though each account has its own
+// completely separate halexpress.la outbound list. Whichever account's hourly run happens to
+// upload first advances that SHARED reference point -- so the OTHER account's very next run reads
+// its own (unrelated) outbound rows as "already past the reference point" and downloads/uploads
+// NOTHING for them, reporting newFileCount:0 even though those specific parcels were never
+// actually captured for that account at all. Confirmed live 2026-09-29 21:00-22:xx: account
+// 55279515's 21:00 run genuinely downloaded 11 new bill images (screenshots saved fine to disk)
+// but its own upload into Marketing Studio never produced any DB rows (separately confirmed missing
+// via direct Supabase query for all 11 tracking numbers) -- and a same-day re-run for 55279515
+// then returned newFileCount:0, since 52906969's own later rows had already pushed the shared
+// reference point past 55279515's unrelated timestamps. A full per-account reference-point fix
+// (e.g. an extra column identifying which account/phone captured each row) is a bigger schema
+// change deferred for later -- this same-day patch adds two things instead: (1) a `reupload` CLI
+// mode that skips the halexpress.la download + reference-point logic entirely and just re-uploads
+// whatever bill images already exist on disk for today for this port's own phone (used for manual
+// recovery of bills already downloaded once but never actually saved), and (2) real
+// post-upload verification (query Supabase for the tracking numbers just uploaded, retry once if
+// any are missing) on EVERY run from now on, so a silent upload failure of any cause is caught and
+// retried automatically instead of being reported as "ok" with nothing actually saved.
+
+async function uploadFilesToMarketingStudio(msPage, filePaths) {
+  await msPage.evaluate(() => { if (typeof window.navigateToPage === 'function') window.navigateToPage('courierBillImport'); });
+  await msPage.waitForTimeout(1200);
+  // v(2026-11-23) FIX: the courier radio sometimes did not stick (22 HAL bills were saved as
+  // ອານຸສິດ on 2026-11-23 -> verify could not find them -> breaker). Now: real click, then
+  // re-read which radio is actually checked, retry up to 5x, and REFUSE to upload if it is not HAL.
+  const HAL_SEL = 'input[name="courier-bill-courier"][value="ຮຸ່ງອາລຸນ"]';
+  let halSelected = false;
+  for (let i = 0; i < 5 && !halSelected; i++) {
+    await msPage.evaluate((sel) => {
+      const radio = document.querySelector(sel);
+      if (radio && !radio.checked) { radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })); }
+    }, HAL_SEL);
+    await msPage.waitForTimeout(1200);
+    halSelected = await msPage.evaluate(() => {
+      const c = document.querySelector('input[name="courier-bill-courier"]:checked');
+      return !!c && c.value === 'ຮຸ່ງອາລຸນ';
+    });
+    if (!halSelected) { try { await msPage.click(HAL_SEL, { force: true, timeout: 3000 }); await msPage.waitForTimeout(1200); } catch (e) {} }
+  }
+  if (!halSelected) return { ok: false, reason: 'HAL_RADIO_NOT_SELECTED' };
+  const fileInput = await msPage.$('#courier-bill-file-input, input[type="file"][multiple]');
+  if (!fileInput) return { ok: false, reason: 'MS_FILE_INPUT_NOT_FOUND' };
+  await fileInput.setInputFiles(filePaths);
+  const waitMs = Math.min(5 * 60 * 1000, Math.max(20000, filePaths.length * 8000));
+  await msPage.waitForTimeout(waitMs);
+  return { ok: true, waitMs };
+}
+
+// Extracts the tracking number (VTE...) out of a saved filename, e.g.
+// "hal-bill-VTE86210454678-55279515-2026-09-29.jpg" -> "VTE86210454678".
+function trackingFromFilename(filePath) {
+  const m = /hal-bill-(VTE\d+)-/.exec(path.basename(filePath));
+  return m ? m[1] : null;
+}
+
+async function verifyUploaded(msPage, trackingNumbers) {
+  const wanted = trackingNumbers.filter(Boolean);
+  if (!wanted.length) return { missing: [] };
+  const found = await msPage.evaluate(async (numbers) => {
+    const { data, error } = await window.sb.from('courier_bill_import_pages')
+      .select('courier_bill_number').eq('courier_name', 'ຮຸ່ງອາລຸນ').in('courier_bill_number', numbers);
+    if (error) return null;
+    return (data || []).map(r => r.courier_bill_number);
+  }, wanted);
+  if (found === null) return { missing: wanted, queryFailed: true };
+  const foundSet = new Set(found);
+  return { missing: wanted.filter(n => !foundSet.has(n)) };
+}
+
+async function countRowsSince(msPage, sinceISO) {
+  return msPage.evaluate(async (since) => {
+    const { count, error } = await window.sb.from('courier_bill_import_pages')
+      .select('id', { count: 'exact', head: true })
+      .eq('courier_name', 'ຮຸ່ງອາລຸນ').gte('created_at', since);
+    if (error) return null;
+    return count;
+  }, sinceISO);
+}
+
+// Verifies the just-uploaded batch actually landed in the DB; retries the upload ONCE (missing
+// files only) if any tracking numbers are absent. Returns the final missing list after the retry.
+// `sinceISO` should be captured just BEFORE the first upload call -- if the courier_bill_number
+// check still reports items missing after the retry, this falls back to a plain row-COUNT check
+// for the same window: a bill can legitimately land with courier_bill_number=null when OCR
+// misreads the printed "VTE..." code (confirmed live 2026-09-29 -- two otherwise-fine bills read
+// as "ໄ1680009780019"/"ໄ1646596478993" instead of their real VTE numbers, saved fine either way,
+// same pre-existing OCR limitation every other bill upload has always had). If the row count
+// already matches the file count, those "missing" tracking numbers are really just unreadable,
+// not unsaved -- treated as verified rather than retried forever / alerted on falsely. A genuine
+// upload failure still shows up as a real row-count shortfall.
+async function verifyAndRetry(msPage, downloadedFiles, sinceISO) {
+  const byTracking = new Map(downloadedFiles.map(f => [trackingFromFilename(f), f]));
+  const allTracking = Array.from(byTracking.keys());
+  let result = await verifyUploaded(msPage, allTracking);
+  if (result.missing.length > 0 && !result.queryFailed) {
+    const retryFiles = result.missing.map(t => byTracking.get(t)).filter(Boolean);
+    if (retryFiles.length) {
+      await uploadFilesToMarketingStudio(msPage, retryFiles);
+      result = await verifyUploaded(msPage, allTracking);
+    }
+  }
+  if (result.missing.length > 0 && sinceISO) {
+    const rowCount = await countRowsSince(msPage, sinceISO);
+    if (rowCount !== null && rowCount >= downloadedFiles.length) {
+      return { missing: [], likelyOcrNullTracking: result.missing };
+    }
+  }
+  return result;
+}
+
+// Downloads ONLY new ຮຸ່ງອາລຸນ (HAL Express) "ພັດສະດຸອອກ" bill cards as .jpg images (one per
+// parcel, same courierBillHandleFiles direct-image-upload path already used for ອານຸສິດ), then
+// uploads them all at once. HAL has NO bulk export/download button for a bill image (confirmed
+// with Tar 2026-09-25) -- the only way to get one is: click that row's "view" (eye) icon, which
+// opens an ant-design Drawer with a printable bill card, then screenshot-crop JUST that card
+// element (verified live via diagnostic scripts this session -- see hal-billimages-inspect1.js
+// history in bridge-server-log.txt for the investigation trail).
+//
+// De-dup / "how far did we already get today" reference point: same convention as
+// anousith-billimages-export.js -- read from Marketing Studio's OWN already-imported table
+// (courier_bill_import_pages), not a local checkpoint file. The HAL parcel-outbound list itself
+// is ALREADY newest-first with a plain-text timestamp per row (confirmed live, no OCR needed to
+// read it) -- walk from the top and stop at the first row whose timestamp (to the minute) matches
+// the reference point's deposit_at. First run of the day (no reference row yet, or the newest row
+// on the page isn't from today at all) -> falls back to "download everything shown for today"
+// same as every other first-run case in this project.
+(async () => {
+  const port = process.argv[2] || 9222;
+  const mode = process.argv[3] || '';
+  const phone = PORT_TO_PHONE[String(port)] || `port${port}`;
+  const today = targetDateISO(mode);
+  const DIR = path.join(BASE_DIR, today, 'ບິນຝາກຮຸ່ງອາລຸນ');
+  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+
+  const msBrowser = await chromium.connectOverCDP('http://localhost:9222');
+  const msPage = await getMsPage(msBrowser);
+  const msReady = await (async () => {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const ok = await msPage.evaluate(() => typeof window.courierBillHandleFiles === 'function' && typeof window.sb === 'object');
+      if (ok) return true;
+      await msPage.waitForTimeout(500);
+    }
+    return false;
+  })();
+  if (!msReady) { console.log(JSON.stringify({ status: 'error', error: 'MS_APP_NOT_READY' })); process.exit(1); }
+
+  // v(2026-09-29) reupload mode: manual recovery for bills that already got screenshotted to
+  // disk on an earlier run but never actually landed in Marketing Studio (see the root-cause
+  // comment on uploadFilesToMarketingStudio above). Skips halexpress.la and the (buggy, shared)
+  // reference-point check entirely -- just re-uploads whatever .jpg files already exist on disk
+  // for TODAY for this port's own phone, then verifies each one actually got saved.
+  if (mode === 'reupload') {
+    const allFiles = fs.existsSync(DIR) ? fs.readdirSync(DIR) : [];
+    const myFiles = allFiles
+      .filter(f => f.endsWith(`-${phone}-${today}.jpg`))
+      .map(f => path.join(DIR, f));
+    if (!myFiles.length) { console.log(JSON.stringify({ status: 'ok', date: today, mode, reuploadedCount: 0, note: 'no local files found for this phone/date' })); process.exit(0); }
+    const sinceISO = new Date().toISOString();
+    const upRes = await uploadFilesToMarketingStudio(msPage, myFiles);
+    if (!upRes.ok) { console.log(JSON.stringify({ status: 'error', error: upRes.reason })); process.exit(1); }
+    const verify = await verifyAndRetry(msPage, myFiles, sinceISO);
+    console.log(JSON.stringify({ status: verify.missing.length ? 'error' : 'ok', date: today, mode, reuploadedCount: myFiles.length, missingAfterVerify: verify.missing, likelyOcrNullTracking: verify.likelyOcrNullTracking || [] }));
+    process.exit(verify.missing.length ? 1 : 0);
+  }
+
+  // v(2026-09-25) FIX: #courier-bill-file-input only exists in the DOM while
+  // STATE.page==="courierBillImport" (see index.html renderCourierBillImport) -- it does NOT
+  // exist just because courierBillHandleFiles/window.sb are loaded (those are always-on global
+  // functions, page-independent). The MS tab can be sitting on any page (dashboard after a fresh
+  // login/refresh, whatever a staff member last viewed, etc), which is exactly what caused a real
+  // live run to fail with MS_FILE_INPUT_NOT_FOUND after 18 real bill images had already been
+  // downloaded. navigateToPage is a top-level `function` in index.html (auto-attaches to window,
+  // unlike STATE/sb), so this forces the correct view every run regardless of the tab's prior state.
+  await msPage.evaluate(() => { if (typeof window.navigateToPage === 'function') window.navigateToPage('courierBillImport'); });
+  await msPage.waitForTimeout(1200);
+
+  const refPoint = await msPage.evaluate(async (today) => {
+    try {
+      const { data, error } = await window.sb.from('courier_bill_import_pages')
+        .select('deposit_at, extracted_phone')
+        .eq('courier_name', 'ຮຸ່ງອາລຸນ')
+        .gte('deposit_at', today + 'T00:00:00')
+        .lte('deposit_at', today + 'T23:59:59')
+        .order('deposit_at', { ascending: false })
+        .limit(1);
+      if (error) return { error: error.message };
+      return (data && data[0]) || null;
+    } catch (e) { return { error: e.message }; }
+  }, today);
+  if (refPoint && refPoint.error) { console.log(JSON.stringify({ status: 'error', error: 'REF_POINT_QUERY_FAILED: ' + refPoint.error })); process.exit(1); }
+
+  const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
+  const context = browser.contexts()[0];
+  let page = dedupTabs(context, p => p.url().includes('halexpress.la'));
+  if (!page) page = await context.newPage();
+  await page.goto('https://www.halexpress.la/parcel/outbound', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.bringToFront();
+
+  // v(2026-09-27) FIX (Tar): the bill screenshot below (page.screenshot({clip})) reads its pixel
+  // size straight off the drawer card's real on-screen boundingBox() -- it's WYSIWYG, no separate
+  // "resolution" setting. So whenever the physical Chrome window this script drives happens to be
+  // small or zoomed out (confirmed from Tar's own screenshot of the desktop), the cropped bill image
+  // comes out small/cramped too. setViewportSize overrides Chrome's rendering size via CDP device
+  // metrics regardless of the actual OS window's current size/position, so the drawer always renders
+  // (and gets captured) at this same large, readable size every run. Non-fatal if it fails for any
+  // reason -- worst case is the old small-window behavior, not a crash.
+  try { await page.setViewportSize({ width: EMU_W, height: EMU_H }); } catch (e) { /* non-fatal */ }
+  await page.waitForTimeout(1000);
+
+  // click ຄົ້ນຫາ (search) -- default date range already spans through today
+  const searchHandle = await page.evaluateHandle(() => {
+    return Array.from(document.querySelectorAll('button')).find(b => (b.innerText || '').trim() === 'ຄົ້ນຫາ') || null;
+  });
+  const searchEl = searchHandle.asElement();
+  if (searchEl) { await realClick(page, searchEl); }
+  await searchHandle.dispose();
+  await page.waitForTimeout(2500);
+
+  // scroll the table fully right so the last column's view button is clickable
+  await page.evaluate(() => {
+    const table = document.querySelector('table');
+    let el = table;
+    while (el) {
+      if (el.scrollWidth > el.clientWidth + 5) { el.scrollLeft = el.scrollWidth; break; }
+      el = el.parentElement;
+    }
+  });
+  await page.waitForTimeout(500);
+
+  // read every VTE row's seq/tracking/timestamp as plain text (no OCR -- it's real DOM text)
+  const rows = await page.evaluate(() => {
+    const all = Array.from(document.querySelectorAll('tr')).filter(tr => /VTE\d+/.test(tr.innerText || ''));
+    return all.map((tr, idx) => {
+      const cells = Array.from(tr.children).map(td => (td.innerText || '').replace(/\s+/g, ' ').trim());
+      return { idx, tracking: cells[2] || '', timestamp: cells[10] || '' };
+    });
+  });
+
+  if (rows.length === 0 || !rows[0].timestamp.startsWith(today)) {
+    console.log(JSON.stringify({ status: 'none_today', date: today }));
+    process.exit(0);
+  }
+
+  // v(2026-10-02, per Tar) PER-ACCOUNT "what is new" check. The old reference point (newest HAL bill in
+  // Marketing Studio) was shared by BOTH accounts (52906969 + 55279515), so one account's newest bill could
+  // never be found in the other account's list and the script re-downloaded/re-uploaded the whole day every
+  // hour. Now: read the tracking numbers of today's rows on THIS account's own HAL list and ask the database
+  // which of them already exist; capture only the rows from the top down to the OLDEST missing one (the
+  // drawer's "next" button walks the list in order), and just step over rows that already exist (skip flag).
+  const todayRows = [];
+  for (const r of rows) { if (!r.timestamp.startsWith(today)) break; todayRows.push(r); }
+  const trackOf = (r) => ((String(r.tracking).match(/VTE\d+/) || [r.tracking])[0]);
+  let newRows = [];
+  const existingNums = await msPage.evaluate(async (nums) => {
+    try {
+      const out = [];
+      for (let k = 0; k < nums.length; k += 100) {
+        const { data, error } = await window.sb.from('courier_bill_import_pages').select('courier_bill_number').eq('courier_name', 'ຮຸ່ງອາລຸນ').in('courier_bill_number', nums.slice(k, k + 100));
+        if (error) return null;
+        (data || []).forEach(d => out.push(d.courier_bill_number));
+      }
+      return out;
+    } catch (e) { return null; }
+  }, todayRows.map(trackOf));
+  if (existingNums === null) {
+    // database lookup failed -> fall back to the old shared reference-point behaviour
+    const refMinute = refPoint ? String(refPoint.deposit_at || '').replace('T', ' ').slice(0, 16) : null;
+    for (const r of todayRows) {
+      const rowMinute = r.timestamp.slice(0, 16);
+      if (refMinute && rowMinute === refMinute) break;
+      newRows.push(r);
+    }
+  } else {
+    const have = new Set(existingNums);
+    let lastMissing = -1;
+    todayRows.forEach((r, i) => { if (!have.has(trackOf(r))) lastMissing = i; });
+    newRows = todayRows.slice(0, lastMissing + 1).map(r => ({ ...r, skip: have.has(trackOf(r)) }));
+  }
+
+  // v(2026-09-25) FIX -- CRITICAL BUG found via live test, then properly root-caused via a
+  // dedicated diagnostic script: the very first live run saved all 18 bill images as the SAME
+  // byte-identical file (confirmed via MD5) under different filenames -- a serious mis-send risk
+  // (wrong bill image linked to the wrong tracking number, ready to be sent to the wrong
+  // customer). The 18 bad rows this produced were deleted from courier_bill_import_pages via
+  // direct SQL before any of them could be sent (all were still send_status="pending").
+  // Root cause, confirmed live: this drawer's mask is NOT click-to-close (maskClosable is off)
+  // -- clicking `.ant-drawer-mask` does nothing at all, so the close attempt every row used to
+  // make silently failed every single time, and every later "view" button click for a DIFFERENT
+  // row just landed on that still-open mask overlay (which covers the whole page) instead of the
+  // real button underneath -- so the drawer content never actually changed after row 1.
+  // The real fix has two parts, both confirmed live via hal-drawer-diag.js:
+  //  1) This drawer has its OWN prev/next navigation ("ກ່ອນໜ້າ"/"ຖັດໄປ") built in -- clicking
+  //     "ຖັດໄປ" (next) reliably advances to the NEXT row in list order (verified: after opening
+  //     row 1 and clicking ຖັດໄປ once, the drawer's content became exactly row 2's). Since
+  //     newRows is always a contiguous top-slice of the same list, walking it with "ຖັດໄປ" instead
+  //     of closing+reopening from the table removes the whole close-reliability problem for every
+  //     row after the first.
+  //  2) There IS a real close control, just not the standard antd one: a custom
+  //     `span.anticon-close` icon in the drawer header (confirmed live: clicking it does remove
+  //     the "ant-drawer-open" class, unlike the mask). `.ant-drawer-close` (what the old code
+  //     tried as a fallback) does not exist in this app's markup at all.
+  // On top of the navigation fix, still verify the card text actually contains the expected
+  // tracking number before ever saving (retries once if not) -- this stays as a hard safety net
+  // even though the root cause is now fixed, since a saved-wrong-image bug is too costly to risk
+  // trusting navigation timing alone a second time.
+  const PAD_PX = 12; // ~3mm at typical screen density -- Tar's own request for breathing room
+  // around the cropped bill card (screen density varies, so this is an approximation, not an
+  // exact mm conversion -- fine for this purpose).
+
+  async function readCard(page) {
+    const cardHandle = await page.evaluateHandle(() => {
+      const body = document.querySelector('.ant-drawer-body');
+      if (!body) return null;
+      const candidates = Array.from(body.querySelectorAll('div')).filter(d => (d.innerText || '').includes('ເລກພັດສະດຸ'));
+      const withTotal = candidates.filter(d => (d.innerText || '').includes('ລວມທັງໝົດ'));
+      withTotal.sort((a, b) => a.innerText.length - b.innerText.length);
+      return withTotal[0] || candidates[0] || null;
+    });
+    const cardEl = cardHandle.asElement();
+    const text = cardEl ? await cardEl.evaluate(el => el.innerText || '').catch(() => '') : '';
+    return { cardHandle, cardEl, text };
+  }
+
+  const downloadedFiles = [];
+  const skippedMismatches = [];
+  const guardSkips = [];
+
+  if (newRows.length > 0) {
+    // open the FIRST row's drawer from the table (still needs its own view-button click)
+    const firstViewBtnHandle = await page.evaluateHandle((tracking) => {
+      const all = Array.from(document.querySelectorAll('tr'));
+      const row = all.find(tr => (tr.innerText || '').includes(tracking));
+      if (!row) return null;
+      const lastCell = row.children[row.children.length - 1];
+      return lastCell ? lastCell.querySelector('button') : null;
+    }, newRows[0].tracking);
+    const firstViewBtnEl = firstViewBtnHandle.asElement();
+    const openedFirst = !!firstViewBtnEl;
+    if (firstViewBtnEl) { await realClick(page, firstViewBtnEl); await page.waitForTimeout(1200); }
+    await firstViewBtnHandle.dispose();
+
+    if (!openedFirst) {
+      for (const r of newRows) skippedMismatches.push(r.tracking);
+    } else {
+      for (let i = 0; i < newRows.length; i++) {
+        const r = newRows[i];
+        let matched = !!r.skip; // v(2026-10-02) rows that already exist in the system are only stepped over
+        for (let attempt = 1; attempt <= 2 && !matched; attempt++) {
+          if (attempt > 1) await page.waitForTimeout(1000); // give the drawer a bit more time
+          const { cardHandle, cardEl, text } = await readCard(page);
+          if (cardEl && text.includes(r.tracking)) {
+            const box = await cardEl.boundingBox();
+            if (box) {
+              const clip = {
+                x: Math.max(0, box.x - PAD_PX),
+                y: Math.max(0, box.y - PAD_PX),
+                width: box.width + PAD_PX * 2,
+                height: box.height + PAD_PX * 2,
+              };
+              const fname = `hal-bill-${r.tracking}-${phone}-${today}.jpg`;
+              const savePath = path.join(DIR, fname);
+              try {
+                const vpNow = await readViewport(page);
+                // GUARD: the card must lie fully inside the real viewport
+                if (box.x < -1 || box.y < -1 || box.x + box.width > vpNow.w + 1 || box.y + box.height > vpNow.h + 1) {
+                  guardSkips.push({ tracking: r.tracking, reason: `CARD_OUTSIDE_VIEW_${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)}x${Math.round(box.height)}_vp${vpNow.w}x${vpNow.h}` });
+                  throw new Error('card outside view');
+                }
+                const tmpPath = savePath + '.tmp';
+                await captureClip(page, clip, tmpPath, vpNow);
+                const problem = imageProblem(tmpPath);
+                if (problem) {
+                  if (DIAG_KEPT < 4) { try { const kd = 'C:\\n8n-data\\bill-diag'; if (!fs.existsSync(kd)) fs.mkdirSync(kd, { recursive: true }); fs.copyFileSync(tmpPath, path.join(kd, `hal-rejected-${phone}-${r.tracking}.jpg`)); DIAG_KEPT++; } catch (e2) {} }
+                  try { fs.unlinkSync(tmpPath); } catch (e2) {}
+                  guardSkips.push({ tracking: r.tracking, reason: 'BAD_IMAGE_' + problem + `_box${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)}x${Math.round(box.height)}_vp${vpNow.w}x${vpNow.h}` });
+                  throw new Error('bad image');
+                }
+                fs.renameSync(tmpPath, savePath);
+                downloadedFiles.push(savePath);
+                matched = true;
+              } catch (e) { /* try again next attempt */ }
+            }
+          }
+          await cardHandle.dispose();
+        }
+        if (!matched) skippedMismatches.push(r.tracking);
+
+        if (i < newRows.length - 1) {
+          const nextBtnHandle = await page.evaluateHandle(() => {
+            const btns = Array.from(document.querySelectorAll('.ant-drawer button'));
+            return btns.find(b => (b.innerText || '').trim() === 'ຖັດໄປ') || null;
+          });
+          const nextBtnEl = nextBtnHandle.asElement();
+          if (nextBtnEl) { await realClick(page, nextBtnEl); }
+          await nextBtnHandle.dispose();
+          await page.waitForTimeout(1200);
+        }
+      }
+
+      // close via the real close control (confirmed live: the mask does nothing here)
+      const closeIconHandle = await page.evaluateHandle(() => document.querySelector('.ant-drawer .anticon-close'));
+      const closeIconEl = closeIconHandle.asElement();
+      if (closeIconEl) { await realClick(page, closeIconEl); }
+      await closeIconHandle.dispose();
+      await page.waitForTimeout(500);
+    }
+  }
+
+  if (guardSkips.length > 0) {
+    // de-duplicate per tracking (attempt 1 + 2 can both record a skip)
+    const seenG = new Set(); const uniq = guardSkips.filter(g => !seenG.has(g.tracking) && seenG.add(g.tracking) && !downloadedFiles.some(f => f.includes(g.tracking)));
+    if (uniq.length > 0) {
+      const sample = uniq.slice(0, 8).map(c => `${c.tracking}: ${c.reason}`).join('\n');
+      await sendTelegram(`⚠️ <b>ຖ່າຍບິນຮຸ່ງອາລຸນ (${phone})</b>: ຂ້າມ ${uniq.length} ບິນ ເພາະຮູບບໍ່ຜ່ານການກວດ (ບໍ່ໄດ້ອັບໂຫລດຮູບເສຍ)\n${sample}`);
+      if (downloadedFiles.length === 0) {
+        console.log(JSON.stringify({ status: 'error', error: 'ALL_CAPTURES_REJECTED', date: today, guardSkips: uniq, skippedMismatches }));
+        process.exit(1);
+      }
+    }
+  }
+
+  if (downloadedFiles.length === 0) {
+    console.log(JSON.stringify({ status: 'ok', date: today, newFileCount: 0, skippedMismatches }));
+    process.exit(0);
+  }
+
+  // upload everything just captured, in one call, via courierBillHandleFiles (unmodified) --
+  // select ຮຸ່ງອາລຸນ radio first so the batch is tagged correctly.
+  const sinceISO = new Date().toISOString();
+  const upRes = await uploadFilesToMarketingStudio(msPage, downloadedFiles);
+  if (!upRes.ok) { console.log(JSON.stringify({ status: 'error', error: upRes.reason, downloadedFiles })); process.exit(1); }
+
+  // v(2026-09-29) FIX: verify the upload actually produced DB rows (see the root-cause comment on
+  // uploadFilesToMarketingStudio above) instead of trusting the fixed wait + no error alone --
+  // that combination is exactly what let 11 real bills for phone 55279515 vanish silently on
+  // 2026-09-29 while this script still reported "ok". Retries the missing ones ONCE; if still
+  // missing after that, this now exits non-zero so the bridge's circuit-breaker/Telegram alert
+  // actually fires instead of staying silent.
+  const verify = await verifyAndRetry(msPage, downloadedFiles, sinceISO);
+  if (verify.missing.length > 0) {
+    console.log(JSON.stringify({ status: 'error', error: 'UPLOAD_NOT_VERIFIED', date: today, newFileCount: downloadedFiles.length, downloadedFiles, skippedMismatches, missingAfterVerify: verify.missing }));
+    process.exit(1);
+  }
+
+  console.log(JSON.stringify({ status: 'ok', date: today, newFileCount: downloadedFiles.length, downloadedFiles, skippedMismatches, verified: true }));
+  process.exit(0);
+})().catch(e => {
+  console.log(JSON.stringify({ status: 'error', error: e.message }));
+  process.exit(1);
+});
