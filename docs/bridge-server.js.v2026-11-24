@@ -731,6 +731,20 @@ const server = http.createServer((req, res) => {
     const fullPath = path.join(SCRIPT_DIR, scriptFile);
     console.log(`[${new Date().toISOString()}] QUEUE ${fullPath} ${port}${mode ? ' mode=' + mode : ''}${bill ? ' bill=' + bill : ''}`);
 
+    // v(2026-11-24) The n8n Pancake sender fires every 20s but one run takes ~60s, so requests piled up in the
+    // port queue (30 queued vs 10 done in 10 min) and n8n sockets that waited minutes got cut ("connection closed"
+    // alert). Allow at most 1 running + 1 waiting per script/port; extra requests get an immediate harmless 200
+    // (the waiting run picks up the next bill anyway).
+    const _dedupeKey = (scriptKey === 'pancake-send-bill-image') ? (scriptKey + ':' + port) : null;
+    if (_dedupeKey) {
+      global._pendingByKey = global._pendingByKey || {};
+      if ((global._pendingByKey[_dedupeKey] || 0) >= 2) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', skipped: 'BUSY_ALREADY_QUEUED' }));
+        return;
+      }
+      global._pendingByKey[_dedupeKey] = (global._pendingByKey[_dedupeKey] || 0) + 1;
+    }
     let _gateRelease; const _gate = new Promise((r) => { _gateRelease = r; });
     const _full = new Promise((resolveFull) => { runQueued(port, () => { const inner = (async () => {
       // v5 (2026-10-15): the breaker was only checked when a request ARRIVED. On 2026-10-15 it opened at 13:15 Laos, but ~19 runs
@@ -818,6 +832,7 @@ const server = http.createServer((req, res) => {
     inner.then(resolveFull, (e) => resolveFull({ status: 'error', error: String(e && e.message || e), stdout: '', stderr: '' }));
     return Promise.race([inner.catch(() => {}), _gate]); }); });
     _full.then(async (result) => {
+      if (_dedupeKey) global._pendingByKey[_dedupeKey] = Math.max(0, (global._pendingByKey[_dedupeKey] || 1) - 1);
       if (result && result.circuitOpen) return;  // v5: dropped queued run, must not count as a new failure
       // [new 2026-09-29, circuit breaker] Update failure streak for this (script, port) and open
       // the breaker (+ fire an immediate alert) the moment it crosses the threshold. A success
