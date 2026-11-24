@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.90"; // v8.90 CHANGE (Tar 2026-11-20, poster tab): poster v1.7 - the phone photo tip now says to use a backdrop colour that differs from the product (white product -> dark/green/blue cloth, coloured/dark product -> white paper) and to cover the stand. Text only.
+const APP_VERSION = "8.91"; // v8.91 NEW (Tar 2026-11-24, "ໃຫ້ AI ຂຽນແຄັບຊັນ 3 ແບບ ມຸມຂາຍຕ່າງກັນ ໃຫ້ຂ້ອຍເລືອກ... ບໍ່ຢາກຈຳກັດ 450 ຕົວອັກສອນ" = the finished video must become ad-test material): (1) page 🎬 ວິດີໂອສຳເລັດ: every card (owner only, product must be enabled in the 🧪 tab) has a new button "🧪 ສົ່ງເຂົ້າທົດສອບແອັດ". It asks whether the video shows a promotion (the promo rule of ads-test-auto: only ad_test_products.current_promo may be written), draws 3 snapshots from the video in the browser (adsTestVideoFrames now also accepts a URL; needs the public bucket CORS), stores them as <product_key>/frames/<asset_id>_N.jpg and calls the NEW edge function ads-test-variants (action send). (2) ads-test-variants (v1, separate from ads-test-auto on purpose) inserts product_assets (source upload, origin in note and plan.ai.source "sykhai-editor", storage_path "edited:<video id>" so deleting the asset never deletes the finished video, status queued so the cron planner skips it, transcript from the editor if any), lets Claude judge the video and choose THREE different selling angles (pain/result/offer/routine/curiosity/trust) with a Lao title, a "why this angle suits this video" sentence and a headline, marks one as recommended, then writes ONE long caption per angle in parallel (no 450 limit: 300-900 characters usual, 1500 safety cap, hook in the first ~125 characters, call to action at the end) and inserts ad_test_plans status proposed with plan.caption/headline = recommended variant and plan.ai.variants[] + plan.ai.variant_index. (3) 🧪 tab plan card: if plan.ai.variants exists it shows 3 buttons (one per angle, ⭐ = AI recommended), the "why" line, the FULL caption (not clipped, with length) and headline of the chosen one; clicking a button saves the choice into plan.caption/headline/ai.variant_index (only while proposed/approved); "🔄 ຂຽນ 3 ແບບໃໝ່" calls ads-test-variants {action:"regen"}. Launch is unchanged (ads-test-auto reads plan.caption; it has no 450 check on launch). New DB columns: product_assets.transcript, edited_product_videos.script (both text, nullable; not filled automatically yet).
+// (previous text of this slot, kept) // v8.90 CHANGE (Tar 2026-11-20, poster tab): poster v1.7 - the phone photo tip now says to use a backdrop colour that differs from the product (white product -> dark/green/blue cloth, coloured/dark product -> white paper) and to cover the stand. Text only.
 // (previous text of this slot, kept) v8.89 CHANGE (Tar 2026-11-20, poster tab, "ບັນທຶກບໍ່ໄດ້ ຍັງລໍ AI ຕັດຢູ່"): poster sub-app v1.6: on a phone, saving never waits for the AI cutter. Products that need AI are saved as "pending" rows in poster_history (new columns status, cfg) and a computer finishes them automatically when the poster tab is opened (or button ▶ in the history page). Phone preview shows the whole photo meanwhile. No other change to this file.
 // (previous text of this slot, kept) v8.88 NEW (Tar 2026-11-20, poster tab, "ຖານສີຂາວທີ່ໃຊ້ວາງສິນຄ້າ ບໍ່ສາມາດຕັດໄດ້ແມ່ນບໍ"): poster sub-app v1.5: button "✂️ ກຳນົດກອບສິນຄ້າເອງ" — staff/owner draw a rectangle around the product on the photo (white box on a white stand cannot be separated by colour); the rectangle is saved per product + photo in new table poster_crops (shared by all devices) and used instead of the automatic cut-out. No other change to this file.
 // (previous text of this slot, kept) v8.87 CHANGE (Tar 2026-11-20, poster tab, "ອັບເດດເປັນເວີຊັນຫຍັງ ບໍ່ເຫັນບອກ"): poster sub-app (poster/index.html + engine.js, shown here as iframe) updated: (1) faster cut-out for plain/light backdrops (backdrop surface fit + leak guard) so fewer photos wait for the AI cutter, (2) a photo taken on a phone is saved at once and the cut-out/check runs in the background queue, (3) the poster page now shows its own version label "ໂປສເຕີ v1.4". No other change to this file.
@@ -1632,7 +1633,8 @@ const APP_VERSION = "8.90"; // v8.90 CHANGE (Tar 2026-11-20, poster tab): poster
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.89"; // (v8.89 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.90"; // (v8.90 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.89"; // (v8.89 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.83 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.81 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines of APP_VERSION above)
@@ -1743,7 +1745,8 @@ const APP_VERSION_PREV = "8.89"; // (v8.89 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.88"; // (v8.88 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.89"; // (v8.89 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.88"; // (v8.88 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.82 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.80 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.79 text kept in the history comment lines above)
@@ -8469,7 +8472,7 @@ const STATE = {
   adsAnnaTargetStatusFilter: "all", adsAnnaTargetBudgetFilter: "all",
   adsAnnaPreviewLoading: false, adsAnnaPreviewResults: null,
   adsCoachRuns: [], adsCoachRecs: [], adsCoachSettings: {}, adsCoachDrafts: [], adsCoachDraftProduct: "veggie_coffee", adsCoachDraftBusy: false, adsCoachDraftFocus: "", adsCoachTab: "todo", adsCoachOpen: {}, adsCoachDraftId: null, adsCoachLoading: false, adsCoachRunning: false, adsCoachBusyId: null, // v8.27
-  adsTestProducts: [], adsTestAssets: [], adsTestPlans: [], adsTestUploading: "", adsTestPlanning: false, adsTestOpeningId: null, adsTestNote: "", launchAdTestPlanId: null, adsTestProduct: "", adsTestBusy: null, adsTestPerf: {}, adsTestRefreshing: false, // v8.31/v8.32
+  adsTestProducts: [], adsTestAssets: [], adsTestPlans: [], adsTestUploading: "", adsTestPlanning: false, adsTestOpeningId: null, adsTestNote: "", launchAdTestPlanId: null, adsTestProduct: "", adsTestVarBusy: "", editedVidSending: "", adsTestBusy: null, adsTestPerf: {}, adsTestRefreshing: false, // v8.31/v8.32
   adsTestLog: [], adsTestState: null, adsTestTicking: false, adsTestAutoBusy: false, // v8.33
   campaignControlLogDateFrom: "", campaignControlLogDateTo: "",
   // v4.80: search + full server-side pagination for the log (replaces the old 200-row client cap)
@@ -22960,8 +22963,10 @@ async function adsTestImageFrames(file){
   } finally { URL.revokeObjectURL(url); }
 }
 async function adsTestVideoFrames(file){
-  const url = URL.createObjectURL(file);
+  const fromUrl = typeof file === "string"; // v8.91: a finished video is read straight from its public URL (needs CORS, the product-assets bucket allows it)
+  const url = fromUrl ? file : URL.createObjectURL(file);
   const v = document.createElement("video");
+  if(fromUrl) v.crossOrigin = "anonymous";
   v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
   try{
     await new Promise((res, rej)=>{ const t = setTimeout(()=>rej(new Error("video metadata timeout")), 10000); v.onloadedmetadata = ()=>{ clearTimeout(t); res(); }; v.onerror = ()=>{ clearTimeout(t); rej(new Error("video decode")); }; });
@@ -22975,7 +22980,7 @@ async function adsTestVideoFrames(file){
       }catch(e){ console.warn("frame failed:", e); break; }
     }
     return out;
-  } finally { URL.revokeObjectURL(url); try{ v.removeAttribute("src"); v.load(); }catch(_e){} }
+  } finally { if(!fromUrl) URL.revokeObjectURL(url); try{ v.removeAttribute("src"); v.load(); }catch(_e){} }
 }
 async function adsTestUploadFiles(productKey, files){
   const list = Array.from(files||[]);
@@ -23328,6 +23333,35 @@ async function adsTestToggleAuto(){
     showToast(on ? "ປິດໂໝດອັດຕະໂນມັດແລ້ວ" : "✅ ເປີດໂໝດອັດຕະໂນມັດແລ້ວ");
   }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); }
   STATE.adsTestAutoBusy = false;
+  await loadAdsCoachData();
+}
+// v8.91: choose which of the 3 caption variants (ads-test-variants) a proposed/approved plan will launch with.
+async function adsTestPickVariant(planId, idx){
+  const p = (STATE.adsTestPlans||[]).find(x=>x.id===planId);
+  if(!p || !p.ai || !Array.isArray(p.ai.variants) || !p.ai.variants[idx]) return;
+  if(p.status!=="proposed" && p.status!=="approved") return;
+  const v = p.ai.variants[idx];
+  const ai = { ...p.ai, variant_index: idx };
+  STATE.adsTestVarBusy = planId; render();
+  try{
+    const { error } = await sb.from("ad_test_plans").update({ caption: v.caption, headline: v.headline, ai }).eq("id", planId).in("status", ["proposed","approved"]);
+    if(error) throw error;
+    p.caption = v.caption; p.headline = v.headline; p.ai = ai;
+  }catch(e){ showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); }
+  STATE.adsTestVarBusy = ""; render();
+}
+async function adsTestRegenVariants(planId){
+  if(STATE.adsTestVarBusy) return;
+  const ok = await customConfirm("ໃຫ້ AI ຂຽນແຄັບຊັນ 3 ແບບໃໝ່ບໍ? ແບບເກົ່າຈະຖືກແທນທີ່.", {okLabel:"ຂຽນໃໝ່"});
+  if(!ok) return;
+  STATE.adsTestVarBusy = planId; render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-test-variants", { body: { action:"regen", plan_id: planId } });
+    if(error) throw error;
+    if(!data || !data.ok) throw new Error((data && data.error) || "unknown");
+    showToast("✅ ຂຽນ 3 ແບບໃໝ່ແລ້ວ");
+  }catch(e){ showErrorToast("ຂຽນໃໝ່ບໍ່ສຳເລັດ: "+(e.message||e)); }
+  STATE.adsTestVarBusy = "";
   await loadAdsCoachData();
 }
 async function adsTestRejectPlan(planId){
@@ -23739,6 +23773,21 @@ function renderAdsTestTab(){
     return `<div class="tst-note">${inWin ? "🤖 ຈະຍິງໃນຮອບຕໍ່ໄປ (ທຸກ 10 ນາທີ)" : "🕗 ຈະຍິງເອງ "+win(sel)+" (ເວລາລາວ)"}</div>${retry}`;
   };
 
+  const hasVars = (p)=> !!(p.ai && Array.isArray(p.ai.variants) && p.ai.variants.length>1);
+  // v8.91: 3 caption variants (one per selling angle) written by ads-test-variants; clicking a tab saves the choice
+  const variantsBlock = (p)=>{
+    if(!hasVars(p)) return "";
+    const vs = p.ai.variants;
+    const cur = Math.max(0, Math.min(vs.length-1, Number(p.ai.variant_index)||0));
+    const can = (p.status==="proposed" || p.status==="approved") && !busy && !ticking && !STATE.adsTestVarBusy;
+    const regenBusy = STATE.adsTestVarBusy===p.id;
+    return `<div class="tst-vars">
+      <div class="tst-meta" style="margin:0 0 6px;"><b>✍️ ແຄັບຊັນ ${vs.length} ແບບ — ເລືອກມຸມຂາຍທີ່ຈະທົດສອບ</b> (⭐ = AI ຄິດວ່າເໝາະກັບວິດີໂອນີ້ທີ່ສຸດ)</div>
+      <div class="tst-vtabs">${vs.map((v,i)=>`<button class="tst-vtab${i===cur?" on":""}" data-test-var="${p.id}:${i}" ${can?"":"disabled"}>${i+1}. ${esc(v.title_lo||v.key)}${v.recommended?" ⭐":""}</button>`).join("")}</div>
+      <div class="tst-why">💡 ${esc((vs[cur]||{}).why_lo||"")}</div>
+      ${(p.status==="proposed"||p.status==="approved")?`<button class="coach-link" data-test-regen="${p.id}" ${can?"":"disabled"}>${regenBusy?"⏳ ກຳລັງຂຽນ...":"🔄 ຂຽນ 3 ແບບໃໝ່"}</button>`:""}
+    </div>`;
+  };
   const readyCard = (p)=>{
     const a = assetOf(p.asset_id);
     const isBusy = busy && busy.id===p.id;
@@ -23752,7 +23801,9 @@ function renderAdsTestTab(){
       ${adsTestThumb(a)}
       <div class="tst-card-body">
         ${aiBlock(p.ai)}
-        <div class="tst-cap">${esc(clip(p.caption,260))}</div>
+        ${variantsBlock(p)}
+        <div class="tst-cap${hasVars(p)?" tst-cap-full":""}">${esc(hasVars(p)?String(p.caption||""):clip(p.caption,260))}</div>
+        ${hasVars(p)?`<div class="tst-meta">${String(p.caption||"").length} ຕົວອັກສອນ</div>`:""}
         ${p.headline?`<div class="tst-head">${esc(p.headline)}</div>`:""}
         <div class="tst-meta">ງົບ ${esc(String(p.daily_budget))}/ວັນ</div>
         ${(p.ai && Object.prototype.hasOwnProperty.call(p.ai,"promo_used")) ? `<div class="tst-meta">🎁 ${p.ai.promo_used?"ໂປຣໃນຄຳບັນຍາຍ: "+esc(p.ai.promo_used):"ບໍ່ມີໂປຣ — ຄຳບັນຍາຍບໍ່ມີຂອງແຖມ/ສ່ວນຫຼຸດ"}</div>`:""}
@@ -23992,6 +24043,13 @@ function renderAdsCoachPage(){
       .tst-card-body{padding:14px 16px 6px; flex:1;}
       .tst-cap{white-space:pre-wrap; line-height:1.6; font-size:14px; display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;}
       .tst-cap-sm{-webkit-line-clamp:2; font-size:13px; color:var(--muted); margin-top:4px;}
+      .tst-cap-full{display:block; -webkit-line-clamp:unset; overflow:visible; max-height:340px; overflow-y:auto;}
+      .tst-vars{margin:10px 0 8px;}
+      .tst-vtabs{display:flex; gap:6px; flex-wrap:wrap;}
+      .tst-vtab{border:1px solid var(--border,#d9d9d9); background:#fff; border-radius:999px; padding:6px 12px; font-size:13px; cursor:pointer;}
+      .tst-vtab.on{background:#1f2937; color:#fff; border-color:#1f2937; font-weight:700;}
+      .tst-vtab:disabled{opacity:.6; cursor:default;}
+      .tst-why{margin:8px 0 6px; font-size:13px; color:var(--muted); line-height:1.5;}
       .tst-head{margin-top:10px; font-weight:700; font-size:14px;}
       .tst-meta{margin-top:8px; font-size:12.5px; color:var(--muted); line-height:1.5;}
       .tst-card-foot{padding:10px 16px 14px;}
@@ -24130,6 +24188,12 @@ function attachAdsCoachEvents(){
   });
   document.querySelectorAll("[data-test-open]").forEach(el=>{
     el.addEventListener("click", ()=>adsTestOpenInLaunch(el.getAttribute("data-test-open")));
+  });
+  document.querySelectorAll("[data-test-var]").forEach(el=>{
+    el.addEventListener("click", ()=>{ const [pid, i] = el.getAttribute("data-test-var").split(":"); adsTestPickVariant(pid, Number(i)); });
+  });
+  document.querySelectorAll("[data-test-regen]").forEach(el=>{
+    el.addEventListener("click", ()=>adsTestRegenVariants(el.getAttribute("data-test-regen")));
   });
   document.querySelectorAll("[data-test-reject]").forEach(el=>{
     el.addEventListener("click", ()=>adsTestRejectPlan(el.getAttribute("data-test-reject")));
@@ -36568,6 +36632,7 @@ function renderEditedVideos(){
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:auto;">
           <button class="btn btn-primary btn-sm" data-edited-vid-dl="${esc(r.id)}">⬇️ ດາວໂຫຼດ</button>
           <button class="btn btn-outline btn-sm" data-edited-vid-copy="${esc(r.id)}">🔗 ສຳເນົາລິ້ງ</button>
+          ${(isOwner() && ED_VID_PRODUCT_KEY[r.product_id]) ? `<button class="btn btn-outline btn-sm" data-edited-vid-test="${esc(r.id)}" ${STATE.editedVidSending?"disabled":""}>${STATE.editedVidSending===r.id?"⏳ ກຳລັງສົ່ງ...":"🧪 ສົ່ງເຂົ້າທົດສອບແອັດ"}</button>` : ""}
           ${canDelete(r) ? `<button class="btn btn-outline btn-sm" data-edited-vid-del="${esc(r.id)}">🗑️ ລຶບ</button>` : ""}
         </div>
       </div>
@@ -36622,6 +36687,87 @@ async function deleteEditedVideo(id){
   STATE.editedVideosList = (STATE.editedVideosList||[]).filter(x=>x.id!==id);
   render();
 }
+// v8.91: finished video -> 🧪 ad test. Same product ids as the PRODUCT_ID map of the edge function ads-test-variants.
+const ED_VID_PRODUCT_KEY = {
+  p1783144544466:"bio_pro_orange", p1783147254115:"toby_magnesium", p1783400050860:"tirdian_plus",
+  p_yumiko_veggie_coffee:"veggie_coffee", p_pimnada_sesame_coffee:"sesame_coffee", p1783146396263:"velaris_lung"
+};
+async function editedVidSendToTest(id){
+  if(STATE.editedVidSending) return;
+  const r = (STATE.editedVideosList||[]).find(x=>x.id===id);
+  if(!r) return;
+  const key = ED_VID_PRODUCT_KEY[r.product_id];
+  if(!key){ showToast("⚠️ ສິນຄ້ານີ້ຍັງບໍ່ຮອງຮັບການທົດສອບແອັດ", "error"); return; }
+  let cfg = null;
+  try{
+    const { data, error } = await sb.from("ad_test_products").select("*").eq("product_key", key).maybeSingle();
+    if(error) throw error;
+    cfg = data;
+  }catch(e){ showErrorToast("ໂຫຼດຂໍ້ມູນສິນຄ້າບໍ່ສຳເລັດ: "+(e.message||e)); return; }
+  if(!cfg || !cfg.enabled){ showToast("⚠️ ສິນຄ້ານີ້ຍັງບໍ່ໄດ້ເປີດໃຊ້ໃນແຖບ 🧪 ທົດສອບ", "error"); return; }
+  const title = r.title || r.file_name || "";
+  const okSend = await customConfirm(`ສົ່ງວິດີໂອ "${title}" ເຂົ້າທົດສອບແອັດບໍ? AI ຈະເບິ່ງວິດີໂອ ແລ້ວຂຽນແຄັບຊັນ 3 ແບບ (3 ມຸມຂາຍ) ໃຫ້ເຈົ້າເລືອກ. ຍັງບໍ່ຍິງແອັດຈົນກວ່າເຈົ້າກົດຍິງ.`, {okLabel:"ສົ່ງ"});
+  if(!okSend) return;
+  // promo rule: only the owner's current promo may be written in a caption
+  const cur = String(cfg.current_promo||"").trim();
+  const curActive = cur && !(cfg.promo_until && String(cfg.promo_until).slice(0,10) < new Date(Date.now()+7*3600*1000).toISOString().slice(0,10)) ? cur : "";
+  let promoState = "none";
+  if(curActive){
+    const has = await customConfirm(`ໃນວິດີໂອນີ້ ມີການເວົ້າ ຫຼື ສະແດງໂປຣໂມຊັນ (ຂອງແຖມ / ສ່ວນຫຼຸດ / ລາຄາພິເສດ) ບໍ? ໂປຣປັດຈຸບັນ: ${curActive}`, {okLabel:"ມີ — ກົງກັບໂປຣປັດຈຸບັນ", cancelLabel:"ບໍ່ມີໂປຣ"});
+    promoState = has ? "has_promo" : "none";
+  } else {
+    const noPromo = await customConfirm("ໃນວິດີໂອນີ້ ມີການເວົ້າ ຫຼື ສະແດງໂປຣໂມຊັນ (ຂອງແຖມ / ສ່ວນຫຼຸດ / ລາຄາພິເສດ) ບໍ? (ຕອນນີ້ຍັງບໍ່ໄດ້ຕັ້ງໂປຣປັດຈຸບັນ)", {okLabel:"ບໍ່ມີໂປຣ — ສົ່ງໄດ້", cancelLabel:"ມີໂປຣ — ຢຸດກ່ອນ"});
+    if(!noPromo){ showToast("ຢຸດແລ້ວ — ຖ້າມີໂປຣ ໃຫ້ຕັ້ງໂປຣປັດຈຸບັນໃນແຖບ 🧪 ກ່ອນ"); return; }
+  }
+  STATE.editedVidSending = id; render();
+  const assetId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null;
+  if(!assetId){ STATE.editedVidSending = ""; render(); showErrorToast("ບຼາວເຊີນີ້ບໍ່ຮອງຮັບ — ລອງໃຊ້ Chrome"); return; }
+  const framePaths = []; const frameUrls = [];
+  let keepFrames = false;
+  try{
+    showToast("⏳ ກຳລັງຖ່າຍຮູບຈາກວິດີໂອ...");
+    try{
+      const blobs = await adsTestVideoFrames(r.public_url);
+      for(let i=0;i<blobs.length;i++){
+        const fp = `${key}/frames/${assetId}_${i+1}.jpg`;
+        const { error: fErr } = await sb.storage.from("product-assets").upload(fp, blobs[i], { contentType:"image/jpeg", upsert:false });
+        if(fErr) throw fErr;
+        framePaths.push(fp);
+        frameUrls.push(sb.storage.from("product-assets").getPublicUrl(fp).data.publicUrl);
+      }
+    }catch(fe){
+      console.warn("frame extraction failed:", fe);
+      if(framePaths.length){ try{ await sb.storage.from("product-assets").remove(framePaths); }catch(_e){} }
+      framePaths.length = 0; frameUrls.length = 0;
+      showToast("⚠️ ຖ່າຍຮູບຈາກວິດີໂອບໍ່ໄດ້ — AI ຈະຂຽນຈາກຂໍ້ມູນສິນຄ້າເທົ່ານັ້ນ", "error");
+    }
+    showToast("🤖 AI ກຳລັງເບິ່ງວິດີໂອ ແລະ ຂຽນແຄັບຊັນ 3 ແບບ (ໃຊ້ເວລາ ~1 ນາທີ)");
+    const { data, error } = await sb.functions.invoke("ads-test-variants", { body: {
+      action:"send", edited_video_id:r.id, product_key:key, promo_state:promoState, promo_text: promoState==="has_promo" ? curActive : undefined,
+      asset_id:assetId, frames:frameUrls, by: STATE.currentUser?STATE.currentUser.name:""
+    }});
+    if(error) throw error;
+    if(data && data.ok){
+      keepFrames = true;
+      showToast("✅ ສຳເລັດ — AI ຂຽນແຄັບຊັນ 3 ແບບແລ້ວ");
+      STATE.adsCoachTab = "test"; STATE.adsTestProduct = key;
+      navigateToPage("adsCoach");
+      await loadAdsCoachData();
+    } else if(data && data.rejected){
+      keepFrames = true; // the asset row (retired) still points at the frames
+      await customAlert("AI ເຫັນວ່າວິດີໂອນີ້ໃຊ້ເປັນແອັດບໍ່ໄດ້: " + data.rejected);
+    } else if(data && data.error==="already_sent"){
+      showToast("ວິດີໂອນີ້ເຄີຍສົ່ງເຂົ້າທົດສອບແລ້ວ — ເບິ່ງໃນແຖບ 🧪 ທົດສອບ");
+    } else {
+      showErrorToast("ສົ່ງບໍ່ສຳເລັດ: " + String((data && data.error) || "ບໍ່ຮູ້ສາເຫດ"));
+    }
+  }catch(e){
+    console.error("editedVidSendToTest failed:", e);
+    showErrorToast("ສົ່ງບໍ່ສຳເລັດ: " + String((e && e.message) || e));
+  }
+  if(!keepFrames && framePaths.length){ try{ await sb.storage.from("product-assets").remove(framePaths); }catch(_e){} }
+  STATE.editedVidSending = ""; render();
+}
 function attachEditedVideosEvents(){
   const filterEl = document.getElementById("edited-vid-filter");
   if(filterEl) filterEl.addEventListener("change", ()=>{ STATE.editedVideosProduct = filterEl.value; render(); });
@@ -36637,6 +36783,7 @@ function attachEditedVideosEvents(){
     catch(e){ showToast("⚠️ ສຳເນົາບໍ່ໄດ້", "error"); }
   }));
   document.querySelectorAll("[data-edited-vid-del]").forEach(b=>b.addEventListener("click", ()=>deleteEditedVideo(b.dataset.editedVidDel)));
+  document.querySelectorAll("[data-edited-vid-test]").forEach(b=>b.addEventListener("click", ()=>editedVidSendToTest(b.dataset.editedVidTest)));
 }
 
 function renderArrivalTagReport(){
