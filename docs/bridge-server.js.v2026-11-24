@@ -1,0 +1,989 @@
+// Local HTTP bridge so n8n (whose Code node blocks child_process and has no
+// Execute Command node) can trigger our courier-bill Node scripts via a plain
+// HTTP Request node instead.
+//
+// Endpoints:
+//   GET /health
+//   GET /run?script=<name>&port=<9222|9223>   -> runs `node C:\n8n-data\<name>.js <port>`
+//
+// Only scripts inside the SCRIPT_DIR whitelist below can be run, and only by
+// exact filename match, so this cannot be used to execute arbitrary commands.
+
+const http = require('http');
+const https = require('https');
+const { execFile } = require('child_process');
+const url = require('url');
+const path = require('path');
+const crypto = require('crypto');
+
+const SCRIPT_DIR = 'C:\\n8n-data';
+const PORT = 7890;
+
+// [Telegram 2026-09-27] Tar's own bot, created via @BotFather, and his personal chat id from
+// /getUpdates after messaging the bot once. Only used to send the round-summary notification
+// below -- never anything else. Keep this token private (whoever has it can control the bot).
+const TELEGRAM_BOT_TOKEN = '8869572182:AAHy-t0Uob1taqZ9ZletoFzjpuTecea-YJE';
+const TELEGRAM_CHAT_ID = '8978288067';
+
+// [Telegram 2026-09-27] Read-only Supabase access (anon key, RLS is off on these tables --
+// the Marketing Studio SPA itself reads/writes them client-side with this same key) so the
+// round summary can report real upload counts (bills/orders/COD), not just pass/fail. Never
+// used for writes -- only GET requests against PostgREST below.
+const SUPABASE_HOST = 'swrijpkkufarddsyqhrh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3cmlqcGtrdWZhcmRkc3lxaHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDQ4ODYsImV4cCI6MjA5ODQ4MDg4Nn0.GoGsR4Z4u4UiCJ03-jZkJAgjJtjD8J4MosiBh4cpths';
+const MS_BOT_TOKEN = '6daa795e5d328a784713b941a6007d597c8b0d5f791c94e7188ee2c0c9859656'; // [2026-11-05 security] session token header x-ms-token, read by DB policy ms_ok()
+
+const LABELS = {
+  'anousith-returns': 'Anousith ຕີກັບ',
+  'anousith-cod': 'Anousith COD',
+  'hal-returns': 'HAL ຕີກັບ',
+  'hal-cod': 'HAL COD',
+  'anousith-billimages': 'Anousith ຮູບບິນ',
+  'hal-billimages': 'HAL ຮູບບິນ',
+  'anousith-activity-excel-match': 'Anousith Excel Match',
+  'ms-upload-cod': 'ອັບໂຫລດ COD',
+  'ms-upload-returns': 'ອັບໂຫລດ ຕີກັບ',
+  'anousith-deposit': 'Anousith ຝາກເຄື່ອງ',
+  'anousith-cod-confirm': 'Anousith ຢືນຢັນ COD (8:00)',
+  'hal-cod-confirm': 'HAL ຢືນຢັນ COD',
+  'anousith-arrival-tag': 'Anousith ຮອດປາຍທາງ (ຕິດແທັກ)',
+  'arrival-wa-notify': 'ແຈ້ງເຕືອນເຄື່ອງຮອດ WhatsApp (DRY-RUN)',
+  'pancake-ui-diag': 'Pancake UI DIAG (one-off)',
+};
+const PORT_TO_PHONE = { '9222': '52906969', '9223': '55279515' };
+
+// [Telegram 2026-09-27] Debounced round-summary notifier: every /run result (whichever script,
+// whichever port) is pushed into roundEvents and resets a quiet-period timer. n8n fires every
+// script for a round almost simultaneously at the top of the hour, and the bridge only serializes
+// them per-port -- there's no single "round finished" signal to hook into, so this instead waits
+// until nothing new has finished for ROUND_QUIET_MS (a full round has always finished well within
+// that gap in every round monitored so far) and then sends ONE Telegram message summarizing
+// everything that ran, before clearing the buffer for the next round. Telegram send failures are
+// swallowed (console.error only) so a network hiccup here can never affect script execution or the
+// bridge's own responses to n8n.
+const ROUND_QUIET_MS = 90 * 1000;
+let roundEvents = [];
+let roundTimer = null;
+
+// [Telegram 2026-09-27 FIX] Monotonic watermark instead of "roundStartedAt - 3min". The old
+// windowing anchored the Supabase lookup to the DONE time of whichever event started the CURRENT
+// flush's round, minus a fixed 3-minute margin. That breaks whenever a single script takes longer
+// than 3 minutes end-to-end (anousith-billimages now screenshots one bill at a time and can run
+// 5+ minutes for a big batch): the script's mid-run Supabase insert can land *before* the window
+// start of the (separate, later) round its own slow DONE ends up falling into, and the batch is
+// silently skipped -- confirmed happening for the 09:07:58-09:13:22 UTC run (45-page Anousith
+// batch, imported_at 09:09:34, reported to Telegram as "ບໍ່ມີຂໍ້ມູນໃໝ່"). Fix: track the last
+// imported_at we've actually reported and always query strictly after it, regardless of which
+// round/script produced it or how long that script took to finish. This can never double-count
+// (we only advance past rows we actually saw) and can never miss a row for good (an unseen row
+// just gets picked up on the next flush, whenever that fires).
+let summaryWatermark = new Date().toISOString();
+
+// v6a (2026-10-17, per Tar): alerts used to be LOST when the internet/DNS dropped (seen 09:20 Laos: getaddrinfo ENOTFOUND
+// api.telegram.org) -- exactly when an alert matters most. Now a failed send (network error, timeout or non-2xx reply) is kept
+// in a small in-memory backlog and retried every 60 s, oldest first, each marked with the time it was originally raised.
+const TG_BACKLOG_FILE = path.join(__dirname, 'telegram-backlog.json');
+const TG_BACKLOG = [];
+const TG_BACKLOG_MAX = 40;
+// v6c: the backlog is also written to disk so a power cut / reboot (14:57 on 2026-10-17 lost 6 queued alerts) does not lose it.
+try { const _j = JSON.parse(require('fs').readFileSync(TG_BACKLOG_FILE, 'utf8')); if (Array.isArray(_j)) _j.slice(-TG_BACKLOG_MAX).forEach((m) => { if (m && m.text) TG_BACKLOG.push({ text: String(m.text), at: Number(m.at) || Date.now() }); }); } catch (e) {}
+function _tgSave() { try { require('fs').writeFileSync(TG_BACKLOG_FILE, JSON.stringify(TG_BACKLOG)); } catch (e) {} }
+function _tgPost(text) {
+  return new Promise((resolve) => {
+    try {
+      const body = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML' });
+      const req = https.request(
+        {
+          hostname: 'api.telegram.org',
+          path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+          timeout: 15000,
+        },
+        (res) => { res.on('data', () => {}); res.on('end', () => resolve(res.statusCode >= 200 && res.statusCode < 300)); }
+      );
+      req.on('error', (e) => { console.error('[telegram] send failed: ' + e.message); resolve(false); });
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+      req.write(body);
+      req.end();
+    } catch (e) {
+      console.error('[telegram] send threw: ' + e.message);
+      resolve(false);
+    }
+  });
+}
+function _tgQueue(text) {
+  if (TG_BACKLOG.length >= TG_BACKLOG_MAX) TG_BACKLOG.shift();
+  TG_BACKLOG.push({ text, at: Date.now() });
+  _tgSave();
+  console.log(`[${new Date().toISOString()}] TELEGRAM_QUEUED backlog=${TG_BACKLOG.length}`);
+}
+async function sendTelegram(text) {
+  const ok = await _tgPost(text);
+  if (!ok) _tgQueue(text);
+  return ok;
+}
+let _tgFlushing = false;
+setInterval(async () => {
+  if (_tgFlushing || TG_BACKLOG.length === 0) return;
+  _tgFlushing = true;
+  try {
+    while (TG_BACKLOG.length > 0) {
+      const m = TG_BACKLOG[0];
+      const hhmm = new Date(m.at).toLocaleTimeString('en-GB', { timeZone: 'Asia/Vientiane', hour: '2-digit', minute: '2-digit' });
+      const ok = await _tgPost(`⏱ (ແຈ້ງຄ້າງສົ່ງ ເວລາ ${hhmm})\n` + m.text);
+      if (!ok) break;
+      TG_BACKLOG.shift();
+      _tgSave();
+      console.log(`[${new Date().toISOString()}] TELEGRAM_BACKLOG_SENT left=${TG_BACKLOG.length}`);
+    }
+  } finally { _tgFlushing = false; }
+}, 60000).unref();
+
+function recordRoundEvent(scriptKey, port, mode, result) {
+  roundEvents.push({
+    scriptKey, port, mode,
+    ok: result && result.status === 'ok',
+    error: result && result.error ? String(result.error).slice(0, 200) : null,
+    ts: Date.now(),
+  });
+  if (roundTimer) clearTimeout(roundTimer);
+  roundTimer = setTimeout(flushRoundSummary, ROUND_QUIET_MS);
+}
+
+// [Telegram 2026-09-27] Plain GET against PostgREST (no client library installed here --
+// bridge-server.js only uses Node builtins). Any failure (network, bad JSON, timeout) resolves
+// to [] rather than throwing, so a Supabase hiccup can never break the pass/fail summary itself.
+function sbGet(pathAndQuery) {
+  return new Promise((resolve) => {
+    try {
+      const req = https.request(
+        {
+          hostname: SUPABASE_HOST,
+          path: pathAndQuery,
+          method: 'GET',
+          headers: { apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: 'Bearer ' + SUPABASE_ANON_KEY },
+          timeout: 15000,
+        },
+        (res) => {
+          let body = '';
+          res.on('data', (c) => { body += c; });
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(body);
+              resolve(Array.isArray(parsed) ? parsed : []);
+            } catch (e) {
+              resolve([]);
+            }
+          });
+        }
+      );
+      req.on('error', () => resolve([]));
+      req.on('timeout', () => { req.destroy(); resolve([]); });
+      req.end();
+    } catch (e) {
+      resolve([]);
+    }
+  });
+}
+
+// Sums numeric fields per group (e.g. per courier_name) across a list of rows.
+function sumBy(rows, keyField, sumFields) {
+  const map = {};
+  for (const r of rows) {
+    const k = (r && r[keyField]) || 'ບໍ່ຮູ້ຂົນສົ່ງ';
+    if (!map[k]) map[k] = {};
+    for (const f of sumFields) map[k][f] = (map[k][f] || 0) + (Number(r && r[f]) || 0);
+  }
+  return map;
+}
+
+function fmtNum(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// Fetches what actually landed in Marketing Studio's tables during this round's window, so the
+// Telegram summary can show real counts (bills/orders/COD) instead of just pass/fail. sinceIso
+// is roundStartedAt with a few minutes of safety margin subtracted -- scripts like the bill-image
+// exporters upload/OCR as they go, partway through their own run, so a batch's imported_at can
+// land slightly before that script's own DONE line.
+async function fetchRoundUploadSummary(sinceIso) {
+  // "gt" (strictly after), never "gte" -- summaryWatermark is itself the imported_at of the last
+  // row we already reported, so gte would re-fetch and double-report that exact row.
+  const since = encodeURIComponent(sinceIso);
+  const [bills, returns, cods] = await Promise.all([
+    sbGet(`/rest/v1/courier_bill_import_batches?select=courier_name,total_pages,matched_count,unmatched_count,imported_at&imported_at=gt.${since}`),
+    sbGet(`/rest/v1/return_import_batches?select=courier_name,row_count,imported_at&imported_at=gt.${since}`),
+    sbGet(`/rest/v1/cod_import_batches?select=courier_name,row_count,total_amount,imported_at&imported_at=gt.${since}`),
+  ]);
+  return { bills, returns, cods };
+}
+
+async function flushRoundSummary() {
+  const events = roundEvents;
+  roundEvents = [];
+  roundTimer = null;
+  if (!events.length) return;
+
+  const modeLabel = events.some(e => e.mode === 'yesterday') ? ' (ເກັບຕົກ)' : '';
+  const now = new Date(Date.now() + 7 * 3600 * 1000); // Laos time (UTC+7)
+  const hh = String(now.getUTCHours()).padStart(2, '0');
+  const mm = String(now.getUTCMinutes()).padStart(2, '0');
+
+  const failed = events.filter(e => !e.ok);
+  const lines = [];
+  lines.push(`<b>ຮອບ ${hh}:${mm}${modeLabel}</b> — ${events.length} ວຽກ, ${failed.length ? '❌ ' + failed.length + ' ລົ້ມ' : '✅ ຜ່ານຄົບ'}`);
+  // v(2026-09-30, per Tar: "ໃຫ້ລາຍງານໝົດທີ່ເຮັດໃນຮອບນັ້ນໆ ທັງຜ່ານແລະບໍ່ຜ່ານ") Used to list only the
+  // failed jobs, so a passing job never appeared anywhere in the Telegram message -- the header
+  // count was the only trace it ran at all. Now lists every job that ran this round, in the order
+  // it finished, each tagged pass or fail; the per-failure error text is unchanged.
+  lines.push('');
+  for (const e of events) {
+    const label = LABELS[e.scriptKey] || e.scriptKey;
+    const phone = PORT_TO_PHONE[String(e.port)] || e.port;
+    lines.push(e.ok ? `✅ ${label} (${phone})` : `❌ ${label} (${phone}): ${e.error || 'ບໍ່ຮູ້ສາເຫດ'}`);
+  }
+
+  const sinceIso = summaryWatermark;
+  const { bills, returns, cods } = await fetchRoundUploadSummary(sinceIso);
+
+  // Advance the watermark past everything we just saw, so the next flush never re-reports it.
+  // Only advance as far as what we actually found -- if nothing came back, leave it where it was,
+  // since a still-in-flight slow script may yet write a row with an imported_at before "now".
+  const allImportedAt = [...bills, ...returns, ...cods].map((r) => r && r.imported_at).filter(Boolean);
+  if (allImportedAt.length) {
+    const maxImportedAt = allImportedAt.reduce((a, b) => (a > b ? a : b));
+    if (maxImportedAt > summaryWatermark) summaryWatermark = maxImportedAt;
+  }
+
+  const uploadLines = [];
+
+  const billMap = sumBy(bills, 'courier_name', ['total_pages', 'matched_count', 'unmatched_count']);
+  for (const courier of Object.keys(billMap)) {
+    const b = billMap[courier];
+    if (!b.total_pages) continue;
+    const stuck = b.unmatched_count > 0 ? `, ຄ້າງບໍ່ຈັບຄູ່ ${b.unmatched_count}` : '';
+    uploadLines.push(`• ຮູບບິນ ${courier}: ${fmtNum(b.total_pages)} ບິນ, ຈັບຄູ່ ${fmtNum(b.matched_count)}/${fmtNum(b.total_pages)}${stuck}`);
+  }
+
+  const returnMap = sumBy(returns, 'courier_name', ['row_count']);
+  for (const courier of Object.keys(returnMap)) {
+    if (!returnMap[courier].row_count) continue;
+    uploadLines.push(`• ຕີກັບ ${courier}: ${fmtNum(returnMap[courier].row_count)} ອໍເດີ`);
+  }
+
+  const codMap = sumBy(cods, 'courier_name', ['row_count', 'total_amount']);
+  for (const courier of Object.keys(codMap)) {
+    if (!codMap[courier].row_count) continue;
+    uploadLines.push(`• COD ${courier}: ${fmtNum(codMap[courier].row_count)} ອໍເດີ, ${fmtNum(codMap[courier].total_amount)} ກີບ`);
+  }
+
+  if (uploadLines.length) {
+    lines.push('');
+    lines.push('📦 <b>ອັບເຂົ້າລະບົບຮອບນີ້:</b>');
+    lines.push(...uploadLines);
+  } else if (!failed.length) {
+    // v(2026-11-24, Tar: too many Telegram messages): a round where everything passed AND nothing
+    // new was uploaded is not worth a message (onepay-sync alone sent one every 5 minutes). Rounds
+    // with failures, or with uploads, are still reported. Failures also still go through the
+    // circuit-breaker WATCHDOG alerts.
+    return;
+  }
+
+  // v(2026-10-02) Telegram rejects messages over 4096 chars (a huge round used to fail silently):
+  // split on line boundaries into <=3500-char parts, sent in order.
+  let part = '';
+  const parts = [];
+  for (const ln of lines) {
+    if (part.length + ln.length + 1 > 3500 && part) { parts.push(part); part = ''; }
+    part += (part ? '\n' : '') + ln;
+  }
+  if (part) parts.push(part);
+  for (const p of parts) await sendTelegram(p);
+}
+
+// Whitelist: logical name -> actual script filename
+const SCRIPTS = {
+  'anousith-deposit': 'anousith-deposit-test.js',
+  'hal-cod': 'hal-cod-export.js',
+  'anousith-cod': 'anousith-cod-export.js',
+  'anousith-returns': 'anousith-returns-export.js',
+  'hal-returns': 'hal-returns-export.js',
+  'ms-upload-cod': 'ms-upload-cod.js',
+  'ms-upload-returns': 'ms-upload-returns.js',
+  'anousith-billimages': 'anousith-billimages-export.js',
+  'anousith-activity-excel-match': 'anousith-activity-excel-match.js',
+  'hal-billimages': 'hal-billimages-export.js',
+  'anousith-cod-confirm': 'anousith-cod-confirm.js',
+  'hal-cod-confirm': 'hal-cod-confirm.js',
+  'anousith-arrival-tag': 'anousith-arrival-tag.js',
+  'arrival-wa-notify': 'arrival-wa-notify.js',
+  'pancake-ui-diag': 'pancake-ui-diag.js',
+  'pancake-attach-diag': 'pancake-attach-diag.js',
+  'pancake-send-bill-image': 'pancake-send-bill-image.js',
+  'pancake-tag-url-diag': 'pancake-tag-url-diag.js',
+  'pancake-tag-fix-73356': 'pancake-tag-fix-73356.js',
+  'pancake-verify-send': 'pancake-verify-send.js',
+  'onepay-sync': 'onepay-sync.js', // [2026-11-10] OnePay Shop -> onepay_transactions (read-only feed), port 9225
+  'shop-deploy': 'shop-deploy.js', // [2026-11-18] storefront zip -> Cloudflare Pages (manual trigger only, NOT auto-retry; mode=check = dry run). Use port=9999.
+};
+
+// [new 2026-09-29, circuit breaker, per Tar: "ຢຸດອັດຕະໂນມັດເມື່ອ error ຕິດຕໍ່ກັນ, ແຈ້ງເຕືອນທັນທີ
+// ເມື່ອລົ້ມເຫລວ"] Caught live: an n8n Schedule Trigger fired every 20s for several minutes
+// straight into a script that couldn't even reach Chrome (CDP port not connected) -- each firing
+// failed harmlessly, but nothing stopped it, and nothing told Tar until he happened to look.
+// Tracks consecutive failures per (scriptKey, port) key; once a threshold is hit, the breaker
+// OPENS and every further /run for that exact key is refused immediately -- the underlying script
+// (Playwright, CDP, real customer-facing actions) never even starts -- until a human clears it via
+// /reset-circuit. A single success resets the counter and closes the breaker. Deliberately no
+// auto-recovery timer: a schedule that was about to spam real customer sends should stay stopped
+// until someone has actually looked, not silently resume on its own.
+const FAILURE_THRESHOLD = 3;
+// v(2026-10-02, per Tar) READ-ONLY / idempotent export+upload scripts may retry by themselves 30 min after the
+// breaker opened (one trial run). Scripts that send to customers or click real actions (pancake-send-bill-image,
+// arrival-tag, COD confirm, WhatsApp notify, fixes) are deliberately NOT listed -- they still stay stopped until a human resets.
+const AUTO_RETRY_SCRIPTS = new Set(['hal-cod', 'anousith-cod', 'anousith-returns', 'hal-returns', 'ms-upload-cod', 'ms-upload-returns', 'anousith-billimages', 'hal-billimages', 'anousith-activity-excel-match', 'onepay-sync']);
+const AUTO_RETRY_AFTER_MS = 30 * 60 * 1000;
+// v4 (2026-10-15, per Tar): pancake-send-bill-image may retry by itself 10 min after the breaker opens (one trial run;
+// the sender claims rows atomically and verifies delivery, so a trial cannot double-send), and failures that belong to
+// ONE bill (ambiguous chat only) are NOT counted toward the breaker.
+const AUTO_RETRY_AFTER_MS_BY = { 'pancake-send-bill-image': 10 * 60 * 1000 };
+const PER_BILL_FAIL_RE = /AMBIGUOUS/;  // narrowed: 'no conversation'/'not verified' also occur when the Pancake page itself is unstable (SEARCHBOX_MISS), so they still count
+function perBillFailure(scriptKey, result) {
+  if (scriptKey !== 'pancake-send-bill-image' || !result) return false;
+  return PER_BILL_FAIL_RE.test(String(result.error || '') + String(result.stdout || '').slice(-600));
+}
+function autoRetryMs(scriptKey) { return AUTO_RETRY_AFTER_MS_BY[scriptKey] || AUTO_RETRY_AFTER_MS; }
+const circuitState = {}; // "scriptKey:port" -> { consecutiveFailures, open, openedAt, lastError }
+
+function circuitKey(scriptKey, port) { return `${scriptKey}:${port}`; }
+
+function getCircuit(scriptKey, port) {
+  const key = circuitKey(scriptKey, port);
+  if (!circuitState[key]) circuitState[key] = { consecutiveFailures: 0, open: false, openedAt: null, lastError: null };
+  return circuitState[key];
+}
+
+// Immediate, non-debounced alert -- distinct from flushRoundSummary's 90s-quiet-period digest,
+// because "the automation just stopped itself" deserves a ping the moment it happens, not buried
+// in the next scheduled summary (which may be many rounds away for a 20s-interval workflow).
+async function sendCircuitOpenAlert(scriptKey, port, failCount, lastError) {
+  const label = LABELS[scriptKey] || scriptKey;
+  const phone = PORT_TO_PHONE[String(port)] || port;
+  const lines = [
+    `🛑 <b>ຢຸດອັດຕະໂນມັດແລ້ວ</b> — ${label} (${phone})`,
+    `ລົ້ມເຫລວຕິດຕໍ່ກັນ ${failCount} ຄັ້ງ, ຢຸດການສົ່ງ/ເຮັດວຽກຈົນກວ່າຈະ reset ດ້ວຍມື`,
+    `ສາເຫດລ່າສຸດ: ${String(lastError || 'ບໍ່ຮູ້ສາເຫດ').slice(0, 300)}`,
+    ``,
+    `ແກ້ໄຂແລ້ວ ໄປເປີດ: http://127.0.0.1:7890/reset-circuit?script=${encodeURIComponent(scriptKey)}&port=${encodeURIComponent(port)}`,
+  ];
+  await sendTelegram(lines.join('\n'));
+}
+
+// Per-CDP-port serialization: two scripts must never run concurrently
+// against the SAME Chrome profile/port (they fight over the same page/tab
+// via CDP and fail fast with "Command failed"). Scripts against DIFFERENT
+// ports may still run in parallel. Each port gets its own promise chain
+// ("queue tail") that requests are appended to.
+const portQueues = {}; // port -> Promise (tail of the queue for that port)
+
+function runQueued(port, task) {
+  const prevTail = portQueues[port] || Promise.resolve();
+  const runNow = prevTail.then(task, task); // run task even if previous task's promise rejected
+  // Keep the queue alive even if this task errors, so later requests aren't stuck.
+  portQueues[port] = runNow.catch(() => {});
+  return runNow;
+}
+
+function runScript(fullPath, port, mode, extraArg, onScanDone) {
+  const args = [fullPath, String(port)];
+  if (mode) args.push(String(mode));
+  if (extraArg) args.push(String(extraArg));
+  return new Promise((resolve) => {
+    const _child = execFile(
+      'node',
+      args,
+      // v(2026-09-25) FIX: 25min was too tight for a day with a LOT of bills (e.g. Anousith's 81
+      // real bills today) -- sequential download + real OCR/upload of that many images can
+      // legitimately take longer, and execFile's own timeout was silently killing the process
+      // (empty stdout, no partial result) before it ever finished or even printed anything.
+      { timeout: 45 * 60 * 1000, maxBuffer: 1024 * 1024 * 100, cwd: SCRIPT_DIR },
+      (err, stdout, stderr) => {
+        console.log(`[${new Date().toISOString()}] DONE ${fullPath} ${port} err=${err ? err.message : 'none'}`);
+        resolve({
+          status: err ? 'error' : 'ok',
+          error: err ? err.message : null,
+          stdout,
+          stderr,
+        });
+      }
+    );
+    // [2026-10-01 per Tar: lanes must not wait on each other] anousith-arrival-tag only needs the
+    // courier Chrome (its port) during the list scan; it prints SCAN_DONE when that ends. Release
+    // that port's queue then, so COD/upload jobs on the same port are not stuck behind the ~40 min
+    // POS-tagging phase (which runs on the separate Pancake Chrome).
+    if (onScanDone && _child && _child.stdout) {
+      let _buf = '', _fired = false;
+      _child.stdout.on('data', (d) => { if (_fired) return; _buf += d; if (_buf.includes('SCAN_DONE')) { _fired = true; try { onScanDone(); } catch (e) {} } });
+    }
+  });
+}
+
+// [new 2026-10-04] Tabs the courier Chromes (9222/9223) legitimately need. Anything else (e.g. a Supabase SQL editor
+// left open) is closed ONLY after a connectOverCDP timeout, see /run. Chrome's own pages (chrome://...) are never touched.
+const TAB_ALLOW_HOST = /(^|\.)(anousith\.express|halexpress\.la|touktashop\.online|pages\.fm|pancake\.vn|github\.io|facebook\.com|fbcdn\.net)$/i;
+function _cdpGetJson(port, p, timeoutMs) {
+  return new Promise((resolve) => {
+    const req = http.get({ hostname: 'localhost', port, path: p, timeout: timeoutMs || 5000 }, (res) => {
+      let body = '';
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => resolve({ code: res.statusCode, body }));
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+async function healStuckTabs(port) {
+  const closed = [];
+  const r = await _cdpGetJson(port, '/json/list', 5000);
+  if (!r || r.code !== 200) return closed;
+  let list; try { list = JSON.parse(r.body); } catch (e) { return closed; }
+  const pages = list.filter((t) => t.type === 'page' && /^https?:/i.test(String(t.url || '')));
+  const keep = pages.filter((t) => { try { return TAB_ALLOW_HOST.test(new URL(t.url).hostname); } catch (e) { return false; } });
+  if (keep.length === 0) return closed; // never leave the Chrome without its working tabs
+  for (const t of pages) {
+    let host = ''; try { host = new URL(t.url).hostname; } catch (e) { continue; }
+    if (TAB_ALLOW_HOST.test(host)) continue;
+    await _cdpGetJson(port, '/json/close/' + t.id, 4000);
+    closed.push(host);
+  }
+  return closed;
+}
+
+// v6 (2026-10-17, per Tar "ໃຫ້ເຈົ້າເຮັດ"): NO_PAGE self-heal. Seen live 2026-10-17 09:20 (Laos): a brief internet drop made
+// page.goto fail with ERR_INTERNET_DISCONNECTED, which leaves the tab on a chrome-error:// page. Every export script finds its
+// tab by URL containing the site host, so from then on they all returned NO_PAGE (Anousith on 9222) and Chrome itself was fine,
+// so neither the Chrome-down relaunch nor the connect-timeout heal ever fired. Fix: on NO_PAGE, close chrome-error tabs and open
+// the site's real content page through the CDP HTTP endpoint (saved login cookies are reused), then retry the script once.
+const SITE_REOPEN = [
+  { re: /^anousith-/, host: 'anousith.express', url: 'https://app.anousith.express/nextday/cod?tab=all_cod' },
+  { re: /^hal-/, host: 'halexpress.la', url: 'https://www.halexpress.la/dashboard' },
+];
+function _cdpPut(port, p, timeoutMs) {
+  return new Promise((resolve) => {
+    const req = http.request({ method: 'PUT', hostname: 'localhost', port, path: p, timeout: timeoutMs || 8000 }, (res) => {
+      let body = ''; res.on('data', (d) => { body += d; }); res.on('end', () => resolve({ code: res.statusCode, body }));
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.end();
+  });
+}
+async function reopenSiteTab(port, scriptKey) {
+  // v6b: v6 skipped the reopen when /json/list showed a tab whose URL contains the site host ("tab_exists"). Live 2026-10-17 13:00
+  // that was wrong: a tab stuck on a Chrome error page is still listed under the site URL by the DevTools endpoint, while
+  // Playwright sees chrome-error://, so the scripts kept returning NO_PAGE. Now: open a FRESH tab on the site first, and only
+  // if that worked close the old tabs of that site (and chrome-error tabs). Saved login cookies are reused.
+  const site = SITE_REOPEN.find((s) => s.re.test(String(scriptKey)));
+  if (!site) return { status: 'no_site' };
+  const r = await _cdpGetJson(port, '/json/list', 5000);
+  if (!r || r.code !== 200) return { status: 'no_cdp', host: site.host };
+  let list; try { list = JSON.parse(r.body); } catch (e) { return { status: 'no_cdp', host: site.host }; }
+  const pages = list.filter((t) => t.type === 'page');
+  console.log(`[${new Date().toISOString()}] NO_PAGE_TABS port=${port} ` + pages.map((t) => String(t.url || '').slice(0, 70) + ' | ' + String(t.title || '').slice(0, 30)).join(' ;; '));
+  const old = pages.filter((t) => String(t.url || '').includes(site.host) || /^chrome-error:/i.test(String(t.url || '')));
+  const o = await _cdpPut(port, '/json/new?' + site.url, 8000);
+  if (!(o && o.code === 200)) return { status: 'open_failed', host: site.host };
+  let newId = ''; try { newId = JSON.parse(o.body).id || ''; } catch (e) {}
+  for (const t of old) { if (t.id !== newId) await _cdpGetJson(port, '/json/close/' + t.id, 4000); }
+  return { status: 'opened', host: site.host, replaced: old.length };
+}
+
+const server = http.createServer((req, res) => {
+  const parsed = url.parse(req.url, true);
+
+  if (parsed.pathname === '/health') {
+    const openCircuits = Object.entries(circuitState).filter(([, v]) => v.open).map(([k, v]) => ({ key: k, ...v }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', time: new Date().toISOString(), openCircuits }));
+    return;
+  }
+
+  // [refactored 2026-09-29] Unified launch config for all 3 automation Chrome profiles, keyed by
+  // CDP port -- used both by the manual /launch-* endpoints below AND by the automatic pre-flight
+  // check in /run (ensureChromeReady), so "Chrome isn't running" no longer needs a human to notice
+  // and trigger a relaunch by hand. Each launches the SAME already-logged-in profile (graceful
+  // CloseMainWindow first, force-kill only what's still alive after 3s, then relaunch) via
+  // execFile('powershell.exe', ['-Command', ...]) -- proven to sidestep the Explorer/.ps1 execution
+  // problem that blocked restart-pancake.ps1 when run by hand. Relaunching keeps the profile's saved
+  // login/cookies (confirmed live for Pancake: no re-login needed after relaunch), so this alone
+  // covers "not logged in" for the common case where the site session is still valid but Chrome
+  // itself simply isn't running -- it does not (yet) handle a genuinely expired site session.
+  // v(2026-09-30, stuck-login-tab fix) Was opening the bare /login URL for both sites on every
+  // relaunch, regardless of whether the profile's saved session cookies were still valid -- since
+  // these SPAs don't auto-redirect an already-logged-in visitor away from /login, that tab just sat
+  // there forever (confirmed live: found stuck on app.anousith.express/login hours after a relaunch,
+  // on both 9222 and 9223, never touched again because every export script (anousith-cod-export.js,
+  // anousith-returns-export.js, anousith-arrival-tag.js, anousith-cod-confirm.js) only REUSES an
+  // existing tab whose URL already contains 'anousith.express' -- none of them create a fresh one if
+  // missing, so whichever tab happens to match first can be the dead login one). Pointing the
+  // relaunch straight at each site's real content page instead: if the session cookie is still good
+  // (the common case per the comment above), Chrome lands directly on the authenticated page, no
+  // login screen ever shown; if the session genuinely did expire, the site's own auth guard bounces
+  // it to /login itself, which is now an accurate signal of a real logout rather than a false one.
+  const CHROME_LAUNCH_BY_PORT = {
+    9222: { dataDir: 'C:\\ChromeAutomation\\P2DataV2', profileDir: 'Profile 4', winPos: '0,0', urls: 'https://app.anousith.express/nextday/cod?tab=all_cod https://www.halexpress.la/dashboard', extraArgs: '--window-size=640,1040' },
+    9223: { dataDir: 'C:\\ChromeAutomation\\P3DataV2', profileDir: 'Profile 5', winPos: '645,0', urls: 'https://app.anousith.express/nextday/cod?tab=all_cod https://www.halexpress.la/dashboard', extraArgs: '--window-size=640,1040' },
+    9224: { dataDir: 'C:\\ChromeAutomation\\PancakeData', profileDir: 'Profile 6', winPos: null, urls: 'https://pages.fm/multi_pages', extraArgs: '--no-first-run --disable-session-crashed-bubble' },
+    9225: { dataDir: 'C:\\ChromeAutomation\\OnePayData', profileDir: 'Default', winPos: null, urls: 'https://onepayshop.la/', extraArgs: '--no-first-run --disable-session-crashed-bubble' }, // [2026-11-12] OnePay Shop Chrome (read-only feed): auto relaunch when hung
+  };
+
+  // v(2026-09-30, Chrome-hang fix) Confirmed live 2026-09-30 ~05:00: Chrome can answer this basic
+  // HTTP ping instantly while its real CDP/automation channel is wedged -- every script that tried
+  // to actually drive it that morning hung for the full 30s connectOverCDP timeout and failed, yet
+  // this check alone kept reporting "ready" the whole time, so the auto-launch below it never
+  // fired. A ping only proves Chrome's DevTools HTTP server is up, not that the browser can
+  // actually do automation work. Now also opens the SAME websocket a real script would use and
+  // sends one harmless CDP command (Target.getTargets); if that doesn't come back promptly, or the
+  // basic ping itself fails, this reports not-ready so /run's pre-flight relaunches Chrome BEFORE a
+  // real script wastes 30s finding out the hard way.
+  function isChromeReady(port, timeoutMs = 3000) {
+    return new Promise((resolve) => {
+      const req = http.get({ hostname: 'localhost', port, path: '/json/version', timeout: timeoutMs }, (res) => {
+        let body = '';
+        res.on('data', (d) => { body += d; });
+        res.on('end', () => {
+          if (res.statusCode !== 200) return resolve(false);
+          let wsUrl;
+          try { wsUrl = JSON.parse(body).webSocketDebuggerUrl; } catch (e) { return resolve(false); }
+          if (!wsUrl) return resolve(false);
+          deepCdpCheck(wsUrl, timeoutMs + 3000).then(resolve);
+        });
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+    });
+  }
+
+  // Hand-rolled minimal WebSocket client (no 'ws' package on this machine, and installing one just
+  // for a health check isn't worth the extra dependency) -- does the plain RFC6455 upgrade
+  // handshake, sends one masked text frame with a harmless CDP command, and reads back one
+  // unmasked server frame. Deliberately never sends any CDP "Browser.close"-type command and
+  // always tears down via socket.destroy() (a raw TCP close) rather than a WebSocket close frame or
+  // any CDP domain method -- from Chrome's side this looks exactly like any DevTools client
+  // disconnecting, which every CDP-capable browser supports happening at any time with zero effect
+  // on the browser itself. This check must be something we can always walk away from cleanly,
+  // never something that could kill the very Chrome instance it's checking.
+  function deepCdpCheck(wsUrl, timeoutMs) {
+    return new Promise((resolve) => {
+      let settled = false;
+      let socket = null;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true;
+        try { socket && socket.destroy(); } catch (e) { /* already closed -- fine */ }
+        resolve(ok);
+      };
+      const timer = setTimeout(() => done(false), timeoutMs);
+
+      let parsed;
+      try { parsed = new url.URL(wsUrl); } catch (e) { clearTimeout(timer); resolve(false); return; }
+      const key = crypto.randomBytes(16).toString('base64');
+      const req = http.request({
+        hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + parsed.search,
+        headers: { Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Key': key, 'Sec-WebSocket-Version': '13' },
+      });
+      req.on('upgrade', (upgradeRes, sock) => {
+        socket = sock;
+        let buf = Buffer.alloc(0);
+        socket.on('data', (chunk) => {
+          buf = Buffer.concat([buf, chunk]);
+          if (buf.length < 2) return;
+          let len = buf[1] & 0x7f;
+          let offset = 2;
+          if (len === 126) { if (buf.length < 4) return; len = buf.readUInt16BE(2); offset = 4; }
+          else if (len === 127) { if (buf.length < 10) return; len = Number(buf.readBigUInt64BE(2)); offset = 10; }
+          if (buf.length < offset + len) return; // wait for the rest of this frame
+          clearTimeout(timer);
+          try {
+            const msg = JSON.parse(buf.slice(offset, offset + len).toString('utf8'));
+            done(!!(msg && msg.id === 1 && !msg.error));
+          } catch (e) { done(false); }
+        });
+        socket.on('error', () => { clearTimeout(timer); done(false); });
+        // One masked text frame (client->server frames MUST be masked per RFC6455) carrying a CDP
+        // command that only reads state -- never one that could change or close anything.
+        const payload = Buffer.from(JSON.stringify({ id: 1, method: 'Target.getTargets' }), 'utf8');
+        const maskKey = crypto.randomBytes(4);
+        const masked = Buffer.alloc(payload.length);
+        for (let i = 0; i < payload.length; i++) masked[i] = payload[i] ^ maskKey[i % 4];
+        const header = payload.length < 126
+          ? Buffer.from([0x81, 0x80 | payload.length])
+          : (() => { const h = Buffer.alloc(4); h[0] = 0x81; h[1] = 0x80 | 126; h.writeUInt16BE(payload.length, 2); return h; })();
+        try { socket.write(Buffer.concat([header, maskKey, masked])); }
+        catch (e) { clearTimeout(timer); done(false); }
+      });
+      req.on('error', () => { clearTimeout(timer); done(false); });
+      req.end();
+    });
+  }
+
+  function launchChromeForPort(port) {
+    const cfg = CHROME_LAUNCH_BY_PORT[Number(port)];
+    if (!cfg) return Promise.resolve({ status: 'error', error: 'INVALID_PORT_FOR_LAUNCH' });
+    const filterLike = `*${cfg.dataDir.split('\\').slice(-2).join('\\')}*`;
+    const winPosArg = cfg.winPos ? ` --window-position=${cfg.winPos}` : '';
+    const psScript = [
+      `$procs = Get-CimInstance Win32_Process -Filter "name='chrome.exe'" | Where-Object { $_.CommandLine -like '${filterLike}' -and $_.CommandLine -notlike '*--type=*' }`,
+      'foreach ($cp in $procs) { $p = Get-Process -Id $cp.ProcessId -ErrorAction SilentlyContinue; if ($p) { $p.CloseMainWindow() | Out-Null } }',
+      'Start-Sleep -Seconds 3',
+      `$remaining = Get-CimInstance Win32_Process -Filter "name='chrome.exe'" | Where-Object { $_.CommandLine -like '${filterLike}' -and $_.CommandLine -notlike '*--type=*' }`,
+      'foreach ($cp in $remaining) { Stop-Process -Id $cp.ProcessId -Force -ErrorAction SilentlyContinue }',
+      'Start-Sleep -Seconds 2',
+      `Start-Process -FilePath "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" -ArgumentList '--user-data-dir="${cfg.dataDir}" "--profile-directory=${cfg.profileDir}" --remote-debugging-port=${port}${winPosArg} ${cfg.extraArgs} --new-window ${cfg.urls}'`,
+      'Start-Sleep -Seconds 6',
+      `try { $r = Invoke-WebRequest -Uri "http://localhost:${port}/json/version" -UseBasicParsing -TimeoutSec 5; Write-Output ("${port} OK: " + $r.Content) } catch { Write-Output ("${port} FAIL: " + $_.Exception.Message) }`,
+    ].join('; ');
+    return new Promise((resolve) => {
+      execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
+        { timeout: 25000, maxBuffer: 1024 * 1024 },
+        (err, stdout, stderr) => {
+          console.log(`[${new Date().toISOString()}] LAUNCH_CHROME port=${port} err=${err ? err.message : 'none'} stdout=${stdout}`);
+          resolve({ status: err ? 'error' : 'ok', error: err ? err.message : null, stdout, stderr });
+        }
+      );
+    });
+  }
+
+  if (parsed.pathname === '/launch-pancake-chrome') {
+    launchChromeForPort(9224).then((result) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); });
+    return;
+  }
+
+  if (parsed.pathname === '/launch-profile-chrome') {
+    const portForProfile = { '1': 9222, '2': 9223 };
+    const port = portForProfile[parsed.query.profile];
+    if (!port) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', error: 'INVALID_PROFILE', allowed: Object.keys(portForProfile) }));
+      return;
+    }
+    launchChromeForPort(port).then((result) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); });
+    return;
+  }
+
+  if (parsed.pathname === '/reset-circuit') {
+    const scriptKey = parsed.query.script;
+    const port = parsed.query.port;
+    if (!scriptKey || !port) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', error: 'missing script or port query param' }));
+      return;
+    }
+    const key = circuitKey(scriptKey, port);
+    const had = circuitState[key];
+    circuitState[key] = { consecutiveFailures: 0, open: false, openedAt: null, lastError: null };
+    console.log(`[${new Date().toISOString()}] CIRCUIT_RESET ${key}`);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', wasOpen: !!(had && had.open) }));
+    return;
+  }
+
+  if (parsed.pathname === '/run') {
+    const scriptKey = parsed.query.script;
+    const port = parsed.query.port || '9222';
+    const mode = parsed.query.mode || ''; // '' = normal (today), 'yesterday' = 01:00 catch-up round, 'single' = arrival-tag one-bill test
+    const bill = parsed.query.bill || ''; // optional 4th script arg -- arrival-tag's targetBill (test one specific bill number)
+    const scriptFile = SCRIPTS[scriptKey];
+
+    if (!scriptFile) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', error: 'UNKNOWN_SCRIPT', allowed: Object.keys(SCRIPTS) }));
+      return;
+    }
+    if (!/^\d+$/.test(String(port))) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', error: 'INVALID_PORT' }));
+      return;
+    }
+
+    // [new 2026-09-29, circuit breaker] Refuse BEFORE even queueing/spawning the script -- an open
+    // breaker means the underlying automation (real customer-facing sends, in
+    // pancake-send-bill-image's case) never runs at all until a human resets it.
+    _wdSeen[scriptKey + ':' + port] = Date.now();
+    const circuit = getCircuit(scriptKey, port);
+    if (circuit.open && (AUTO_RETRY_SCRIPTS.has(scriptKey) || scriptKey in AUTO_RETRY_AFTER_MS_BY) && circuit.openedAt && (Date.now() - new Date(circuit.openedAt).getTime()) >= autoRetryMs(scriptKey)) {
+      // v(2026-10-02) one trial run; if it fails the breaker stays open and the next trial is another 30 min away.
+      circuit.openedAt = new Date().toISOString();
+      circuit.trial = true;
+      console.log(`[${new Date().toISOString()}] CIRCUIT_AUTO_RETRY ${circuitKey(scriptKey, port)}`);
+    }
+    if (circuit.open && !circuit.trial) {
+      console.log(`[${new Date().toISOString()}] CIRCUIT_OPEN_REFUSED ${circuitKey(scriptKey, port)}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'error', error: 'CIRCUIT_OPEN: stopped after repeated failures -- reset via /reset-circuit once fixed',
+        circuitOpen: true, consecutiveFailures: circuit.consecutiveFailures, lastError: circuit.lastError, openedAt: circuit.openedAt,
+      }));
+      return;
+    }
+
+    const fullPath = path.join(SCRIPT_DIR, scriptFile);
+    console.log(`[${new Date().toISOString()}] QUEUE ${fullPath} ${port}${mode ? ' mode=' + mode : ''}${bill ? ' bill=' + bill : ''}`);
+
+    let _gateRelease; const _gate = new Promise((r) => { _gateRelease = r; });
+    const _full = new Promise((resolveFull) => { runQueued(port, () => { const inner = (async () => {
+      // v5 (2026-10-15): the breaker was only checked when a request ARRIVED. On 2026-10-15 it opened at 13:15 Laos, but ~19 runs
+      // were already queued behind the slow Pancake sender and each still ran, picking and failing one more real bill (29 failed).
+      // Re-check when the queued run actually starts, so an open breaker really stops everything that has not started yet.
+      { const _cq = getCircuit(scriptKey, port);
+        if (_cq.open && !_cq.trial) {
+          console.log(`[${new Date().toISOString()}] CIRCUIT_OPEN_DROPPED_QUEUED ${circuitKey(scriptKey, port)}`);
+          return { status: 'error', error: 'CIRCUIT_OPEN: queued run dropped because the breaker opened while it waited', circuitOpen: true, stdout: '', stderr: '' };
+        } }
+      // [new 2026-09-29, per Tar: "ຕັ້ງໃຫ້ n8n ລີໂຫລດແລະເຊັກເບິ່ງວ່າ ໂຄມເຊື່ອມຕໍ່...ກ່ອນທີ່ຈະລົງມືເຮັດ
+      // ວຽກຈິງ"] Self-healing pre-flight: before running ANY script, check whether that port's
+      // Chrome is actually reachable over CDP. If not, try launching it automatically (same logic
+      // as the manual /launch-* endpoints) and give it a few seconds to come up, THEN run the
+      // script regardless of the outcome -- if the auto-launch still didn't work, the script's own
+      // failure (or its own chrome_not_ready check, where one exists) surfaces normally through the
+      // usual circuit-breaker/Telegram-alert path. This turns "Chrome silently isn't running" from
+      // something that needed a human to notice into something the system recovers from on its own
+      // in the common case (relaunching keeps the profile's saved login -- confirmed live for
+      // Pancake, so this also covers "not logged in" whenever the underlying site session is still
+      // valid and only the Chrome process itself had gone down).
+      if (CHROME_LAUNCH_BY_PORT[Number(port)]) {
+        const ready = await isChromeReady(port);
+        if (!ready) {
+          console.log(`[${new Date().toISOString()}] CHROME_NOT_READY_AUTO_LAUNCH port=${port}`);
+          const launchResult = await launchChromeForPort(port);
+          console.log(`[${new Date().toISOString()}] AUTO_LAUNCH_RESULT port=${port} status=${launchResult.status}`);
+        }
+      }
+      console.log(`[${new Date().toISOString()}] RUN ${fullPath} ${port}${mode ? ' mode=' + mode : ''}${bill ? ' bill=' + bill : ''}`);
+      const _first = await runScript(fullPath, port, mode, bill, scriptKey === 'anousith-arrival-tag' ? _gateRelease : null);
+      // [new 2026-10-04, per Tar: "make the system work again, do anything"] Self-heal for the hang seen on port 9223
+      // (Chrome answered over HTTP but Playwright's connectOverCDP timed out for ~10h until a stray Supabase tab was
+      // closed). If a script on a courier Chrome (9222/9223) fails with a connectOverCDP Timeout, close any http(s) tab
+      // whose site is not one of the sites the scripts use, then run the script ONE more time. A connect timeout means
+      // nothing was done yet, so a retry is safe. arrival-tag (lane gate) and the Pancake sender are left alone.
+      if (scriptKey === 'anousith-arrival-tag') return _first;
+      // v(2026-10-14, per Tar: "if there is a problem the system must check and fix it by itself") LEVEL-1 SELF-HEAL.
+      // Seen live 2026-10-14: Chrome on 9223 hung (connectOverCDP Timeout with NO stray tab to close), tab-heal had
+      // nothing to do, so every run failed until the breaker opened and nobody fixed it -> that morning's COD confirm
+      // was missed. Now: connect-timeout -> (1) close stray tabs + retry, (2) if still timing out, FULL Chrome relaunch
+      // (same launchChromeForPort as the manual endpoint, keeps the saved login) + retry once. A connect timeout means
+      // the script did nothing yet, so a retry is safe. v2 (2026-10-14 13:20, per Tar): Pancake sender (9224) is covered too, relaunch-only (no tab-heal); duplicate sends are prevented by the sender itself (DB send_status + reload-verify). arrival-tag stays excluded.
+      let _cur = _first;
+      const _isConnTimeout = (r) => {
+        const t = String(r && r.stdout || '') + String(r && r.stderr || '') + String(r && r.error || '');
+        return !!(r && r.status === 'error' && (String(port) === '9222' || String(port) === '9223' || String(port) === '9224' || String(port) === '9225') && /connectOverCDP/.test(t) && /Timeout/.test(t));
+      };
+      try {
+        if (_isConnTimeout(_cur) && String(port) !== '9224' && String(port) !== '9225') {
+          const _closed = await healStuckTabs(port);
+          if (_closed.length > 0) {
+            console.log(`[${new Date().toISOString()}] TAB_HEAL port=${port} closed=${_closed.join(' | ')} -> retry ${scriptKey}`);
+            sendTelegram(`🔧 ປິດແຖບແປກປອມໃນ Chrome ${PORT_TO_PHONE[String(port)] || port} ແລ້ວລອງໃໝ່ (${LABELS[scriptKey] || scriptKey}): ${_closed.join(', ').slice(0, 200)}`).catch(() => {});
+            _cur = await runScript(fullPath, port, mode, bill, null);
+          }
+        }
+        // v6: NO_PAGE (site tab missing / left on a chrome-error page) on a courier Chrome -> reopen the tab, retry ONCE.
+        const _isNoPage = (r) => { const t = String(r && r.stdout || '') + String(r && r.stderr || '') + String(r && r.error || ''); return !!(r && r.status === 'error' && (String(port) === '9222' || String(port) === '9223') && /NO_PAGE|NO_HAL_PAGE/.test(t)); };
+        if (_isNoPage(_cur)) {
+          const _ro = await reopenSiteTab(port, scriptKey);
+          console.log(`[${new Date().toISOString()}] NO_PAGE_HEAL port=${port} script=${scriptKey} result=${_ro.status}`);
+          if (_ro.status === 'opened') {
+            await new Promise((r) => setTimeout(r, 8000));
+            _cur = await runScript(fullPath, port, mode, bill, null);
+            const _okNP = !!(_cur && _cur.status === 'ok');
+            sendTelegram(`🔧 ແທັບ ${_ro.host} ຫາຍໃນ Chrome ${PORT_TO_PHONE[String(port)] || port} → ເປີດຄືນອັດຕະໂນມັດ ແລ້ວລອງ ${LABELS[scriptKey] || scriptKey} ໃໝ່: ${_okNP ? '✅ ສຳເລັດ' : '❌ ຍັງລົ້ມເຫຼວ (ອາດຕ້ອງລັອກອິນ)'}`).catch(() => {});
+          }
+        }
+        if (_isConnTimeout(_cur) && CHROME_LAUNCH_BY_PORT[Number(port)]) {
+          console.log(`[${new Date().toISOString()}] CHROME_HUNG_RELAUNCH port=${port} script=${scriptKey}`);
+          const _lr = await launchChromeForPort(port);
+          console.log(`[${new Date().toISOString()}] CHROME_HUNG_RELAUNCH_RESULT port=${port} status=${_lr.status}`);
+          if (_lr.status === 'ok') {
+            _cur = await runScript(fullPath, port, mode, bill, null);
+            const _okNow = !!(_cur && _cur.status === 'ok');
+            sendTelegram(`🔧 Chrome ${PORT_TO_PHONE[String(port)] || port} ຄ້າງ → ເປີດໃໝ່ອັດຕະໂນມັດ ແລ້ວລອງ ${LABELS[scriptKey] || scriptKey} ໃໝ່: ${_okNow ? '✅ ສຳເລັດ' : '❌ ຍັງບໍ່ສຳເລັດ (ຕ້ອງການຄົນກວດ)'}`).catch(() => {});
+          } else {
+            sendTelegram(`❌ Chrome ${PORT_TO_PHONE[String(port)] || port} ຄ້າງ ແລະ ເປີດໃໝ່ບໍ່ໄດ້ (${LABELS[scriptKey] || scriptKey}) — ຕ້ອງການຄົນກວດ`).catch(() => {});
+          }
+        }
+      } catch (e) { console.error('[chrome self-heal] failed: ' + e.message); }
+      return _cur;
+    })();
+    inner.then(resolveFull, (e) => resolveFull({ status: 'error', error: String(e && e.message || e), stdout: '', stderr: '' }));
+    return Promise.race([inner.catch(() => {}), _gate]); }); });
+    _full.then(async (result) => {
+      if (result && result.circuitOpen) return;  // v5: dropped queued run, must not count as a new failure
+      // [new 2026-09-29, circuit breaker] Update failure streak for this (script, port) and open
+      // the breaker (+ fire an immediate alert) the moment it crosses the threshold. A success
+      // always resets the streak, even if the breaker was already open (a manual reset already
+      // handles the "known good again" case, but this guards against any state drift).
+      if (scriptKey === 'anousith-cod-confirm' && result && result.status === 'ok') _codOkAt[String(port)] = Date.now();
+      if (result && result.status === 'ok') {
+        if (circuit.consecutiveFailures > 0 || circuit.open) console.log(`[${new Date().toISOString()}] CIRCUIT_RESET_ON_SUCCESS ${circuitKey(scriptKey, port)}`);
+        if (circuit.open && circuit.trial) {
+          const _lbl = LABELS[scriptKey] || scriptKey; const _ph = PORT_TO_PHONE[String(port)] || port;
+          sendTelegram(`✅ ວຽກ ${_lbl} (${_ph}) ກັບມາແລ່ນປົກກະຕິເອງແລ້ວ (ລອງໃໝ່ອັດຕະໂນມັດສຳເລັດ)`).catch(() => {});
+        }
+        circuit.trial = false;
+        circuit.consecutiveFailures = 0;
+        circuit.open = false;
+        circuit.openedAt = null;
+        circuit.lastError = null;
+      } else if (perBillFailure(scriptKey, result) && !circuit.open) {
+        console.log(`[${new Date().toISOString()}] CIRCUIT_SKIP_PER_BILL ${circuitKey(scriptKey, port)}`);
+      } else {
+        circuit.trial = false;
+        circuit.consecutiveFailures += 1;
+        circuit.lastError = result && result.error ? String(result.error).slice(0, 300) : 'unknown error';
+        if (!circuit.open && circuit.consecutiveFailures >= FAILURE_THRESHOLD) {
+          circuit.open = true;
+          circuit.openedAt = new Date().toISOString();
+          console.log(`[${new Date().toISOString()}] CIRCUIT_OPENED ${circuitKey(scriptKey, port)} after ${circuit.consecutiveFailures} failures`);
+          sendCircuitOpenAlert(scriptKey, port, circuit.consecutiveFailures, circuit.lastError).catch((e) => console.error('[circuit alert] send failed: ' + e.message));
+        }
+      }
+      // v(2026-10-02) pancake-send-bill-image runs every 20s all day; counting it kept resetting the
+      // 90s quiet-period timer so round summaries almost never fired. Its failures still alert via the
+      // circuit breaker + watchdog, so it is left out of the per-round digest.
+      if (scriptKey !== 'pancake-send-bill-image') recordRoundEvent(scriptKey, port, mode, result);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    });
+    return;
+  }
+
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ status: 'error', error: 'NOT_FOUND' }));
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// [2026-10-01 per Tar: "the jobs must run by themselves"] WATCHDOG. Checks every 5 min that the
+// recurring jobs are really being triggered and that no bill is stuck, and tells Telegram (once an
+// hour per problem) instead of waiting for a human to notice. Read-only: it never fixes anything.
+const _wdSeen = {};       // "script:port" -> last time a /run request for it arrived
+const _wdAlerted = {};    // problem key -> last alert time
+const _wdStart = Date.now();
+const WATCHES = [
+  // key, port, max gap (min) between requests, active Laos hours [from, to)
+  // COD Anousith workflows only run every 10 min between 08:00 and 09:30 (Tar's schedule), so watch 08:15-09:45 only.
+  { key: 'anousith-cod', port: '9222', gap: 25, fromM: 8 * 60 + 15, toM: 9 * 60 + 45, label: 'COD ອານຸສິດ 52906969' },
+  { key: 'anousith-cod', port: '9223', gap: 25, fromM: 8 * 60 + 15, toM: 9 * 60 + 45, label: 'COD ອານຸສິດ 55279515' },
+  // v(2026-10-02) hourly Anousith COD export+upload trigger (cron 0 0 10-23) -> last run 23:00, so watch 10:30-23:30, gap 80 min.
+  { key: 'anousith-cod', port: '9222', gap: 80, fromM: 10 * 60 + 30, toM: 23 * 60 + 30, label: 'COD ອານຸສິດ 52906969 (ຮອບຊົ່ວໂມງ)' },
+  { key: 'anousith-cod', port: '9223', gap: 80, fromM: 10 * 60 + 30, toM: 23 * 60 + 30, label: 'COD ອານຸສິດ 55279515 (ຮອບຊົ່ວໂມງ)' },
+  { key: 'anousith-arrival-tag', port: '9222', gap: 80, from: 9, to: 21, label: 'ແຈ້ງເຄື່ອງຮອດ 52906969' },
+  { key: 'pancake-send-bill-image', port: '9224', gap: 6, from: 0, to: 24, label: 'ຕົວສົ່ງຮູບບິນ Pancake' },
+];
+function _wdLaosHour() { return new Date(Date.now() + 7 * 3600 * 1000).getUTCHours(); }
+function _wdLaosMinuteOfDay() { const d = new Date(Date.now() + 7 * 3600 * 1000); return d.getUTCHours() * 60 + d.getUTCMinutes(); }
+async function _wdAlert(problemKey, text) {
+  const last = _wdAlerted[problemKey] || 0;
+  if (Date.now() - last < 60 * 60 * 1000) return;
+  _wdAlerted[problemKey] = Date.now();
+  console.log(`[${new Date().toISOString()}] WATCHDOG ${problemKey}: ${text}`);
+  try { await sendTelegram('🩺 <b>ຕົວເຝົ້າລະວັງ</b>\n' + text); } catch (e) {}
+}
+function _wdSbGet(pathAndQuery) {
+  return new Promise((resolve) => {
+    try {
+      const req = https.request({ hostname: SUPABASE_HOST, path: pathAndQuery, method: 'GET', headers: { apikey: SUPABASE_ANON_KEY, 'x-ms-token': MS_BOT_TOKEN, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }, timeout: 15000 }, (res) => {
+        let b = ''; res.on('data', (c) => { b += c; });
+        res.on('end', () => { try { const p = JSON.parse(b); resolve(Array.isArray(p) ? p : null); } catch (e) { resolve(null); } });
+      });
+      req.on('error', () => resolve(null)); req.on('timeout', () => { req.destroy(); resolve(null); }); req.end();
+    } catch (e) { resolve(null); }
+  });
+}
+async function watchdogTick() {
+  try {
+    const nowM = _wdLaosMinuteOfDay();
+    for (const w of WATCHES) {
+      const fromM = w.fromM !== undefined ? w.fromM : w.from * 60;
+      const toM = w.toM !== undefined ? w.toM : w.to * 60;
+      if (nowM < fromM || nowM >= toM) continue;
+      const k = w.key + ':' + w.port;
+      const last = _wdSeen[k] || _wdStart; // right after a restart, count from the restart
+      const mins = Math.round((Date.now() - last) / 60000);
+      if (mins > w.gap) await _wdAlert('gap:' + k, `❗ ${w.label}: ບໍ່ມີການສັ່ງແລ່ນມາ ${mins} ນາທີແລ້ວ (ຄວນມີທຸກ ${w.gap} ນາທີ). ກວດວ່າ workflow ຍັງ Published ຢູ່ບໍ ແລະ n8n ຍັງແລ່ນຢູ່ບໍ.`);
+    }
+    // Bills stuck in 'sending' for more than 30 minutes.
+    const iso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const stuck = await _wdSbGet(`/rest/v1/courier_bill_import_pages?select=id&send_status=eq.sending&sending_since=lt.${encodeURIComponent(iso)}&limit=50`);
+    if (stuck && stuck.length > 0) await _wdAlert('stuck-sending', `❗ ມີ ${stuck.length} ບິນຄ້າງສະຖານະ 'sending' ເກີນ 30 ນາທີ (ບໍ່ຖືກສົ່ງ ແລະ ບໍ່ຖືກລອງໃໝ່).`);
+    // Open circuit breakers (already alerted once by the breaker; remind hourly).
+    for (const [k, v] of Object.entries(circuitState)) if (v.open) await _wdAlert('circuit:' + k, `❗ ວຽກ ${k} ຖືກຢຸດອັດຕະໂນມັດ (ລົ້ມເຫຼວຕິດກັນ). ລໍ reset.`);
+  } catch (e) { console.error('[watchdog] ' + e.message); }
+}
+setInterval(watchdogTick, 5 * 60 * 1000);
+
+// ---------------------------------------------------------------------------------------------
+// [2026-10-14 per Tar] COD DEADLINE GUARD. The Anousith COD confirm must happen before 09:30 (hard deadline 10:00) and
+// can NOT be extended. So do not wait for the deadline to discover a problem: from 08:10 (Laos) if a port has had no
+// SUCCESSFUL anousith-cod-confirm run since 08:00, the bridge itself (1) clears that port's breaker, (2) runs the confirm
+// through its own queue -- which already relaunches a hung/absent Chrome and retries -- and (3) tells Telegram, with
+// escalating "do it by hand NOW" reminders as 09:30 approaches. The confirm script is idempotent (it only confirms bills
+// that are ready; "confirmed":0 is a normal result), so running it again is safe. Window 08:10-09:30 Laos only.
+const _codOkAt = {};   // port -> ms of last successful anousith-cod-confirm run (any caller)
+const _codGuard = {};  // port -> { busy, lastTryAt, sentMark, alerted }
+const COD_GUARD_MARKS = [8 * 60 + 10, 8 * 60 + 40, 9 * 60, 9 * 60 + 15, 9 * 60 + 25];
+function _codSelfRun(port) {
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port: PORT, path: `/run?script=anousith-cod-confirm&port=${port}`, timeout: 4 * 60 * 1000 }, (r) => {
+      let b = ''; r.on('data', (c) => { b += c; });
+      r.on('end', () => { try { resolve(JSON.parse(b)); } catch (e) { resolve({ status: 'error', error: 'bad response' }); } });
+    });
+    req.on('error', (e) => resolve({ status: 'error', error: String(e && e.message || e) }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 'error', error: 'timeout' }); });
+  });
+}
+async function codDeadlineGuardTick() {
+  try {
+    const nowM = _wdLaosMinuteOfDay();
+    if (nowM < 8 * 60 + 10 || nowM >= 9 * 60 + 30) return;
+    for (const port of ['9222', '9223']) {
+      const g = _codGuard[port] = _codGuard[port] || { busy: false, lastTryAt: 0, sentMark: 0, alerted: false };
+      const sinceEightMs = (nowM - 8 * 60 + 1) * 60000; // ok run counts only if it happened after ~08:00 today
+      const okToday = _codOkAt[port] && (Date.now() - _codOkAt[port]) < sinceEightMs;
+      const phone = PORT_TO_PHONE[port] || port;
+      if (okToday) {
+        if (g.alerted) { sendTelegram(`✅ ຢືນຢັນ COD ອານຸສິດ ${phone}: ກັບມາປົກກະຕິແລ້ວ (ກວດ ແລະ ແລ່ນສຳເລັດມື້ນີ້)`).catch(() => {}); g.alerted = false; g.sentMark = 0; }
+        continue;
+      }
+      if (g.busy || Date.now() - g.lastTryAt < 4 * 60 * 1000) continue;
+      g.busy = true; g.lastTryAt = Date.now();
+      try {
+        console.log(`[${new Date().toISOString()}] COD_GUARD no OK confirm yet port=${port} -> self-fix`);
+        circuitState[circuitKey('anousith-cod-confirm', port)] = { consecutiveFailures: 0, open: false, openedAt: null, lastError: null };
+        const res = await _codSelfRun(port);
+        const ok = !!(res && res.status === 'ok');
+        console.log(`[${new Date().toISOString()}] COD_GUARD self-run port=${port} status=${ok ? 'ok' : 'error'}`);
+        if (ok) {
+          _codOkAt[port] = Date.now();
+          const hadProblem = !!_wdSeen['anousith-cod-confirm:' + port];
+          if (hadProblem || g.alerted) sendTelegram(`🔧 COD ອານຸສິດ ${phone}: ພົບວ່າຍັງບໍ່ມີການກວດ/ກົດຢືນຢັນຂອງມື້ນີ້ ລະບົບຈຶ່ງແລ່ນເອງ ແລະ ສຳເລັດແລ້ວ ✅`).catch(() => {});
+          g.alerted = false; g.sentMark = 0;
+        } else {
+          const why = String(res && res.error || 'ບໍ່ຮູ້ສາເຫດ').slice(0, 200);
+          const mark = COD_GUARD_MARKS.filter((m) => nowM >= m).pop() || 0;
+          if (mark > g.sentMark) {
+            g.sentMark = mark; g.alerted = true;
+            const left = 9 * 60 + 30 - nowM;
+            sendTelegram(`🚨 <b>COD ອານຸສິດ ${phone} ຍັງບໍ່ໄດ້ກວດ/ຢືນຢັນ ມື້ນີ້</b>\nລະບົບພະຍາຍາມແກ້ເອງແລ້ວ ແຕ່ຍັງບໍ່ສຳເລັດ.\nສາເຫດ: ${why}\n⏰ ເຫຼືອ ~${left} ນາທີກ່ອນ 09:30 (ສຸດທ້າຍ 10:00) — ໃຫ້ພະນັກງານກົດຢືນຢັນດ້ວຍມືໄດ້ເລີຍ`).catch(() => {});
+          }
+        }
+      } finally { g.busy = false; }
+    }
+  } catch (e) { console.error('[cod guard] ' + e.message); }
+}
+setInterval(codDeadlineGuardTick, 60 * 1000);
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`Bridge server listening on http://127.0.0.1:${PORT}`);
+});

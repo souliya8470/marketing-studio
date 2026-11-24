@@ -278,3 +278,10 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Data: deleted the 22 pending, unsent VTE rows labelled ອານຸສິດ (Tar approved); 9222 re-uploaded correctly (verified). 9223 re-uploads on its next hourly run.
 - Open: root cause of why the radio sometimes does not stick is still unknown; if HAL_RADIO_NOT_SELECTED alerts appear, investigate the MS tab state (courierBillLoading disables radios while a previous Anousith batch is processing).
 - Update 2026-11-23 evening: hal-billimages-export.js now also self-heals. If expected VTE bills are found under another courier (pending, unsent), healMislabeled() deletes just those rows, re-uploads, and sends a Telegram "fixed N bills" notice. Never touches sent rows. docs/hal-billimages-export.js.v2026-11-23 updated. Heal path not yet seen on a real mislabel.
+
+## Alert noise cleanup 2026-11-24 (Claude, n8n/bridge chat)
+- Cause of "Pancake IMAGE Send" alerts: failExit() in pancake-send-bill-image.js (one bill deliberately NOT sent: AMBIGUOUS conversation / image not persisted / no phone; row already marked send_status='failed') exited 1 -> bridge 500 -> n8n alert + circuit-breaker strikes. System was fine (79 sent, 207 ok runs that day).
+- Fix 1: failExit now exits 0 with manualReview:true when the row was marked failed (real failures still exit 1). Backup .bak-20261124.
+- Fix 2: bridge-server.js flushRoundSummary no longer sends the "round all passed, nothing new" Telegram message (onepay-sync spammed every 5 min). Failures and uploads are still reported. NEEDS a bridge restart to take effect. Backup .bak-20261124.
+- Copies in docs/*.v2026-11-24. 15 bills with send_status='failed' need manual sending (orders 75752 75564 75670 75709 75668 75663 75785 75498 75671 75622 75692 75763 75628 75778 75816).
+- Not done: a once-a-day summary of failed/manual bills.
