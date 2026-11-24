@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.92"; // v8.92 NEW (Tar 2026-11-24, "ບອກກຳນົດເພດານໄດ້... 1:1:3 ຕ້ອງເພີ່ມເປັນ 300 ເພື່ອໃຫ້ແຕ່ລະແອັດແລ່ນໄດ້ ... ເພີ່ມແອັດເທື່ອດຽວແລ້ວໃຫ້ອອກເປັນ 3 ແບບ"): (1) 🧪 tab, new card "💰 ເພດານງົບ": per product Tar edits budget_per_test, daily_cap and max_new_per_day (ad_test_products, saved by adsTestSaveCaps with checks: all > 0, daily_cap >= budget_per_test, max_new <= 20). These caps only limit the AUTO planner (ads-test-auto planStage/committedFor); a manual 🚀 is never blocked by them (code-read of ads-test-auto v9). (2) A plan that carries 3 caption variants (ads-test-variants) gets a button "🧪 ຍິງທັງ 3 ແບບທຽບກັນ (A/B)" (adsTestSplitPlan): it inserts 2 more ad_test_plans rows (same plan_date/product_key/asset_id/daily_budget, status proposed, caption+headline per angle, caption_index 0..2) and rewrites the original as angle 0; every plan gets ai.ab_group (uuid), ab_index, ab_total, ab_title_lo, ab_why_lo and loses ai.variants (so no variant tabs / regen on A/B plans). Nothing is sent to Facebook by splitting; on any DB error the inserted rows are deleted again. (3) The queue shows one group card (adsTestAbOf/abGroupCard) with the 3 full captions and ONE button "🚀 ຍິງທັງ N ແບບພ້ອມກັນ" (adsTestLaunchGroup): confirm with total budget, sets status approved + ai.manual_go on all plans of the group, then ONE ads-test-auto tick with force_launch for the product (<=3 launches per tick; each plan uploads the video itself unless asset.fb_video_id, so 3 uploads - the cron finishes what one tick cannot). Each plan stays its own campaign "<label> TEST dd/mm #<id8>" with its own budget, so Facebook gives each caption its own spend. Running/judged cards show the badge "🧪 ແບບ A/B/C · <angle>". (4) adsTestRejectPlan: the shared asset is retired only when no other non-rejected plan uses it (before: cutting one A/B plan would retire the video of the others). Judge (ads-test-auto) sets the asset winner/loser per plan, last writer wins - known, harmless, per-plan verdicts stay correct. No DB migration, no edge function change.
+const APP_VERSION = "8.93"; // v8.93 CHANGE (Tar 2026-11-24, "ອຍາກໃຫ້ເປັນ 1 ແຄມເປນ 1 ແອັດເຊັດ ແລ້ວ 3 ແອັດ ເຮັດເປັນ CBO ງົບ 300"): the A/B split of v8.92 is now ONE CBO campaign -> ONE ad set -> N ads (Meta Andromeda advice: few campaigns/ad sets, several ads) instead of N separate campaigns. adsTestSplitPlan marks every plan with ai.ab_mode = "cbo" (+ ab_group); the campaign budget = sum of the plans daily_budget (e.g. 3 x 100 = 300) and Facebook shares it between the ads. Server side: ads-test-auto v10 (first plan of the group creates campaign + ad set + ad via launch-ad with budgetType cbo; the others join that ad set through the NEW edge function ads-test-addad and reuse the already uploaded video; judge pauses only the loser AD, whole campaign only when no sibling ad runs). UI texts changed (split confirm, group card, plan cards say the budget is shared). Plans split with v8.92 (no ab_mode) still launch as separate campaigns. Because the budget is shared, an ad that gets little spend may stay "waiting" in the judge (needs spend >= 150) - expected with CBO.
+// (previous text of this slot, kept) // v8.92 NEW (Tar 2026-11-24, "ບອກກຳນົດເພດານໄດ້... 1:1:3 ຕ້ອງເພີ່ມເປັນ 300 ເພື່ອໃຫ້ແຕ່ລະແອັດແລ່ນໄດ້ ... ເພີ່ມແອັດເທື່ອດຽວແລ້ວໃຫ້ອອກເປັນ 3 ແບບ"): (1) 🧪 tab, new card "💰 ເພດານງົບ": per product Tar edits budget_per_test, daily_cap and max_new_per_day (ad_test_products, saved by adsTestSaveCaps with checks: all > 0, daily_cap >= budget_per_test, max_new <= 20). These caps only limit the AUTO planner (ads-test-auto planStage/committedFor); a manual 🚀 is never blocked by them (code-read of ads-test-auto v9). (2) A plan that carries 3 caption variants (ads-test-variants) gets a button "🧪 ຍິງທັງ 3 ແບບທຽບກັນ (A/B)" (adsTestSplitPlan): it inserts 2 more ad_test_plans rows (same plan_date/product_key/asset_id/daily_budget, status proposed, caption+headline per angle, caption_index 0..2) and rewrites the original as angle 0; every plan gets ai.ab_group (uuid), ab_index, ab_total, ab_title_lo, ab_why_lo and loses ai.variants (so no variant tabs / regen on A/B plans). Nothing is sent to Facebook by splitting; on any DB error the inserted rows are deleted again. (3) The queue shows one group card (adsTestAbOf/abGroupCard) with the 3 full captions and ONE button "🚀 ຍິງທັງ N ແບບພ້ອມກັນ" (adsTestLaunchGroup): confirm with total budget, sets status approved + ai.manual_go on all plans of the group, then ONE ads-test-auto tick with force_launch for the product (<=3 launches per tick; each plan uploads the video itself unless asset.fb_video_id, so 3 uploads - the cron finishes what one tick cannot). Each plan stays its own campaign "<label> TEST dd/mm #<id8>" with its own budget, so Facebook gives each caption its own spend. Running/judged cards show the badge "🧪 ແບບ A/B/C · <angle>". (4) adsTestRejectPlan: the shared asset is retired only when no other non-rejected plan uses it (before: cutting one A/B plan would retire the video of the others). Judge (ads-test-auto) sets the asset winner/loser per plan, last writer wins - known, harmless, per-plan verdicts stay correct. No DB migration, no edge function change.
 // (previous text of this slot, kept) // v8.91 NEW (Tar 2026-11-24, "ໃຫ້ AI ຂຽນແຄັບຊັນ 3 ແບບ ມຸມຂາຍຕ່າງກັນ ໃຫ້ຂ້ອຍເລືອກ... ບໍ່ຢາກຈຳກັດ 450 ຕົວອັກສອນ" = the finished video must become ad-test material): (1) page 🎬 ວິດີໂອສຳເລັດ: every card (owner only, product must be enabled in the 🧪 tab) has a new button "🧪 ສົ່ງເຂົ້າທົດສອບແອັດ". It asks whether the video shows a promotion (the promo rule of ads-test-auto: only ad_test_products.current_promo may be written), draws 3 snapshots from the video in the browser (adsTestVideoFrames now also accepts a URL; needs the public bucket CORS), stores them as <product_key>/frames/<asset_id>_N.jpg and calls the NEW edge function ads-test-variants (action send). (2) ads-test-variants (v1, separate from ads-test-auto on purpose) inserts product_assets (source upload, origin in note and plan.ai.source "sykhai-editor", storage_path "edited:<video id>" so deleting the asset never deletes the finished video, status queued so the cron planner skips it, transcript from the editor if any), lets Claude judge the video and choose THREE different selling angles (pain/result/offer/routine/curiosity/trust) with a Lao title, a "why this angle suits this video" sentence and a headline, marks one as recommended, then writes ONE long caption per angle in parallel (no 450 limit: 300-900 characters usual, 1500 safety cap, hook in the first ~125 characters, call to action at the end) and inserts ad_test_plans status proposed with plan.caption/headline = recommended variant and plan.ai.variants[] + plan.ai.variant_index. (3) 🧪 tab plan card: if plan.ai.variants exists it shows 3 buttons (one per angle, ⭐ = AI recommended), the "why" line, the FULL caption (not clipped, with length) and headline of the chosen one; clicking a button saves the choice into plan.caption/headline/ai.variant_index (only while proposed/approved); "🔄 ຂຽນ 3 ແບບໃໝ່" calls ads-test-variants {action:"regen"}. Launch is unchanged (ads-test-auto reads plan.caption; it has no 450 check on launch). New DB columns: product_assets.transcript, edited_product_videos.script (both text, nullable; not filled automatically yet).
 // (previous text of this slot, kept) // v8.90 CHANGE (Tar 2026-11-20, poster tab): poster v1.7 - the phone photo tip now says to use a backdrop colour that differs from the product (white product -> dark/green/blue cloth, coloured/dark product -> white paper) and to cover the stand. Text only.
 // (previous text of this slot, kept) v8.89 CHANGE (Tar 2026-11-20, poster tab, "ບັນທຶກບໍ່ໄດ້ ຍັງລໍ AI ຕັດຢູ່"): poster sub-app v1.6: on a phone, saving never waits for the AI cutter. Products that need AI are saved as "pending" rows in poster_history (new columns status, cfg) and a computer finishes them automatically when the poster tab is opened (or button ▶ in the history page). Phone preview shows the whole photo meanwhile. No other change to this file.
@@ -1634,7 +1635,8 @@ const APP_VERSION = "8.92"; // v8.92 NEW (Tar 2026-11-24, "ບອກກຳນົ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.91"; // (v8.91 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.92"; // (v8.92 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.91"; // (v8.91 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.90"; // (v8.90 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.89"; // (v8.89 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) (v8.83 text kept in the history comment lines of APP_VERSION above)
@@ -1747,7 +1749,8 @@ const APP_VERSION_PREV = "8.91"; // (v8.91 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.90"; // (v8.90 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.91"; // (v8.91 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.90"; // (v8.90 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.89"; // (v8.89 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.88"; // (v8.88 text kept in the history comment lines above)
 // (previous text of this slot, kept) (v8.82 text kept in the history comment lines above)
@@ -23378,7 +23381,7 @@ async function adsTestSplitPlan(planId){
   const n = vs.length;
   const each = Number(p.daily_budget||0);
   const ok = await customConfirm(
-    `ແຍກເປັນ ${n} ແອັດ (ວິດີໂອດຽວ ແຄັບຊັນຕ່າງກັນ)?\n\nແຕ່ລະແອັດງົບ ${each}/ວັນ ➜ ລວມ ${each*n}/ວັນ\n\n${vs.map((v,i)=>`${i+1}. ${v.title_lo||v.key}`).join("\n")}\n\nຍັງບໍ່ຍິງ — ກົດ "ຍິງທັງ ${n} ແບບພ້ອມກັນ" ອີກເທື່ອ`,
+    `ແຍກເປັນ ${n} ແອັດ (ວິດີໂອດຽວ ແຄັບຊັນຕ່າງກັນ)?\n\nຈະເປັນ 1 ແຄມເປນ (CBO ງົບລວມ ${each*n}/ວັນ) → 1 ແອັດເຊັດ → ${n} ແອັດ. Facebook ຈະແບ່ງງົບໃຫ້ແອັດທີ່ດີກວ່າເອງ\n\n${vs.map((v,i)=>`${i+1}. ${v.title_lo||v.key}`).join("\n")}\n\nຍັງບໍ່ຍິງ — ກົດ "ຍິງທັງ ${n} ແບບພ້ອມກັນ" ອີກເທື່ອ`,
     { okLabel:"ແຍກເປັນ "+n+" ແອັດ", danger:false }
   );
   if(!ok) return;
@@ -23387,7 +23390,7 @@ async function adsTestSplitPlan(planId){
   const aiOf = (v,i)=>{
     const ai = Object.assign({}, p.ai);
     delete ai.variants;
-    return Object.assign(ai, { variant_index:i, variant_key:v.key||null, ab_group:group, ab_index:i, ab_total:n, ab_title_lo:v.title_lo||v.key||"", ab_why_lo:v.why_lo||"" });
+    return Object.assign(ai, { variant_index:i, variant_key:v.key||null, ab_mode:"cbo", ab_group:group, ab_index:i, ab_total:n, ab_title_lo:v.title_lo||v.key||"", ab_why_lo:v.why_lo||"" });
   };
   let insertedIds = [];
   try{
@@ -23411,7 +23414,7 @@ async function adsTestLaunchGroup(group){
   if(!ps.length) return;
   const total = ps.reduce((s,p)=>s+Number(p.daily_budget||0),0);
   const ok = await customConfirm(
-    `ຍິງທັງ ${ps.length} ແອັດພ້ອມກັນ?\n\nສິນຄ້າ: ${adsTestProductLabel(ps[0].product_key)}\nງົບລວມ: ${total}/ວັນ (ແຕ່ລະແອັດ ${ps.map(p=>p.daily_budget).join(" + ")})\n\nວິດີໂອດຽວກັນ ແຕ່ແຄັບຊັນຕ່າງກັນ ແຕ່ລະແອັດເປັນແຄມເປນແຍກ. ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ ອາດໃຊ້ຫຼາຍນາທີ — ລະບົບຍິງໃຫ້ເອງເມື່ອພ້ອມ`,
+    `ຍິງທັງ ${ps.length} ແອັດພ້ອມກັນ?\n\nສິນຄ້າ: ${adsTestProductLabel(ps[0].product_key)}\nງົບລວມ (CBO ໃນແຄມເປນດຽວ): ${total}/ວັນ\n\nວິດີໂອດຽວກັນ ແຕ່ແຄັບຊັນຕ່າງກັນ — ເປັນ 1 ແຄມເປນ CBO / 1 ແອັດເຊັດ / ${ps.length} ແອັດ. ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ ອາດໃຊ້ຫຼາຍນາທີ — ລະບົບຍິງໃຫ້ເອງເມື່ອພ້ອມ`,
     { okLabel:"🚀 ຍິງທັງໝົດ", danger:false }
   );
   if(!ok) return;
@@ -23890,7 +23893,7 @@ function renderAdsTestTab(){
       <div class="tst-vtabs">${vs.map((v,i)=>`<button class="tst-vtab${i===cur?" on":""}" data-test-var="${p.id}:${i}" ${can?"":"disabled"}>${i+1}. ${esc(v.title_lo||v.key)}${v.recommended?" ⭐":""}</button>`).join("")}</div>
       <div class="tst-why">💡 ${esc((vs[cur]||{}).why_lo||"")}</div>
       ${(p.status==="proposed"||p.status==="approved")?`<button class="coach-link" data-test-regen="${p.id}" ${can?"":"disabled"}>${regenBusy?"⏳ ກຳລັງຂຽນ...":"🔄 ຂຽນ 3 ແບບໃໝ່"}</button>`:""}
-      ${p.status==="proposed"?`<button class="btn btn-outline tst-split" data-test-split="${p.id}" ${can?"":"disabled"}>🧪 ຍິງທັງ ${vs.length} ແບບທຽບກັນ (A/B)</button><div class="tst-meta">ວິດີໂອດຽວ → ${vs.length} ແອັດ ແຄັບຊັນຕ່າງກັນ ງົບແອັດລະ ${esc(String(p.daily_budget))}/ວັນ (ລວມ ${Number(p.daily_budget||0)*vs.length})</div>`:""}
+      ${p.status==="proposed"?`<button class="btn btn-outline tst-split" data-test-split="${p.id}" ${can?"":"disabled"}>🧪 ຍິງທັງ ${vs.length} ແບບທຽບກັນ (A/B)</button><div class="tst-meta">ວິດີໂອດຽວ → 1 ແຄມເປນ CBO ງົບລວມ ${Number(p.daily_budget||0)*vs.length}/ວັນ → ${vs.length} ແອັດ ແຄັບຊັນຕ່າງກັນ</div>`:""}
     </div>`;
   };
   const abLetter = (p)=>{ const i = Number(p.ai && p.ai.ab_index)||0; return "ແບບ "+["A","B","C","D"][i]; };
@@ -23902,7 +23905,7 @@ function renderAdsTestTab(){
     return `<div class="tst-ab">
       <div class="tst-ab-h">
         <div><b>🧪 ທົດສອບ A/B — ວິດີໂອດຽວ ${list.length} ແຄັບຊັນ</b>
-          <div class="tst-meta">ແຕ່ລະແອັດໃຊ້ວິດີໂອດຽວກັນ ແຕ່ແຄັບຊັນຕ່າງກັນ ແລະ ມີງົບຂອງຕົນເອງ — ເບິ່ງຜົນທຽບກັນຢູ່ ກຳລັງທົດສອບ</div></div>
+          <div class="tst-meta">1 ແຄມເປນ (CBO ງົບລວມ ${total}/ວັນ) → 1 ແອັດເຊັດ → ${list.length} ແອັດ ແຄັບຊັນຕ່າງກັນ. Facebook ແບ່ງງົບໃຫ້ແອັດທີ່ດີກວ່າເອງ — ເບິ່ງຜົນທຽບກັນຢູ່ ກຳລັງທົດສອບ</div></div>
         ${launchable.length?`<button class="btn tst-go" data-test-launch-group="${g}" ${anyBusy?"disabled":""}>${ticking?"⏳ ກຳລັງຍິງ...":"🚀 ຍິງທັງ "+launchable.length+" ແບບພ້ອມກັນ ("+total+"/ວັນ)"}</button>`:""}
       </div>
       <div class="tst-ab-grid">${list.map(readyCard).join("")}</div>
@@ -23926,7 +23929,7 @@ function renderAdsTestTab(){
         <div class="tst-cap${(hasVars(p)||ab)?" tst-cap-full":""}">${esc((hasVars(p)||ab)?String(p.caption||""):clip(p.caption,260))}</div>
         ${(hasVars(p)||ab)?`<div class="tst-meta">${String(p.caption||"").length} ຕົວອັກສອນ</div>`:""}
         ${p.headline?`<div class="tst-head">${esc(p.headline)}</div>`:""}
-        <div class="tst-meta">ງົບ ${esc(String(p.daily_budget))}/ວັນ</div>
+        <div class="tst-meta">${(ab && p.ai.ab_mode==="cbo")?"ງົບຖືກແບ່ງຈາກງົບລວມຂອງແຄມເປນ (CBO)":"ງົບ "+esc(String(p.daily_budget))+"/ວັນ"}</div>
         ${(p.ai && Object.prototype.hasOwnProperty.call(p.ai,"promo_used")) ? `<div class="tst-meta">🎁 ${p.ai.promo_used?"ໂປຣໃນຄຳບັນຍາຍ: "+esc(p.ai.promo_used):"ບໍ່ມີໂປຣ — ຄຳບັນຍາຍບໍ່ມີຂອງແຖມ/ສ່ວນຫຼຸດ"}</div>`:""}
         ${planNote(p)}
       </div>
@@ -23953,7 +23956,7 @@ function renderAdsTestTab(){
     return `<div class="tst-run">
       ${adsTestThumb(a)}
       <div class="tst-run-body">
-        <div class="tst-run-top"><b>ມື້ທີ ${daysSince(p.launched_at||p.created_at)}</b>${badge}${adsTestAbOf(p)?`<span class="tst-badge">🧪 ${abLetter(p)} · ${esc(p.ai.ab_title_lo||"")}</span>`:""}<span class="small-muted">ຍິງເມື່ອ ${fmtD(p.launched_at||p.created_at)} · ງົບ ${esc(String(p.daily_budget))}/ວັນ</span></div>
+        <div class="tst-run-top"><b>ມື້ທີ ${daysSince(p.launched_at||p.created_at)}</b>${badge}${adsTestAbOf(p)?`<span class="tst-badge">🧪 ${abLetter(p)} · ${esc(p.ai.ab_title_lo||"")}</span>`:""}<span class="small-muted">ຍິງເມື່ອ ${fmtD(p.launched_at||p.created_at)} · ${(adsTestAbOf(p) && p.ai.ab_mode==="cbo")?"ງົບລວມ CBO ຮ່ວມກັນ":"ງົບ "+esc(String(p.daily_budget))+"/ວັນ"}</span></div>
         <div class="tst-cap tst-cap-sm">${esc(clip(p.caption,110))}</div>
         ${r?`<div class="tst-stats">${stat(spend==null?"-":Math.round(spend).toLocaleString("en-US"),"ໃຊ້ໄປ")}${stat(msgs==null?"-":msgs,"ຄົນທັກແຊັດ")}${stat(cpm==null?"-":cpm.toLocaleString("en-US"),"ຕົ້ນທຶນ/ແຊັດ")}${stat(ctr==null?"-":ctr.toFixed(1)+"%","ຄລິກ")}</div>`
           :`<div class="tst-meta">ຍັງບໍ່ມີຕົວເລກຈາກ Facebook</div>`}

@@ -1,4 +1,10 @@
-// Supabase Edge Function: ads-test-auto (v9)
+// Supabase Edge Function: ads-test-auto (v10)
+// v10 (2026-11-24): A/B GROUPS AS ONE CBO CAMPAIGN. Plans with plan.ai.ab_mode = "cbo" and the same plan.ai.ab_group (made by the UI "split into 3 ads",
+//     one video x N caption angles) are launched as 1 campaign (campaign budget = sum of the group's daily_budget, CBO) -> 1 ad set -> N ads, like Ads Manager
+//     (Meta "Andromeda" advice: few campaigns/ad sets, several ads). The first plan of the group to launch creates campaign + ad set + ad through launch-ad
+//     (budgetType "cbo"); the other plans join that ad set through the NEW function ads-test-addad (creative + ad only) and reuse the first plan's uploaded
+//     video (one upload per group). Later plans wait until the first one is launched (the lowest ab_index among pending plans goes first). The judge pauses
+//     only the loser's AD for such groups (the whole campaign only when no other ad of the group still runs). Plans without ab_mode behave exactly as v9.
 // v9 (2026-10-13): plan.ai.manual_go = the owner pressed "launch" on a plan in the UI: launchStage launches it even when the product is
 //     review-first (ad_test_products.auto_launch = false) and outside the launch window (full template copy, same path as auto launches).
 // v8 (2026-10-13): when current_promo states a price, product.price_kip is dropped from the caption data (the shop's list price can differ from the advertised price).
@@ -376,7 +382,14 @@ async function judgeStage(prodMap: Map<string, any>) {
       let paused = false;
       if (!DRY) {
         try {
-          await callFn("update-ad-entity", { entityType: "campaign", entityId: p.campaign_id, action: "toggle_status", newStatus: "PAUSED", entityName: camp?.campaign_name || "", changedBy: "ads-test-auto" }, 40000);
+          if (p.ai && p.ai.ab_group && p.ai.ab_mode === "cbo") {
+            // v10: shared CBO campaign — pause only this ad; pause the campaign too only when no other ad of the group still runs
+            await callFn("update-ad-entity", { entityType: "ad", entityId: p.ad_id, action: "toggle_status", newStatus: "PAUSED", entityName: p.headline || "", changedBy: "ads-test-auto" }, 40000);
+            const { data: sib } = await sb.from("ad_test_plans").select("id").eq("ai->>ab_group", String(p.ai.ab_group)).eq("status", "launched").neq("id", p.id).limit(1);
+            if (!sib || !sib.length) await callFn("update-ad-entity", { entityType: "campaign", entityId: p.campaign_id, action: "toggle_status", newStatus: "PAUSED", entityName: camp?.campaign_name || "", changedBy: "ads-test-auto" }, 40000);
+          } else {
+            await callFn("update-ad-entity", { entityType: "campaign", entityId: p.campaign_id, action: "toggle_status", newStatus: "PAUSED", entityName: camp?.campaign_name || "", changedBy: "ads-test-auto" }, 40000);
+          }
           paused = true;
         } catch (e) { report.warnings.push("pause failed: " + errMsg(e)); await L(p.product_key, p.id, "pause_failed", errMsg(e)); }
       }
@@ -790,10 +803,29 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     }
   }
 
+  // v10: CBO A/B group — find the ad set another plan of the group already created, or decide who goes first
+  let joinTo: any = null, groupBudget = Number(plan.daily_budget);
+  if (plan.ai && plan.ai.ab_group && plan.ai.ab_mode === "cbo") {
+    const { data: gp } = await sb.from("ad_test_plans").select("*").eq("ai->>ab_group", String(plan.ai.ab_group)).in("status", ["proposed", "approved", "uploading", "launched", "judged"]);
+    const group = gp || [];
+    joinTo = group.find((x: any) => x.id !== plan.id && x.adset_id && x.campaign_id && ["launched", "judged"].includes(x.status)) || null;
+    if (!joinTo) {
+      const pending = group.filter((x: any) => ["approved", "uploading"].includes(x.status)).sort((x: any, y: any) => (Number(x.ai?.ab_index) || 0) - (Number(y.ai?.ab_index) || 0));
+      if (pending.length && pending[0].id !== plan.id) { report.skipped.push(`${plan.product_key}: A/B plan ${id8} waits for the first ad of its group`); return; }
+      groupBudget = group.filter((x: any) => ["proposed", "approved", "uploading"].includes(x.status)).reduce((t: number, x: any) => t + Number(x.daily_budget || 0), 0) || Number(plan.daily_budget);
+    }
+  }
+
   let video: any = null;
   if (asset.kind === "video") {
     if (asset.fb_video_id) video = await existingVideo(asset, cfg);
-    else {
+    else if (joinTo && joinTo.video_id) {
+      // the group's first plan already uploaded the video: reuse it (no second upload)
+      const s = await callFn("fb-upload-video", { adAccountId: cfg.ad_account_id, connectionMode: "system", launchedBy: "ads-test-auto", action: "status", videoId: joinTo.video_id }, 60000);
+      if (!s || !s.ready) { report.skipped.push(`${plan.product_key}: video of the A/B group is not ready yet`); return; }
+      video = { videoId: joinTo.video_id, thumbnailImageHash: s.thumbnailImageHash || null, thumbnailUrl: s.thumbnailUrl || null };
+      if (!DRY) await sb.from("ad_test_plans").update({ video_id: joinTo.video_id, upload_phase: "ready" }).eq("id", plan.id);
+    } else {
       video = await advanceVideo(plan, asset, cfg);
       if (!video) return; // more ticks needed
     }
@@ -817,7 +849,7 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   const startTime = CREATE_PAUSED ? null : new Date(Date.now() + 3 * 60e3).toISOString();
   const body: any = {
     connectionMode: "system", campaignObjective: "engagement", objective: "messages", performanceGoal: a.optimizationGoal || T.optimizationGoal || null,
-    dailyBudget: Number(plan.daily_budget), budgetType: "abo",
+    dailyBudget: (plan.ai && plan.ai.ab_mode === "cbo" && !joinTo) ? groupBudget : Number(plan.daily_budget), budgetType: (plan.ai && plan.ai.ab_mode === "cbo" && !joinTo) ? "cbo" : "abo",
     bidStrategy: capped ? a.bidStrategy : null, bidAmount: (capped && a.bidAmount != null) ? Number(a.bidAmount) : null,
     destinationType: (T.destinationType || a.destinationType) === "WHATSAPP" ? "whatsapp" : "messenger",
     pageWelcomeMessage: T.welcomeRaw || null, pixelId: null, websiteUrl: null,
@@ -832,6 +864,30 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     adAccountId: cfg.ad_account_id, pageId: a.pageId, flowType: "new_campaign", campaignId: null, campaignName: name, adsetName: name,
   };
   let res: any;
+  if (joinTo) {
+    // v10: join the group's existing ad set: new creative + ad only
+    const letter = "ABCDEF"[Number(plan.ai?.ab_index) || 0] || "X";
+    const addBody: any = {
+      adAccountId: cfg.ad_account_id, adsetId: joinTo.adset_id, campaignId: joinTo.campaign_id, campaignName: null, logName: name, adName: `${name} - Ad ${letter}`,
+      pageId: a.pageId, destinationType: body.destinationType, pageWelcomeMessage: body.pageWelcomeMessage, primaryText: plan.caption, headline: plan.headline || null,
+      videoId: body.videoId, videoThumbnailImageHash: body.videoThumbnailImageHash, videoThumbnailUrl: body.videoThumbnailUrl, imageBase64,
+      ctaType: body.ctaType, instagramUserId: body.instagramUserId, degreesOfFreedomSpec: body.degreesOfFreedomSpec, active: !CREATE_PAUSED, launchedBy: "ads-test-auto", dailyBudget: Number(plan.daily_budget),
+    };
+    try { res = await callFn("ads-test-addad", addBody, 90000); }
+    catch (e) {
+      if (addBody.degreesOfFreedomSpec && /3858504|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
+        report.warnings.push("A/B ad without creative enhancements: " + errMsg(e));
+        await L(plan.product_key, plan.id, "launch_no_dof", errMsg(e));
+        addBody.degreesOfFreedomSpec = null;
+        res = await callFn("ads-test-addad", addBody, 90000);
+      } else throw e;
+    }
+    await sb.from("ad_test_plans").update({ status: "launched", campaign_id: joinTo.campaign_id, adset_id: joinTo.adset_id, ad_id: res.adId || null, launched_at: new Date().toISOString(), fail_reason: null, last_checked_at: null }).eq("id", plan.id);
+    if (plan.asset_id) await sb.from("product_assets").update({ status: "testing" }).eq("id", plan.asset_id);
+    await L(plan.product_key, plan.id, "launched", `${name} · joined A/B ad set ${joinTo.adset_id} (CBO campaign ${joinTo.campaign_id}) · ${CREATE_PAUSED ? "PAUSED (test)" : "active"}`);
+    report.launched.push({ plan: plan.id, campaign: joinTo.campaign_id, adset: joinTo.adset_id, ad: res.adId, product: cfg.label, paused: CREATE_PAUSED, joined: true });
+    return;
+  }
   try { res = await callFn("launch-ad", body, 90000); }
   catch (e) {
     // creative enhancements are the one part Facebook may refuse on its own; launch-ad already removed the empty campaign
@@ -845,7 +901,7 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   await sb.from("ad_test_plans").update({ status: "launched", campaign_id: res.campaignId || null, adset_id: res.adsetId || null, ad_id: res.adId || null, launched_at: new Date().toISOString(), fail_reason: null, last_checked_at: null }).eq("id", plan.id);
   if (plan.asset_id) await sb.from("product_assets").update({ status: "testing" }).eq("id", plan.asset_id);
   if (res.campaignId) await sb.from("campaign_product_map").upsert({ campaign_id: res.campaignId, product_key: plan.product_key, product_name: cfg.label, source: "ad_test" }, { onConflict: "campaign_id" });
-  await L(plan.product_key, plan.id, "launched", `${name} · ${plan.daily_budget}/day · ${CREATE_PAUSED ? "PAUSED (test)" : "starts " + String(startTime).slice(11, 16) + "Z"}`);
+  await L(plan.product_key, plan.id, "launched", `${name} · ${body.budgetType === "cbo" ? "CBO campaign budget " + body.dailyBudget : plan.daily_budget + "/day"} · ${CREATE_PAUSED ? "PAUSED (test)" : "starts " + String(startTime).slice(11, 16) + "Z"}`);
   report.launched.push({ plan: plan.id, campaign: res.campaignId, adset: res.adsetId, ad: res.adId, product: cfg.label, paused: CREATE_PAUSED });
 }
 
