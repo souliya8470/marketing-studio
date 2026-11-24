@@ -101,10 +101,10 @@ Without a transcript you cannot hear audio and frames are only snapshots: never 
 
 const REVIEW_TOOL = {
   name: "submit_review", description: "Submit the review of the file and the three chosen selling angles.",
-  input_schema: { type: "object", required: ["usable", "shows_lo", "hook_score"], properties: {
+  input_schema: { type: "object", required: ["usable", "shows_lo", "hook_score", "angles"], properties: {
     usable: { type: "boolean" }, reject_reason_lo: { type: "string" }, shows_lo: { type: "string" },
     hook_score: { type: "integer", minimum: 1, maximum: 5 }, fits_lo: { type: "string" }, angle_lo: { type: "string" },
-    angles: { type: "array", minItems: 3, maxItems: 3, items: { type: "object", required: ["key", "title_lo", "why_lo", "headline_lo"], properties: {
+    angles: { type: "array", maxItems: 3, description: "exactly 3 objects when usable=true (always required); an empty array when usable=false", items: { type: "object", required: ["key", "title_lo", "why_lo", "headline_lo"], properties: {
       key: { type: "string", enum: [...ANGLES] }, title_lo: { type: "string" }, why_lo: { type: "string" }, headline_lo: { type: "string" }, recommended: { type: "boolean" },
     } } },
   } },
@@ -247,7 +247,7 @@ async function reviewAsset(asset: any, cfg: any) {
   tokens += r.inTok + r.outTok;
   let problem = check(r.out);
   if (problem) {
-    const retry = [...content, { type: "text", text: `Your previous answer was rejected: ${problem}. Fix it. Clean Lao script only, exactly 3 different angles from the menu, headline at most 60 characters, no risky claims, and no promotion or gift unless current_promo is given.` }];
+    const retry = [...content, { type: "text", text: `Your previous answer was rejected: ${problem}. Fix it. Call the tool again and ALWAYS fill the angles array with exactly 3 objects (key, title_lo, why_lo, headline_lo, recommended). Clean Lao script only, exactly 3 different angles from the menu, headline at most 60 characters, no risky claims, and no promotion or gift unless current_promo is given.` }];
     r = await callClaude(REVIEW_SYSTEM, retry, REVIEW_TOOL, 2500);
     tokens += r.inTok + r.outTok;
     problem = check(r.out);
@@ -321,7 +321,11 @@ async function sendVideo(b: any) {
   let res: any;
   try { res = await reviewAsset(row, cfg); } catch (e) { await undo(); return { ok: false, error: "AI: " + errMsg(e) }; }
   const o = res.out, review = reviewOf(o, res, cfg);
-  if (res.problem || !o.usable) {
+  if (res.problem) { // technical failure of the AI answer (not a verdict on the video): leave nothing behind so the owner can simply press the button again
+    await undo();
+    return { ok: false, error: "AI answer failed the checks: " + res.problem };
+  }
+  if (!o.usable) {
     const why = res.problem ? "ຂໍ້ຄວາມທີ່ AI ຂຽນບໍ່ຜ່ານການກວດ (" + res.problem + ")" : (o.reject_reason_lo || "AI ເຫັນວ່າໃຊ້ເປັນແອັດບໍ່ໄດ້");
     review.reject_reason_lo = why;
     await sb.from("product_assets").update({ status: "retired", ai_review: review }).eq("id", assetId);
