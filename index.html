@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.93"; // v8.93 CHANGE (Tar 2026-11-24, "ອຍາກໃຫ້ເປັນ 1 ແຄມເປນ 1 ແອັດເຊັດ ແລ້ວ 3 ແອັດ ເຮັດເປັນ CBO ງົບ 300"): the A/B split of v8.92 is now ONE CBO campaign -> ONE ad set -> N ads (Meta Andromeda advice: few campaigns/ad sets, several ads) instead of N separate campaigns. adsTestSplitPlan marks every plan with ai.ab_mode = "cbo" (+ ab_group); the campaign budget = sum of the plans daily_budget (e.g. 3 x 100 = 300) and Facebook shares it between the ads. Server side: ads-test-auto v10 (first plan of the group creates campaign + ad set + ad via launch-ad with budgetType cbo; the others join that ad set through the NEW edge function ads-test-addad and reuse the already uploaded video; judge pauses only the loser AD, whole campaign only when no sibling ad runs). UI texts changed (split confirm, group card, plan cards say the budget is shared). Plans split with v8.92 (no ab_mode) still launch as separate campaigns. Because the budget is shared, an ad that gets little spend may stay "waiting" in the judge (needs spend >= 150) - expected with CBO.
+const APP_VERSION = "8.94"; // v8.94 CHANGE (Tar 2026-11-25, "ບັນທຶກຊື່ຂົນສົ່ງຜິດ ອານຸສິດ<->ຮຸ່ງອາລຸນ ແລ້ວສົ່ງບິນຊ້ຳຫາລູກຄ້າ"): courier bill import used to read the courier radio (STATE.courierBillCourierName) LATE (OCR + batch creation, minutes after the upload started) and two uploads could overlap in the same tab, so another n8n script flipping the radio mid-OCR relabelled a whole batch (310 rows since Oct) and the duplicate check, being per-courier, missed them -> bills sent twice. Fix: courierBillHandleFiles now captures the courier at call time and queues uploads one after another (_courierBillUploadChain); processing/batch creation use STATE.courierBillUploadCourier; the tracking-number duplicate check no longer filters by courier (826... = Anousith, VTE... = HAL are unique across couriers). No DB change.
+// (previous text of this slot, kept) const APP_VERSION = "8.93"; // v8.93 CHANGE (Tar 2026-11-24, "ອຍາກໃຫ້ເປັນ 1 ແຄມເປນ 1 ແອັດເຊັດ ແລ້ວ 3 ແອັດ ເຮັດເປັນ CBO ງົບ 300"): the A/B split of v8.92 is now ONE CBO campaign -> ONE ad set -> N ads (Meta Andromeda advice: few campaigns/ad sets, several ads) instead of N separate campaigns. adsTestSplitPlan marks every plan with ai.ab_mode = "cbo" (+ ab_group); the campaign budget = sum of the plans daily_budget (e.g. 3 x 100 = 300) and Facebook shares it between the ads. Server side: ads-test-auto v10 (first plan of the group creates campaign + ad set + ad via launch-ad with budgetType cbo; the others join that ad set through the NEW edge function ads-test-addad and reuse the already uploaded video; judge pauses only the loser AD, whole campaign only when no sibling ad runs). UI texts changed (split confirm, group card, plan cards say the budget is shared). Plans split with v8.92 (no ab_mode) still launch as separate campaigns. Because the budget is shared, an ad that gets little spend may stay "waiting" in the judge (needs spend >= 150) - expected with CBO.
 // (previous text of this slot, kept) // v8.92 NEW (Tar 2026-11-24, "ບອກກຳນົດເພດານໄດ້... 1:1:3 ຕ້ອງເພີ່ມເປັນ 300 ເພື່ອໃຫ້ແຕ່ລະແອັດແລ່ນໄດ້ ... ເພີ່ມແອັດເທື່ອດຽວແລ້ວໃຫ້ອອກເປັນ 3 ແບບ"): (1) 🧪 tab, new card "💰 ເພດານງົບ": per product Tar edits budget_per_test, daily_cap and max_new_per_day (ad_test_products, saved by adsTestSaveCaps with checks: all > 0, daily_cap >= budget_per_test, max_new <= 20). These caps only limit the AUTO planner (ads-test-auto planStage/committedFor); a manual 🚀 is never blocked by them (code-read of ads-test-auto v9). (2) A plan that carries 3 caption variants (ads-test-variants) gets a button "🧪 ຍິງທັງ 3 ແບບທຽບກັນ (A/B)" (adsTestSplitPlan): it inserts 2 more ad_test_plans rows (same plan_date/product_key/asset_id/daily_budget, status proposed, caption+headline per angle, caption_index 0..2) and rewrites the original as angle 0; every plan gets ai.ab_group (uuid), ab_index, ab_total, ab_title_lo, ab_why_lo and loses ai.variants (so no variant tabs / regen on A/B plans). Nothing is sent to Facebook by splitting; on any DB error the inserted rows are deleted again. (3) The queue shows one group card (adsTestAbOf/abGroupCard) with the 3 full captions and ONE button "🚀 ຍິງທັງ N ແບບພ້ອມກັນ" (adsTestLaunchGroup): confirm with total budget, sets status approved + ai.manual_go on all plans of the group, then ONE ads-test-auto tick with force_launch for the product (<=3 launches per tick; each plan uploads the video itself unless asset.fb_video_id, so 3 uploads - the cron finishes what one tick cannot). Each plan stays its own campaign "<label> TEST dd/mm #<id8>" with its own budget, so Facebook gives each caption its own spend. Running/judged cards show the badge "🧪 ແບບ A/B/C · <angle>". (4) adsTestRejectPlan: the shared asset is retired only when no other non-rejected plan uses it (before: cutting one A/B plan would retire the video of the others). Judge (ads-test-auto) sets the asset winner/loser per plan, last writer wins - known, harmless, per-plan verdicts stay correct. No DB migration, no edge function change.
 // (previous text of this slot, kept) // v8.91 NEW (Tar 2026-11-24, "ໃຫ້ AI ຂຽນແຄັບຊັນ 3 ແບບ ມຸມຂາຍຕ່າງກັນ ໃຫ້ຂ້ອຍເລືອກ... ບໍ່ຢາກຈຳກັດ 450 ຕົວອັກສອນ" = the finished video must become ad-test material): (1) page 🎬 ວິດີໂອສຳເລັດ: every card (owner only, product must be enabled in the 🧪 tab) has a new button "🧪 ສົ່ງເຂົ້າທົດສອບແອັດ". It asks whether the video shows a promotion (the promo rule of ads-test-auto: only ad_test_products.current_promo may be written), draws 3 snapshots from the video in the browser (adsTestVideoFrames now also accepts a URL; needs the public bucket CORS), stores them as <product_key>/frames/<asset_id>_N.jpg and calls the NEW edge function ads-test-variants (action send). (2) ads-test-variants (v1, separate from ads-test-auto on purpose) inserts product_assets (source upload, origin in note and plan.ai.source "sykhai-editor", storage_path "edited:<video id>" so deleting the asset never deletes the finished video, status queued so the cron planner skips it, transcript from the editor if any), lets Claude judge the video and choose THREE different selling angles (pain/result/offer/routine/curiosity/trust) with a Lao title, a "why this angle suits this video" sentence and a headline, marks one as recommended, then writes ONE long caption per angle in parallel (no 450 limit: 300-900 characters usual, 1500 safety cap, hook in the first ~125 characters, call to action at the end) and inserts ad_test_plans status proposed with plan.caption/headline = recommended variant and plan.ai.variants[] + plan.ai.variant_index. (3) 🧪 tab plan card: if plan.ai.variants exists it shows 3 buttons (one per angle, ⭐ = AI recommended), the "why" line, the FULL caption (not clipped, with length) and headline of the chosen one; clicking a button saves the choice into plan.caption/headline/ai.variant_index (only while proposed/approved); "🔄 ຂຽນ 3 ແບບໃໝ່" calls ads-test-variants {action:"regen"}. Launch is unchanged (ads-test-auto reads plan.caption; it has no 450 check on launch). New DB columns: product_assets.transcript, edited_product_videos.script (both text, nullable; not filled automatically yet).
 // (previous text of this slot, kept) // v8.90 CHANGE (Tar 2026-11-20, poster tab): poster v1.7 - the phone photo tip now says to use a backdrop colour that differs from the product (white product -> dark/green/blue cloth, coloured/dark product -> white paper) and to cover the stand. Text only.
@@ -1635,7 +1636,8 @@ const APP_VERSION = "8.93"; // v8.93 CHANGE (Tar 2026-11-24, "ອຍາກໃຫ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.92"; // (v8.92 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.93"; // (v8.93 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.92"; // (v8.92 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.91"; // (v8.91 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.90"; // (v8.90 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.89"; // (v8.89 text kept in the history comment lines of APP_VERSION above)
@@ -1749,7 +1751,8 @@ const APP_VERSION_PREV = "8.92"; // (v8.92 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.91"; // (v8.91 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.92"; // (v8.92 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.91"; // (v8.91 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.90"; // (v8.90 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.89"; // (v8.89 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.88"; // (v8.88 text kept in the history comment lines above)
@@ -14473,9 +14476,20 @@ function courierBillTrackingFromFilename(name){
   if(m) return m[1].toUpperCase();
   return "";
 }
-async function courierBillHandleFiles(fileList){
+// v8.94: capture the courier NOW and run uploads strictly one after another (see APP_VERSION comment).
+let _courierBillUploadChain = Promise.resolve();
+function courierBillHandleFiles(fileList){
+  const files = Array.from(fileList||[]).filter(Boolean);
+  if(!files.length) return Promise.resolve();
+  const courier = STATE.courierBillCourierName || "ອານຸສິດ";
+  const run = _courierBillUploadChain.then(()=>_courierBillHandleFilesImpl(files, courier));
+  _courierBillUploadChain = run.catch(()=>{});
+  return run;
+}
+async function _courierBillHandleFilesImpl(fileList, uploadCourier){
   const files = Array.from(fileList||[]).filter(Boolean);
   if(!files.length) return;
+  STATE.courierBillUploadCourier = uploadCourier || "ອານຸສິດ";
   STATE.courierBillLoading = true; STATE.courierBillPages = []; STATE.courierBillBatchId = null; STATE.courierBillOcrProgress = "";
   STATE.courierBillConfidenceFilter = "all"; STATE.courierBillDateMode = "today"; STATE.courierBillDateFrom = ""; STATE.courierBillDateTo = ""; STATE.courierBillPage = 1;
   STATE.courierBillSendStatusFilter = "all"; STATE.courierBillSearchQuery = ""; // v8.06 — see APP_VERSION comment
@@ -14575,7 +14589,7 @@ async function courierBillHandleFiles(fileList){
       // v7.81 (see APP_VERSION comment): ອານຸສິດ renders bigger then gets cropped down to just the
       // bill itself; ຮຸ່ງອາລຸນ is untouched (flat 1.8, no crop -- its pages have no blank-margin
       // problem to begin with).
-      const isAnousith = STATE.courierBillCourierName !== "ຮຸ່ງອາລຸນ";
+      const isAnousith = (STATE.courierBillUploadCourier||STATE.courierBillCourierName) !== "ຮຸ່ງອາລຸນ";
       const fullCanvas = document.createElement("canvas");
       const fullCtx2d = fullCanvas.getContext("2d");
       if(isImageFile){
@@ -14659,7 +14673,7 @@ async function courierBillHandleFiles(fileList){
         scaledCtx2d.drawImage(ocrCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
         ocrCanvas = scaledCanvas;
       }
-      if(STATE.courierBillCourierName === "ຮຸ່ງອາລຸນ"){
+      if((STATE.courierBillUploadCourier||STATE.courierBillCourierName) === "ຮຸ່ງອາລຸນ"){
         const thresholdSource = ocrCanvas; // v7.89: may already be the 2x-upscaled copy above
         ocrCanvas = document.createElement("canvas");
         ocrCanvas.width = thresholdSource.width; ocrCanvas.height = thresholdSource.height;
@@ -14695,7 +14709,7 @@ async function courierBillHandleFiles(fileList){
         ocrConfidence = (ocrResult && ocrResult.data && ocrResult.data.confidence) || null;
       }catch(ocrErr){ console.error("OCR failed for page", i, ocrErr); }
 
-      const parsed = courierBillParsePageText(text, STATE.courierBillCourierName);
+      const parsed = courierBillParsePageText(text, STATE.courierBillUploadCourier||STATE.courierBillCourierName);
       // v8.10: an exact number from the filename beats the OCR guess (see APP_VERSION comment).
       const fileTracking = isImageFile ? courierBillTrackingFromFilename(file.name) : "";
       if(fileTracking) parsed.courierBillNumber = fileTracking;
@@ -14957,7 +14971,7 @@ async function courierBillRematchVisible(){
 window.courierBillRematchVisible = courierBillRematchVisible;
 async function courierBillCreateBatchAndMatch(){
   const batchId = "cbb_"+Date.now()+Math.random().toString(36).slice(2,7);
-  const courierName = STATE.courierBillCourierName||"ອານຸສິດ";
+  const courierName = STATE.courierBillUploadCourier||STATE.courierBillCourierName||"ອານຸສິດ";
 
   // v7.50 (Tar 2026-09-15, "ໂຄເວີກອັບບິນ ຊ້ຳກັນຫຼາຍ ... ບໍ່ໃຫ້ມັນເກີດຂື້ນອີກ"): Tar accidentally
   // uploaded the exact same ຮຸ່ງອາລຸນ PDF twice on 2026-09-15, 4 minutes apart, doubling every
@@ -14971,8 +14985,7 @@ async function courierBillCreateBatchAndMatch(){
   if(candidateNumbers.length){
     const { data: dupRows, error: dupErr } = await sb.from("courier_bill_import_pages")
       .select("courier_bill_number")
-      .eq("courier_name", courierName)
-      .in("courier_bill_number", candidateNumbers);
+      .in("courier_bill_number", candidateNumbers); // v8.94: no courier filter (numbers are unique across couriers)
     if(dupErr) console.error("courierBillCreateBatchAndMatch: duplicate-check query failed:", dupErr);
     else existingNumbers = new Set((dupRows||[]).map(r=>r.courier_bill_number));
   }
