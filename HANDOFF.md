@@ -354,3 +354,8 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Now: ads-test-auto v13 (deployed, version 13) never sends an Instagram identity; `plan.ai.placement` = `fb_messenger` (default, also when missing) -> publisher_platforms [facebook, messenger]; `fb_only` -> [facebook]; `template` -> template targeting untouched. All *_positions lists are dropped. If Facebook refuses the placement, one retry with template targeting (log action `launch_placement_fallback`).
 - index.html v8.98: picker step 1 has "3) ຕຳແໜ່ງໂຄສະນາ" radios; choice saved as ai.placement on all plans (copies too); review screen shows it; Instagram row says not used.
 - NOT yet verified on a live Facebook launch (ToukShop still unpaid; manual placement without positions untested). Check ad_test_log for launch_placement_fallback after the first launch.
+
+## v8.99 + ads-test-auto v14 — Laos only + CTA in Lao (2026-11-25)
+- Tar's rule: target Laos, exclude TH/VN/KH/MM. Templates differ (sesame_coffee all four, bio_pro_orange only TH, lutein_coffee none), so ads-test-auto v14 (deployed) always adds TH, VN, KH, MM to excluded_geo_locations on every launch (also in the template-placement fallback).
+- index.html v8.99: review screen shows CTA as "ສົ່ງຂໍ້ຄວາມ (Send Message)" instead of MESSAGE_PAGE and a new row "ຍົກເວັ້ນປະເທດ". Display only.
+- Not yet checked on a live launch.

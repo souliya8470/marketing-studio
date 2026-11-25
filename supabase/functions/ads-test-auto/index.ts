@@ -1,4 +1,5 @@
-// Supabase Edge Function: ads-test-auto (v13)
+// Supabase Edge Function: ads-test-auto (v14)
+// v14 (2026-11-25): LAOS ONLY. Every launch excludes Thailand, Vietnam, Cambodia and Myanmar (TH, VN, KH, MM) in excluded_geo_locations, added to whatever the template already excludes (before: only the sesame_coffee template had all four, Bio Pro Orange only TH, lutein_coffee none).
 // v13 (2026-11-25): NO INSTAGRAM + PLACEMENT CHOICE. Tar does not market or answer on Instagram: the template Instagram identity is never copied any more, and plan.ai.placement decides where the ad is shown: "fb_messenger" (default when missing) = publisher_platforms [facebook, messenger] (no Instagram, no Audience Network), "fb_only" = [facebook], "template" = the template targeting untouched (Advantage+ placements). All per-position lists are dropped so Facebook picks the positions inside the chosen platforms. If Facebook refuses the placement the launch is retried once with the template targeting.
 // v12 (2026-11-25): LAUNCH TARGETS. plan.ai.target = { account_id, account_name, page_id, page_name } (either may be null = take it from the product's template campaign) lets the owner pick the ad account and the Facebook page per launch (UI 🧪 picker) to compare accounts/pages. plan.ai.cmp_group links copies of the same ad launched on different targets (they reuse one uploaded video per ad account). With another page the template's Instagram identity and saved welcome message are NOT copied (they belong to the template page); with another ad account the template's custom audiences are dropped. Plans without ai.target behave exactly as v11.
 // v11 (2026-11-25): creative enhancements copied from the template keep only OPT_IN features (the full OPT_OUT list made Facebook answer "Permissions error" subcode 1487194 on the Velaris creative); that error also triggers the retry without enhancements.
@@ -868,6 +869,13 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   if (acct !== origAcct && targetingCopy) {
     targetingCopy = JSON.parse(JSON.stringify(targetingCopy));
     delete targetingCopy.custom_audiences; delete targetingCopy.excluded_custom_audiences; // audiences belong to the template's ad account
+  }
+  // v14: Laos only: always exclude the neighbouring countries (owner's rule), on top of what the template already excludes
+  if (targetingCopy) {
+    targetingCopy = JSON.parse(JSON.stringify(targetingCopy));
+    const ex = (targetingCopy.excluded_geo_locations && typeof targetingCopy.excluded_geo_locations === "object") ? targetingCopy.excluded_geo_locations : {};
+    ex.countries = [...new Set([...(Array.isArray(ex.countries) ? ex.countries : []), "TH", "VN", "KH", "MM"])];
+    targetingCopy.excluded_geo_locations = ex;
   }
   // v13: placement choice (default Facebook + Messenger, never Instagram)
   const plc = (plan.ai && plan.ai.placement) ? String(plan.ai.placement) : "fb_messenger";
