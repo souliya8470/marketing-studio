@@ -339,3 +339,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Not tested live on Facebook (ToukShop account act_1820956388519613 is still UNSETTLED; use a healthy account like Yumiko act_753806877392045 — its page must be allowed for that account). A page not shared with the ad account will fail with a Facebook error shown in the plan (fail_reason).
 - Auto switch OFF → the old browser-side launch is unchanged (always template account/page).
 - Still open: #108 paused CBO test (needs a healthy account), #109 add ads of other videos into a running ad set, #110 Ads-Manager-like defaults in launch form.
+
+## v8.96 — review step before publish (2026-11-25, editor chat) -- index.html only
+- The 🚀 picker (v8.95) is now 2 steps: 1) choose accounts + pages, 2) "🔍 ກວດກ່ອນເຜີຍແຜ່": one block per campaign (name, account + status, page, objective, CBO/ABO budget, audience, placements, saved greeting, IG, CTA, every ad's full caption) + ⚠️ checks. Template facts come from the read-only `ads-test-auto` action `template` (no Facebook write). Back button keeps the ticks; nothing is written until "🚀 ເຜີຍແຜ່ເລີຍ".
+- Not built (offered to Tar): "create PAUSED for checking in Ads Manager" — needs a per-plan `ai.create_paused` in ads-test-auto (today `create_paused` is per tick only and the cron would continue such plans live).

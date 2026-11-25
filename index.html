@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.95"; // v8.95 NEW (Tar 2026-11-25, "ໃຫ້ສາມາດເລືອກໄດ້ທຸກຢ່າງກ່ອນທີ່ເຮົາຈະເທສແອັດ ... ເທສແອັດນີ້ໄປດີກັບເພຈໃດ/ບັນຊີໃດ ເອົາຂໍ້ມູນມາທຽບກັນ"): at every 🚀 launch in the 🧪 tab (single ad and A/B group, auto switch ON = server path) a picker opens: tick one or more AD ACCOUNTS and one or more FACEBOOK PAGES (nothing ticked = the product template default, as before). Every account x page combination becomes its own campaign (a group of 3 captions stays 1 CBO campaign per combination). adsTestPickTargets (modal, shows total budget, warns about unsettled accounts / other page / other account, max 6 combinations) -> adsTestApplyTargets writes ai.target {account_id, account_name, page_id, page_name} on the plan and inserts copies for the other combinations (status approved + manual_go, ai.cmp_group links them, cmp_copy marks the copies, copies of an A/B group get their own ab_group). Server: ads-test-auto v12 (deployed first) launches with the chosen account/page; another page = template Instagram identity + welcome message are NOT copied; another account = template custom audiences dropped; an imported old Facebook video can only go to its own account (picker locks the others); the same video is uploaded once per ad account. New card "📊 ທຽບຜົນຕາມບັນຊີ/ເພຈ" in ກຳລັງທົດສອບ (adsTestCmpCard): per combination spend, messages, cost per message, link CTR from the 7-day numbers, best cost per message marked 🏆 only when every row has messages; running/judged/ready cards show a 🎯 badge with the chosen account/page. Campaign names get the tag " [account / page]". With the auto switch OFF the old browser-side launch is unchanged (always template account/page). No SQL change.
+const APP_VERSION = "8.96"; // v8.96 NEW (Tar 2026-11-25, screenshot of the account/page picker: "ເຮົາສິພຣີວິວແອດຢູ່ໃນ Ad Manager ກ່ອນທີ່ເຮົາສິກົດເຜີຍແຜ່ ... ຢາກໃຫ້ມີຂັ້ນຕອນນັ້ນນຳ ເພື່ອກົດເຊັກອີຫຍັງຫຼາຍໆຢ່າງ"): the 🚀 picker of v8.95 is now 2 steps. Step 1 = choose ad accounts + pages ("ຕໍ່ໄປ: ກວດກ່ອນເຜີຍແຜ່"). Step 2 = REVIEW before publish, like the Ads Manager review screen: one block per campaign that will be created (campaign name, ad account + status, page, objective/destination, CBO or ABO budget, start, audience age/countries/Advantage+ audience/custom audiences, placements, saved greeting text, Instagram identity, CTA, every ad with its full caption + headline + file) and a ✅/⚠️ check list (unsettled account, other page = greeting/IG not copied, other account = audiences dropped, imported video locked to its account, total budget vs the product daily cap, empty greeting in the template, caption too long). The template facts come from the read-only ads-test-auto action "template" (no Facebook write, ~5-10 s, shown with a spinner; if it fails the review still opens with a warning). Buttons: "← ກັບໄປແກ້" (keeps the ticks) and "🚀 ເຜີຍແຜ່ເລີຍ". Nothing is written to the database or Facebook before that last button. No server/SQL change.
+// (previous text of this slot, kept) const APP_VERSION = "8.95"; // v8.95 NEW (Tar 2026-11-25, "ໃຫ້ສາມາດເລືອກໄດ້ທຸກຢ່າງກ່ອນທີ່ເຮົາຈະເທສແອັດ ... ເທສແອັດນີ້ໄປດີກັບເພຈໃດ/ບັນຊີໃດ ເອົາຂໍ້ມູນມາທຽບກັນ"): at every 🚀 launch in the 🧪 tab (single ad and A/B group, auto switch ON = server path) a picker opens: tick one or more AD ACCOUNTS and one or more FACEBOOK PAGES (nothing ticked = the product template default, as before). Every account x page combination becomes its own campaign (a group of 3 captions stays 1 CBO campaign per combination). adsTestPickTargets (modal, shows total budget, warns about unsettled accounts / other page / other account, max 6 combinations) -> adsTestApplyTargets writes ai.target {account_id, account_name, page_id, page_name} on the plan and inserts copies for the other combinations (status approved + manual_go, ai.cmp_group links them, cmp_copy marks the copies, copies of an A/B group get their own ab_group). Server: ads-test-auto v12 (deployed first) launches with the chosen account/page; another page = template Instagram identity + welcome message are NOT copied; another account = template custom audiences dropped; an imported old Facebook video can only go to its own account (picker locks the others); the same video is uploaded once per ad account. New card "📊 ທຽບຜົນຕາມບັນຊີ/ເພຈ" in ກຳລັງທົດສອບ (adsTestCmpCard): per combination spend, messages, cost per message, link CTR from the 7-day numbers, best cost per message marked 🏆 only when every row has messages; running/judged/ready cards show a 🎯 badge with the chosen account/page. Campaign names get the tag " [account / page]". With the auto switch OFF the old browser-side launch is unchanged (always template account/page). No SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.94"; // v8.94 CHANGE (Tar 2026-11-25, "ບັນທຶກຊື່ຂົນສົ່ງຜິດ ອານຸສິດ<->ຮຸ່ງອາລຸນ ແລ້ວສົ່ງບິນຊ້ຳຫາລູກຄ້າ"): courier bill import used to read the courier radio (STATE.courierBillCourierName) LATE (OCR + batch creation, minutes after the upload started) and two uploads could overlap in the same tab, so another n8n script flipping the radio mid-OCR relabelled a whole batch (310 rows since Oct) and the duplicate check, being per-courier, missed them -> bills sent twice. Fix: courierBillHandleFiles now captures the courier at call time and queues uploads one after another (_courierBillUploadChain); processing/batch creation use STATE.courierBillUploadCourier; the tracking-number duplicate check no longer filters by courier (826... = Anousith, VTE... = HAL are unique across couriers). No DB change.
 // (previous text of this slot, kept) const APP_VERSION = "8.93"; // v8.93 CHANGE (Tar 2026-11-24, "ອຍາກໃຫ້ເປັນ 1 ແຄມເປນ 1 ແອັດເຊັດ ແລ້ວ 3 ແອັດ ເຮັດເປັນ CBO ງົບ 300"): the A/B split of v8.92 is now ONE CBO campaign -> ONE ad set -> N ads (Meta Andromeda advice: few campaigns/ad sets, several ads) instead of N separate campaigns. adsTestSplitPlan marks every plan with ai.ab_mode = "cbo" (+ ab_group); the campaign budget = sum of the plans daily_budget (e.g. 3 x 100 = 300) and Facebook shares it between the ads. Server side: ads-test-auto v10 (first plan of the group creates campaign + ad set + ad via launch-ad with budgetType cbo; the others join that ad set through the NEW edge function ads-test-addad and reuse the already uploaded video; judge pauses only the loser AD, whole campaign only when no sibling ad runs). UI texts changed (split confirm, group card, plan cards say the budget is shared). Plans split with v8.92 (no ab_mode) still launch as separate campaigns. Because the budget is shared, an ad that gets little spend may stay "waiting" in the judge (needs spend >= 150) - expected with CBO.
 // (previous text of this slot, kept) // v8.92 NEW (Tar 2026-11-24, "ບອກກຳນົດເພດານໄດ້... 1:1:3 ຕ້ອງເພີ່ມເປັນ 300 ເພື່ອໃຫ້ແຕ່ລະແອັດແລ່ນໄດ້ ... ເພີ່ມແອັດເທື່ອດຽວແລ້ວໃຫ້ອອກເປັນ 3 ແບບ"): (1) 🧪 tab, new card "💰 ເພດານງົບ": per product Tar edits budget_per_test, daily_cap and max_new_per_day (ad_test_products, saved by adsTestSaveCaps with checks: all > 0, daily_cap >= budget_per_test, max_new <= 20). These caps only limit the AUTO planner (ads-test-auto planStage/committedFor); a manual 🚀 is never blocked by them (code-read of ads-test-auto v9). (2) A plan that carries 3 caption variants (ads-test-variants) gets a button "🧪 ຍິງທັງ 3 ແບບທຽບກັນ (A/B)" (adsTestSplitPlan): it inserts 2 more ad_test_plans rows (same plan_date/product_key/asset_id/daily_budget, status proposed, caption+headline per angle, caption_index 0..2) and rewrites the original as angle 0; every plan gets ai.ab_group (uuid), ab_index, ab_total, ab_title_lo, ab_why_lo and loses ai.variants (so no variant tabs / regen on A/B plans). Nothing is sent to Facebook by splitting; on any DB error the inserted rows are deleted again. (3) The queue shows one group card (adsTestAbOf/abGroupCard) with the 3 full captions and ONE button "🚀 ຍິງທັງ N ແບບພ້ອມກັນ" (adsTestLaunchGroup): confirm with total budget, sets status approved + ai.manual_go on all plans of the group, then ONE ads-test-auto tick with force_launch for the product (<=3 launches per tick; each plan uploads the video itself unless asset.fb_video_id, so 3 uploads - the cron finishes what one tick cannot). Each plan stays its own campaign "<label> TEST dd/mm #<id8>" with its own budget, so Facebook gives each caption its own spend. Running/judged cards show the badge "🧪 ແບບ A/B/C · <angle>". (4) adsTestRejectPlan: the shared asset is retired only when no other non-rejected plan uses it (before: cutting one A/B plan would retire the video of the others). Judge (ads-test-auto) sets the asset winner/loser per plan, last writer wins - known, harmless, per-plan verdicts stay correct. No DB migration, no edge function change.
@@ -1637,7 +1638,8 @@ const APP_VERSION = "8.95"; // v8.95 NEW (Tar 2026-11-25, "ໃຫ້ສາມາ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.94"; // (v8.94 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.95"; // (v8.95 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.94"; // (v8.94 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.93"; // (v8.93 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.92"; // (v8.92 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.91"; // (v8.91 text kept in the history comment lines of APP_VERSION above)
@@ -1753,7 +1755,8 @@ const APP_VERSION_PREV = "8.94"; // (v8.94 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.93"; // (v8.93 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.94"; // (v8.94 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.93"; // (v8.93 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.92"; // (v8.92 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.91"; // (v8.91 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.90"; // (v8.90 text kept in the history comment lines above)
@@ -23439,6 +23442,7 @@ function adsTestPickTargets(opts){
     const accounts = (STATE.data.adAccounts||[]).filter(a=>a.active);
     const tplAcc = accounts.find(a=>a.id===tplId);
     const pages = STATE.launchAdPages||[];
+    const plans = opts.plans||[];
     const budget = Number(opts.budget||0);
     const MAXN = 6;
     const ov = document.createElement("div");
@@ -23453,40 +23457,123 @@ function adsTestPickTargets(opts){
       return `<label style="${rowStyle}${locked?"opacity:.45;":""}"><input type="checkbox" class="tgt-acc" value="${esc(a.id)}" data-name="${esc(a.name||a.id)}" data-bad="${bad?1:0}" ${locked?"disabled":""}/> <b>${esc(a.name||a.id)}</b> <span style="color:#777;font-size:12px;">${esc(a.currency||"")}</span> <span style="font-size:12px;${bad?"color:#C0392B;":""}">${esc(adAccountStatusLabel(a.accountStatus))}</span>${a.id===tplId?` <span style="font-size:11px;background:#FAF7EE;border-radius:999px;padding:1px 8px;">ແມ່ແບບ</span>`:""}</label>`;
     }).join("") || `<div style="color:#777;font-size:13px;">ບໍ່ພົບບັນຊີໂຄສະນາ</div>`;
     const pageRows = pages.map(pg=>`<label style="${rowStyle}"><input type="checkbox" class="tgt-page" value="${esc(pg.id)}" data-name="${esc(pg.name||pg.id)}"/> <b>${esc(pg.name||pg.id)}</b></label>`).join("") || `<div style="color:#777;font-size:13px;">ຍັງບໍ່ມີລາຍການເພຈ (ໂຫຼດບໍ່ໄດ້) — ຖ້າບໍ່ຕິ໊ກ ລະບົບໃຊ້ເພຈຂອງແມ່ແບບ</div>`;
-    ov.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:620px;width:100%;max-height:92vh;overflow:auto;padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h3 style="margin:0;">🚀 ຢືນຢັນຍິງ — ເລືອກບັນຊີ ແລະ ເພຈ</h3><button class="btn btn-sm btn-outline" id="tgt-x">✕</button></div>
-      <div style="white-space:pre-wrap;font-size:13px;background:#FAF7EE;border-radius:8px;padding:10px;margin-bottom:10px;">${esc(opts.summary||"")}</div>
-      <div style="font-weight:700;margin-bottom:4px;">1) ບັນຊີໂຄສະນາ <span style="font-weight:400;color:#777;font-size:12px;">— ບໍ່ຕິ໊ກ = ໃຊ້ບັນຊີຂອງແມ່ແບບ${tplAcc?" ("+esc(tplAcc.name||tplAcc.id)+")":""}</span></div>
-      ${opts.lockAccount?`<div style="font-size:12px;color:#B7791F;margin-bottom:4px;">ໄຟລ໌ນີ້ເປັນວິດີໂອແອັດເກົ່າ — ໃຊ້ໄດ້ສະເພາະບັນຊີຂອງມັນເອງ</div>`:""}
-      <div style="margin-bottom:10px;">${accRows}</div>
-      <div style="font-weight:700;margin-bottom:4px;">2) ເພຈ Facebook <span style="font-weight:400;color:#777;font-size:12px;">— ບໍ່ຕິ໊ກ = ໃຊ້ເພຈຂອງແມ່ແບບ</span></div>
-      <div style="margin-bottom:10px;max-height:220px;overflow:auto;">${pageRows}</div>
-      <div id="tgt-info" style="font-size:13px;margin-bottom:10px;"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-outline" id="tgt-cancel">ຍົກເລີກ</button><button class="btn" id="tgt-ok">🚀 ຍິງເລີຍ</button></div>
+    ov.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:680px;width:100%;max-height:92vh;overflow:auto;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h3 style="margin:0;" id="tgt-title">🚀 ຍິງແອັດ — ຂັ້ນ 1/2: ເລືອກບັນຊີ ແລະ ເພຈ</h3><button class="btn btn-sm btn-outline" id="tgt-x">✕</button></div>
+      <div id="tgt-step1">
+        <div style="white-space:pre-wrap;font-size:13px;background:#FAF7EE;border-radius:8px;padding:10px;margin-bottom:10px;">${esc(opts.summary||"")}</div>
+        <div style="font-weight:700;margin-bottom:4px;">1) ບັນຊີໂຄສະນາ <span style="font-weight:400;color:#777;font-size:12px;">— ບໍ່ຕິ໊ກ = ໃຊ້ບັນຊີຂອງແມ່ແບບ${tplAcc?" ("+esc(tplAcc.name||tplAcc.id)+")":""}</span></div>
+        ${opts.lockAccount?`<div style="font-size:12px;color:#B7791F;margin-bottom:4px;">ໄຟລ໌ນີ້ເປັນວິດີໂອແອັດເກົ່າ — ໃຊ້ໄດ້ສະເພາະບັນຊີຂອງມັນເອງ</div>`:""}
+        <div style="margin-bottom:10px;">${accRows}</div>
+        <div style="font-weight:700;margin-bottom:4px;">2) ເພຈ Facebook <span style="font-weight:400;color:#777;font-size:12px;">— ບໍ່ຕິ໊ກ = ໃຊ້ເພຈຂອງແມ່ແບບ</span></div>
+        <div style="margin-bottom:10px;max-height:220px;overflow:auto;">${pageRows}</div>
+        <div id="tgt-info" style="font-size:13px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-outline" id="tgt-cancel">ຍົກເລີກ</button><button class="btn" id="tgt-next">ຕໍ່ໄປ: ກວດກ່ອນເຜີຍແຜ່ →</button></div>
+      </div>
+      <div id="tgt-step2" style="display:none;"></div>
     </div>`;
     document.body.appendChild(ov);
     const picked = (cls)=>Array.from(ov.querySelectorAll("."+cls+":checked")).map(el=>({ id:el.value, name:el.getAttribute("data-name"), bad:el.getAttribute("data-bad")==="1" }));
+    const getTargets = ()=>{
+      const A = picked("tgt-acc"), P = picked("tgt-page");
+      const targets = [];
+      for(const a of (A.length?A:[null])) for(const pg of (P.length?P:[null])) targets.push({ account_id:a?a.id:null, account_name:a?a.name:null, page_id:pg?pg.id:null, page_name:pg?pg.name:null });
+      return targets;
+    };
     const refresh = ()=>{
       const A = picked("tgt-acc"), P = picked("tgt-page");
       const n = Math.max(1,A.length)*Math.max(1,P.length);
       const msgs = [`<b>ຈະສ້າງ ${n} ແຄມເປນ</b> · ງົບລວມ ${(n*budget).toLocaleString("en-US")}/ວັນ`];
       if(n>1) msgs.push("ແຕ່ລະບັນຊີ: ວິດີໂອຖືກສົ່ງໃຫ້ Facebook ແຍກກັນ (ໃຊ້ເວລາຫຼາຍຂຶ້ນ). ຜົນທຽບກັນຈະຢູ່ໃນບັດ 📊 ຫຼັງຍິງ");
-      if(P.length) msgs.push("ເພຈທີ່ເລືອກ: ບໍ່ກ໊ອບ Instagram ແລະ ຂໍ້ຄວາມຕ້ອນຮັບ ຂອງແມ່ແບບ (ເພາະເປັນຂອງເພຈແມ່ແບບ)");
-      if(A.some(a=>a.id!==tplId)) msgs.push("ບັນຊີອື່ນ: ບໍ່ກ໊ອບກຸ່ມເປົ້າໝາຍ custom audience ຂອງແມ່ແບບ");
-      if(A.some(a=>a.bad)) msgs.push(`<span style="color:#C0392B;">⚠️ ມີບັນຊີທີ່ບໍ່ປົກກະຕິ (ຄ້າງຈ່າຍ/ຖືກປິດ) — Facebook ອາດບໍ່ຍອມສ້າງແອັດ</span>`);
       if(n>MAXN) msgs.push(`<span style="color:#C0392B;">ເລືອກຫຼາຍເກີນ — ສູງສຸດ ${MAXN} ແຄມເປນຕໍ່ເທື່ອ</span>`);
       ov.querySelector("#tgt-info").innerHTML = msgs.map(m=>`<div style="margin-bottom:3px;">${m}</div>`).join("");
-      ov.querySelector("#tgt-ok").disabled = n>MAXN;
+      ov.querySelector("#tgt-next").disabled = n>MAXN;
     };
     ov.querySelectorAll("input[type=checkbox]").forEach(el=>el.addEventListener("change", refresh));
     refresh();
     ov.querySelector("#tgt-x").onclick = ()=>done(null);
     ov.querySelector("#tgt-cancel").onclick = ()=>done(null);
-    ov.querySelector("#tgt-ok").onclick = ()=>{
-      const A = picked("tgt-acc"), P = picked("tgt-page");
-      const targets = [];
-      for(const a of (A.length?A:[null])) for(const pg of (P.length?P:[null])) targets.push({ account_id:a?a.id:null, account_name:a?a.name:null, page_id:pg?pg.id:null, page_name:pg?pg.name:null });
-      done({ targets });
+
+    // ---- step 2: review before publish (read-only; template facts from ads-test-auto action "template") ----
+    let tplInfo = null, tplErr = "";
+    const lbl = adsTestProductLabel(opts.productKey);
+    const d = new Date(Date.now()+7*3600e3);
+    const ddmm = String(d.getUTCDate()).padStart(2,"0")+"/"+String(d.getUTCMonth()+1).padStart(2,"0");
+    const row = (k,v)=>`<div style="display:flex;gap:8px;margin:2px 0;font-size:13px;"><span style="min-width:128px;color:#777;">${k}</span><span style="flex:1;">${v}</span></div>`;
+    const renderReview = ()=>{
+      const targets = getTargets();
+      const isCbo = !!(plans[0] && plans[0].ai && plans[0].ai.ab_mode==="cbo");
+      const adsN = isCbo ? plans.length : 1;
+      const perCamp = isCbo ? plans.reduce((t,x)=>t+Number(x.daily_budget||0),0) : Number(plans[0]?plans[0].daily_budget:budget);
+      const t = tplInfo || {};
+      const aud = t.audience || {}, pl = t.placements || {};
+      const tplPage = t.page_id ? String(t.page_id) : "";
+      const pageName = (id)=>{ const pg = pages.find(x=>x.id===id); return pg ? pg.name : id; };
+      const warns = [];
+      if(tplErr) warns.push("ອ່ານຂໍ້ມູນແມ່ແບບບໍ່ໄດ້ ("+esc(tplErr)+") — ຍັງຍິງໄດ້ ແຕ່ບໍ່ສາມາດສະແດງລາຍລະອຽດການຕັ້ງຄ່າ");
+      const total = targets.length*perCamp;
+      if(cfg.daily_cap && total>Number(cfg.daily_cap)) warns.push(`ງົບລວມທັງໝົດ ${total.toLocaleString("en-US")}/ວັນ ເກີນເພດານຂອງສິນຄ້ານີ້ (${Number(cfg.daily_cap).toLocaleString("en-US")}/ວັນ) — ເພດານນີ້ຄຸມສະເພາະລະບົບອັດຕະໂນມັດ ບໍ່ຂັດຂວາງການກົດຍິງເອງ`);
+      const cards = targets.map((tg,i)=>{
+        const acctId = tg.account_id || tplId;
+        const acc = accounts.find(a=>a.id===acctId);
+        const accName = tg.account_name || (acc?acc.name:"") || acctId || "ບັນຊີແມ່ແບບ";
+        const pageId = tg.page_id || tplPage;
+        const pgName = tg.page_id ? (tg.page_name||tg.page_id) : (tplPage ? pageName(tplPage)+" (ເພຈແມ່ແບບ)" : "ເພຈແມ່ແບບ");
+        const otherPage = !!tg.page_id && tg.page_id!==tplPage;
+        const otherAcc = acctId!==tplId;
+        const bad = acc && acc.accountStatus!=null && Number(acc.accountStatus)!==1;
+        const tag = (tg.account_id||tg.page_id) ? " ["+[tg.account_name, tg.page_name].filter(Boolean).join(" / ").slice(0,48)+"]" : "";
+        const cn = (tplInfo && tplInfo.welcome && tplInfo.welcome.texts) ? tplInfo.welcome.texts : [];
+        const greet = otherPage ? `<span style="color:#B7791F;">ບໍ່ກ໊ອບ — ໃຊ້ຄຳທັກທາຍທີ່ຕັ້ງໄວ້ໃນເພຈນີ້ເອງ</span>` : (cn.length ? esc(cn.slice(0,2).join(" · ").slice(0,220)) : `<span style="color:#B7791F;">ແມ່ແບບບໍ່ມີຄຳທັກທາຍ</span>`);
+        const ig = otherPage ? `<span style="color:#B7791F;">ບໍ່ກ໊ອບ</span>` : (t.instagram_user_id ? "ໃຊ້ IG ຂອງແມ່ແບບ" : "ບໍ່ມີ");
+        const custom = Number(aud.custom_audiences||0);
+        const place = pl.mode==="manual" ? "ກຳນົດເອງ: "+esc((pl.publisher_platforms||[]).join(", ")) : "ອັດຕະໂນມັດ (Advantage+)";
+        const ads = plans.map((x,j)=>`<div style="border:1px solid #E9E3D3;border-radius:8px;padding:8px;margin-top:6px;font-size:12.5px;"><b>ແອັດ ${isCbo?"ABCDEF"[j]||j+1:""}${x.headline?" · "+esc(x.headline):""}</b> <span style="color:#777;">(${String(x.caption||"").length} ຕົວອັກສອນ)</span><div style="white-space:pre-wrap;margin-top:4px;max-height:110px;overflow:auto;">${esc(x.caption||"")}</div></div>`).join("");
+        const w = [];
+        if(bad) w.push(`⚠️ ບັນຊີ "${esc(accName)}" ${esc(adAccountStatusLabel(acc.accountStatus))} — Facebook ອາດບໍ່ຍອມສ້າງແອັດ`);
+        if(otherAcc && custom>0) w.push(`ບັນຊີອື່ນ: ກຸ່ມເປົ້າໝາຍ custom audience ຂອງແມ່ແບບ (${custom}) ຈະບໍ່ຖືກກ໊ອບ`);
+        if(otherPage) w.push("ເພຈອື່ນ: ຕ້ອງແນ່ໃຈວ່າເພຈນີ້ຖືກແຊຣ໌ໃຫ້ບັນຊີໂຄສະນານີ້ ບໍ່ດັ່ງນັ້ນ Facebook ຈະປະຕິເສດ");
+        if(plans.some(x=>String(x.caption||"").length>450)) w.push("ມີແຄັບຊັນຍາວກວ່າ 450 ຕົວອັກສອນ");
+        return `<div style="border:2px solid ${w.length?"#E0B04A":"#BFD8C2"};border-radius:10px;padding:10px;margin-bottom:10px;">
+          <div style="font-weight:700;margin-bottom:4px;">ແຄມເປນ ${i+1}/${targets.length}</div>
+          ${row("ຊື່ແຄມເປນ", esc(lbl+tag+" TEST "+ddmm+" #xxxxxxxx"))}
+          ${row("ບັນຊີໂຄສະນາ", esc(accName)+(acc?" · "+esc(adAccountStatusLabel(acc.accountStatus)):"")+(otherAcc?"":" (ແມ່ແບບ)"))}
+          ${row("ເພຈ", esc(pgName))}
+          ${row("ເປົ້າໝາຍ", "ຂໍ້ຄວາມ ("+esc(t.destination_type||"Messenger")+")"+(t.optimization_goal?" · "+esc(t.optimization_goal):""))}
+          ${row("ງົບ", isCbo ? `CBO ງົບລວມ <b>${perCamp.toLocaleString("en-US")}/ວັນ</b> → 1 ແອັດເຊັດ → ${adsN} ແອັດ (Facebook ແບ່ງເອງ)` : `<b>${perCamp.toLocaleString("en-US")}/ວັນ</b> (ງົບຕໍ່ແອັດເຊັດ)`)}
+          ${row("ເລີ່ມແລ່ນ", "ພາຍໃນ ~3 ນາທີ ຫຼັງກົດ (ຖ້າວິດີໂອຍັງສົ່ງບໍ່ແລ້ວ ຈະລໍກ່ອນ)")}
+          ${tplInfo?row("ກຸ່ມເປົ້າໝາຍ", `ອາຍຸ ${aud.age_min??"-"}–${aud.age_max??"-"} · ປະເທດ ${esc((aud.countries||[]).join(", ")||"-")}${aud.advantage_audience!=null?" · Advantage+ audience "+(Number(aud.advantage_audience)?"ເປີດ":"ປິດ"):""}`):""}
+          ${tplInfo?row("ຕຳແໜ່ງໂຄສະນາ", place):""}
+          ${tplInfo?row("ຄຳທັກທາຍ", greet):""}
+          ${tplInfo?row("Instagram", ig):""}
+          ${tplInfo?row("ປຸ່ມ (CTA)", esc(t.cta||"-")):""}
+          ${ads}
+          ${w.length?`<div style="margin-top:8px;font-size:12.5px;color:#8A5A00;">${w.map(x=>"⚠️ "+x.replace(/^⚠️ /,"")).join("<br/>")}</div>`:`<div style="margin-top:8px;font-size:12.5px;color:#2E7D32;">✅ ບໍ່ພົບບັນຫາ</div>`}
+        </div>`;
+      }).join("");
+      const s2 = ov.querySelector("#tgt-step2");
+      s2.innerHTML = `<div style="font-size:13px;margin-bottom:8px;">ກວດທຸກຢ່າງກ່ອນເຜີຍແຜ່ — ຍັງບໍ່ໄດ້ສົ່ງຫຍັງໃຫ້ Facebook. ລວມ <b>${targets.length}</b> ແຄມເປນ · ງົບລວມ <b>${total.toLocaleString("en-US")}/ວັນ</b></div>
+        ${warns.length?`<div style="background:#FFF6DD;border-radius:8px;padding:8px;margin-bottom:10px;font-size:12.5px;">${warns.map(x=>"⚠️ "+x).join("<br/>")}</div>`:""}
+        ${cards}
+        <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;"><button class="btn btn-outline" id="tgt-back">← ກັບໄປແກ້</button><button class="btn" id="tgt-ok">🚀 ເຜີຍແຜ່ເລີຍ</button></div>`;
+      s2.querySelector("#tgt-back").onclick = ()=>{ ov.querySelector("#tgt-title").textContent = "🚀 ຍິງແອັດ — ຂັ້ນ 1/2: ເລືອກບັນຊີ ແລະ ເພຈ"; s2.style.display="none"; ov.querySelector("#tgt-step1").style.display=""; };
+      s2.querySelector("#tgt-ok").onclick = ()=>done({ targets });
+    };
+    ov.querySelector("#tgt-next").onclick = async ()=>{
+      const s2 = ov.querySelector("#tgt-step2");
+      ov.querySelector("#tgt-title").textContent = "🔍 ຂັ້ນ 2/2: ກວດກ່ອນເຜີຍແຜ່";
+      ov.querySelector("#tgt-step1").style.display = "none"; s2.style.display = "";
+      if(!tplInfo && !tplErr){
+        s2.innerHTML = `<div style="padding:24px;text-align:center;color:#777;">⏳ ກຳລັງອ່ານການຕັ້ງຄ່າຂອງແມ່ແບບ...</div>`;
+        try{
+          const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"template", product_keys:[opts.productKey] } });
+          if(error) throw new Error(await extractFunctionErrorMessage(error));
+          const tt = data && data.templates && data.templates[0];
+          if(!tt || tt.error) throw new Error((tt && tt.error) || "ບໍ່ມີຂໍ້ມູນ");
+          tplInfo = tt;
+        }catch(e){ tplErr = String(e.message||e).slice(0,120); }
+        if(!document.getElementById("tgt-modal-overlay")) return;
+      }
+      renderReview();
     };
   });
 }
@@ -23537,7 +23624,7 @@ async function adsTestLaunchGroup(group){
   const asset = (STATE.adsTestAssets||[]).find(a=>a.id===ps[0].asset_id);
   const cfg = (STATE.adsTestProducts||[]).find(p=>p.product_key===ps[0].product_key);
   const picked = await adsTestPickTargets({
-    productKey: ps[0].product_key, budget: total, lockAccount: !!(asset && asset.fb_video_id),
+    productKey: ps[0].product_key, plans: ps, budget: total, lockAccount: !!(asset && asset.fb_video_id),
     summary: `ຍິງທັງ ${ps.length} ແອັດພ້ອມກັນ\n\nສິນຄ້າ: ${adsTestProductLabel(ps[0].product_key)}\nງົບລວມຕໍ່ 1 ແຄມເປນ (CBO): ${total}/ວັນ\n\nວິດີໂອດຽວກັນ ແຕ່ແຄັບຊັນຕ່າງກັນ — 1 ແຄມເປນ CBO / 1 ແອັດເຊັດ / ${ps.length} ແອັດ. ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ ອາດໃຊ້ຫຼາຍນາທີ — ລະບົບຍິງໃຫ້ເອງເມື່ອພ້ອມ`
   });
   if(!picked) return;
@@ -23730,7 +23817,7 @@ async function adsTestLaunchViaServer(planId){
   const asset = (STATE.adsTestAssets||[]).find(a=>a.id===plan.asset_id);
   const cfg = (STATE.adsTestProducts||[]).find(p=>p.product_key===plan.product_key);
   const picked = await adsTestPickTargets({
-    productKey: plan.product_key, budget: Number(plan.daily_budget||0), lockAccount: !!(asset && asset.fb_video_id),
+    productKey: plan.product_key, plans: [plan], budget: Number(plan.daily_budget||0), lockAccount: !!(asset && asset.fb_video_id),
     summary: `ສິນຄ້າ: ${adsTestProductLabel(plan.product_key)}\nງົບ: ${plan.daily_budget}/ວັນ ຕໍ່ 1 ແຄມເປນ\nຂໍ້ຄວາມ: "${preview.slice(0,80)}${preview.length>80?"...":""}"\n\nລະບົບຈະກ໊ອບປີ້ແອັດແມ່ແບບທັງໝົດ (ຂໍ້ຄວາມຕ້ອນຮັບ, ກຸ່ມເປົ້າໝາຍ, IG) ແລ້ວແອັດຈະເລີ່ມແລ່ນພາຍໃນ ~3 ນາທີ (ຢຸດໄດ້ທີ່ ຈັດການແຄມເປນ)`
   });
   if(!picked) return;
