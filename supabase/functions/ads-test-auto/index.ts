@@ -1,4 +1,5 @@
-// Supabase Edge Function: ads-test-auto (v10)
+// Supabase Edge Function: ads-test-auto (v11)
+// v11 (2026-11-25): creative enhancements copied from the template keep only OPT_IN features (the full OPT_OUT list made Facebook answer "Permissions error" subcode 1487194 on the Velaris creative); that error also triggers the retry without enhancements.
 // v10 (2026-11-24): A/B GROUPS AS ONE CBO CAMPAIGN. Plans with plan.ai.ab_mode = "cbo" and the same plan.ai.ab_group (made by the UI "split into 3 ads",
 //     one video x N caption angles) are launched as 1 campaign (campaign budget = sum of the group's daily_budget, CBO) -> 1 ad set -> N ads, like Ads Manager
 //     (Meta "Andromeda" advice: few campaigns/ad sets, several ads). The first plan of the group to launch creates campaign + ad set + ad through launch-ad
@@ -697,6 +698,8 @@ async function loadTemplate(cfg: any) {
   if (dof && dof.creative_features_spec && typeof dof.creative_features_spec === "object") {
     const feats = { ...dof.creative_features_spec };
     delete feats.standard_enhancements;
+    // v11: send only the features the template switched ON; OPT_OUT is the default, and some OPT_OUT features are refused (subcode 1487194) on certain accounts
+    for (const k of Object.keys(feats)) { const st = (feats as any)[k]?.enroll_status; if (st !== "OPT_IN") delete (feats as any)[k]; }
     dof = Object.keys(feats).length ? { creative_features_spec: feats } : null;
   }
   const full = {
@@ -727,7 +730,7 @@ async function advanceVideo(plan: any, asset: any, cfg: any): Promise<any | null
     await L(plan.product_key, plan.id, "video_start", `${asset.file_name} ${Math.round(size / 1048576)}MB`);
   }
   if (DRY) return null;
-  const CHUNK = 4 * 1024 * 1024;
+  const CHUNK = 2 * 1024 * 1024; // v11: was 4MB; the worker ran out of memory on a 41MB video (WORKER_RESOURCE_LIMIT)
   if (plan.upload_phase === "transfer") {
     let off = Number(plan.upload_offset), end = Number(plan.upload_end);
     while (off < end) {
@@ -875,7 +878,7 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     };
     try { res = await callFn("ads-test-addad", addBody, 90000); }
     catch (e) {
-      if (addBody.degreesOfFreedomSpec && /3858504|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
+      if (addBody.degreesOfFreedomSpec && /3858504|1487194|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
         report.warnings.push("A/B ad without creative enhancements: " + errMsg(e));
         await L(plan.product_key, plan.id, "launch_no_dof", errMsg(e));
         addBody.degreesOfFreedomSpec = null;
@@ -891,7 +894,7 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   try { res = await callFn("launch-ad", body, 90000); }
   catch (e) {
     // creative enhancements are the one part Facebook may refuse on its own; launch-ad already removed the empty campaign
-    if (body.degreesOfFreedomSpec && /3858504|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
+    if (body.degreesOfFreedomSpec && /3858504|1487194|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
       report.warnings.push("launch without creative enhancements: " + errMsg(e));
       await L(plan.product_key, plan.id, "launch_no_dof", errMsg(e));
       body.degreesOfFreedomSpec = null;
