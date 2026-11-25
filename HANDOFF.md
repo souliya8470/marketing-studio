@@ -379,3 +379,6 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## index.html v9.02 — launch repeats tick (2026-11-25)
 - Why 10-min gaps: ads-test-auto launchStage caps `done >= 3` per run (and limit(10)); cron every 10 min → 12 ads = 4 runs. Server NOT changed (deployed copy is authoritative; could raise cap to 12, time guard timeLeft()<25s already exists).
 - Client: adsTestTickLoop repeats the tick up to 6x while it launches something; progress box shows N/M.
+
+## index.html v9.03 — tick loop up to 10 rounds (2026-11-25)
+- Tar wants 10-20 ads launched at once. Server cap is 3 launches/run (`done >= 3` in ads-test-auto launchStage, ~8 s per ad, BUDGET_MS 100 s). Client loop now up to 10 ticks (~30 ads). Idea if needed later: raise the cap server-side and launch joiners of one CBO group in parallel (first plan of each group must go first).

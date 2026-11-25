@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "9.02"; // v9.02 CHANGE (Tar 2026-11-25, "ເປັນຫຍັງແຕ່ລະແຄມເປນຕ້ອງຫ່າງກັນ 10 ນາທີ"): the server (ads-test-auto) launches at most 3 plans per run, so 12 ads (4 campaigns x 3) needed 4 cron runs. The 🚀 launch now repeats the tick up to 6 times while it still launches something (adsTestTickLoop) and the progress box shows "ຍິງແລ້ວ N ຈາກ M". No server/SQL change.
+const APP_VERSION = "9.03"; // v9.03 CHANGE (Tar 2026-11-25, "ຢາກເປີດຍິງ 10-20 ແອັດພ້ອມກັນບັດດຽວ ບໍ່ຢາກລໍ"): adsTestTickLoop repeats the launch tick up to 10 times (was 6) so up to ~30 ads go out from one press of 🚀 (server still launches 3 per run). No server/SQL change.
+// (previous text of this slot, kept) const APP_VERSION = "9.02"; // v9.02 CHANGE (Tar 2026-11-25, "ເປັນຫຍັງແຕ່ລະແຄມເປນຕ້ອງຫ່າງກັນ 10 ນາທີ"): the server (ads-test-auto) launches at most 3 plans per run, so 12 ads (4 campaigns x 3) needed 4 cron runs. The 🚀 launch now repeats the tick up to 6 times while it still launches something (adsTestTickLoop) and the progress box shows "ຍິງແລ້ວ N ຈາກ M". No server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.01"; // v9.01 FIX (Tar 2026-11-25, "ກົດເຜີຍແຜ່ແລ້ວບໍ່ເຫັນຫຍັງເກີດຂຶ້ນ ມີແຈ້ງເຕືອນສີຂຽວຂຶ້ນມາແວບດຽວ ອ່ານບໍ່ທັນ ບໍ່ຮູ້ວ່າໂຄສະນາຖືກຍິງຫຼືບໍ່"): the 🚀 launch (single ad and A/B group, auto-switch server path) now shows a blocking progress box ("ກຳລັງສົ່ງຄຳສັ່ງຍິງໄປ Facebook...") while the request runs and then a result box that stays until closed: ✅ launched N of M (rest is launched by the system within ~10 min, no need to press again) / ⏳ accepted but video still preparing / ❌ failed with the reason, plus where to look (🧪 tab, Ads Manager name contains TEST). Replaces the 3-second toast. Display only; no server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.00"; // v9.00 CHANGE (Tar 2026-11-25, "ຄຳເວົ້າທີ່ຢູ່ຂ້າງປຸ່ມສົ່ງຂໍ້ຄວາມ ມັນສະແດງຢູ່ບ່ອນໃດ"): the headline (the bold line shown beside the Send Message button) is now labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" in the three places where it is shown: the review screen of the 🚀 picker (each ad box), the plan cards of the 🧪 tab, and the caption cards of the playbook. Display only; no server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.99"; // v8.99 CHANGE (Tar 2026-11-25, screenshot of the review screen: "ປຸ່ມ (CTA) MESSAGE_PAGE ໝາຍຄວາມວ່າແນວໃດ" + "ເລືອກລາວ ແລ້ວກັນໄທ ຫວຽດນາມ ກຳປູເຈຍ ມຽນມາ ອອກ"): the review screen (step 2 of the 🚀 picker) now shows the CTA in Lao ("ສົ່ງຂໍ້ຄວາມ (Send Message)" for MESSAGE_PAGE, with a short explanation) and a new row "ຍົກເວັ້ນປະເທດ" listing the excluded countries. Server: ads-test-auto v14 always excludes TH, VN, KH, MM on top of what the template excludes (before only the sesame_coffee template had all four, Bio Pro Orange only TH, lutein_coffee none). Display only in index.html; no SQL change.
@@ -1644,7 +1645,8 @@ const APP_VERSION = "9.02"; // v9.02 CHANGE (Tar 2026-11-25, "ເປັນຫຍ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "9.01"; // (v9.01 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "9.02"; // (v9.02 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "9.01"; // (v9.01 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.00"; // (v9.00 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.99"; // (v8.99 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.98"; // (v8.98 text kept in the history comment lines of APP_VERSION above)
@@ -1767,7 +1769,8 @@ const APP_VERSION_PREV = "9.01"; // (v9.01 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "9.00"; // (v9.00 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "9.01"; // (v9.01 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.00"; // (v9.00 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.99"; // (v8.99 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.98"; // (v8.98 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.97"; // (v8.97 text kept in the history comment lines above)
@@ -23661,7 +23664,7 @@ async function adsTestApplyTargets(plans, targets, cfg, placement){
 // The 🚀 button now repeats the tick (max 6 times, only while it still launches something) and shows the running count.
 async function adsTestTickLoop(productKey, total){
   const all = { launched:[], warnings:[], busy:false };
-  for(let i=0;i<6;i++){
+  for(let i=0;i<10;i++){
     const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[productKey] } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
