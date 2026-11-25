@@ -5,6 +5,7 @@ The deployed copy in Supabase is the source of truth. Files here are snapshots k
 | Function | Snapshot here | Deployed version |
 |---|---|---|
 | ads-test-auto | `ads-test-auto/index.ts` | v9 (manual_go: owner-pressed launch bypasses auto_launch/window; v8 promo price overrides list price) |
+| ads-manager-api | `ads-manager-api/index.ts` | v1 (2026-11-25; detail + edit for the 📑 Ads Manager page; MS guard; verify_jwt false) |
 | launch-ad | not exported yet | v30 |
 | ads-template-inspect | not exported yet | v1 |
 | ads-research | not exported yet | v1 |

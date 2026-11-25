@@ -994,7 +994,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "9.04"; // v9.04 CHANGE (Tar 2026-11-25, screenshot of the Ads Manager preview: "ຮູບແບບທີ່ເຈົ້າເຮັດມາຍັງເບິ່ງຍາກ ຢາກໃຫ້ເປັນຄືໜ້າໂພສຈິງ ... ແຄັບຊັນ 3 ແຖວ ຖ້າຢາກເບິ່ງໝົດໃຫ້ບີບເບິ່ງເພີ່ມ"): every test ad is shown as a Facebook post preview (adsTestFbPost): page avatar + name + "ໂຄສະນາ", caption clamped to 3 lines with a "ດູເພີ່ມເຕີມ" / "ຫຍໍ້ລົງ" toggle, the video, then the grey bar with the headline (ຂໍ້ຄວາມຂ້າງປຸ່ມ) on the left and the "ສົ່ງຂໍ້ຄວາມ" button on the right, and the like/comment/share row. Used on the 🧪 plan cards (A/B group + single) and in the review step of the 🚀 picker. Display only; no server/SQL change.
+const APP_VERSION = "9.05"; // v9.05 NEW (Tar 2026-11-25, screenshots of Facebook Ads Manager: "ໃຫ້ເປັນຄືກັບ Ads Manager ແຍກແຄມເປນ / Ad Set / Ad ຕິ໊ກເລືອກແລ້ວກອງຕໍ່ກັນ ... ກົດເຂົ້າໄປແກ້ໄຂເຫັນການຕັ້ງຄ່າທຸກຢ່າງ"): new sub-page "📑 Ads Manager" in ຄ່າໂຄສະນາ (#adSpend/adsmanager). 3 level tabs (ແຄມເປນ / ຊຸດໂຄສະນາ / ໂຄສະນາ) with the same metric columns as the old table; ticking campaigns filters the ad sets, ticking ad sets filters the ads (chips "ເລືອກແລ້ວ N ✕"); row buttons drill down; status toggle per row (update-ad-entity). Clicking a name / ✏️ opens a right-hand panel that reads the entity LIVE from Facebook (NEW edge function ads-manager-api v1, action detail) and lets you edit: names, budget, start/end time, bid strategy (ad set), age/gender/countries/excluded countries, placements, and for ads the caption / headline / CTA (new creative swapped onto the ad) with a Facebook-post preview. Greeting message / template is shown read-only. Old "🎯 ຈັດການແຄມເປນ" page untouched. Not yet tested against live Facebook (sandbox cannot reach it).
+// (previous text of this slot, kept) const APP_VERSION = "9.04"; // v9.04 CHANGE (Tar 2026-11-25, screenshot of the Ads Manager preview: "ຮູບແບບທີ່ເຈົ້າເຮັດມາຍັງເບິ່ງຍາກ ຢາກໃຫ້ເປັນຄືໜ້າໂພສຈິງ ... ແຄັບຊັນ 3 ແຖວ ຖ້າຢາກເບິ່ງໝົດໃຫ້ບີບເບິ່ງເພີ່ມ"): every test ad is shown as a Facebook post preview (adsTestFbPost): page avatar + name + "ໂຄສະນາ", caption clamped to 3 lines with a "ດູເພີ່ມເຕີມ" / "ຫຍໍ້ລົງ" toggle, the video, then the grey bar with the headline (ຂໍ້ຄວາມຂ້າງປຸ່ມ) on the left and the "ສົ່ງຂໍ້ຄວາມ" button on the right, and the like/comment/share row. Used on the 🧪 plan cards (A/B group + single) and in the review step of the 🚀 picker. Display only; no server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.03"; // v9.03 CHANGE (Tar 2026-11-25, "ຢາກເປີດຍິງ 10-20 ແອັດພ້ອມກັນບັດດຽວ ບໍ່ຢາກລໍ"): adsTestTickLoop repeats the launch tick up to 10 times (was 6) so up to ~30 ads go out from one press of 🚀 (server still launches 3 per run). No server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.02"; // v9.02 CHANGE (Tar 2026-11-25, "ເປັນຫຍັງແຕ່ລະແຄມເປນຕ້ອງຫ່າງກັນ 10 ນາທີ"): the server (ads-test-auto) launches at most 3 plans per run, so 12 ads (4 campaigns x 3) needed 4 cron runs. The 🚀 launch now repeats the tick up to 6 times while it still launches something (adsTestTickLoop) and the progress box shows "ຍິງແລ້ວ N ຈາກ M". No server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.01"; // v9.01 FIX (Tar 2026-11-25, "ກົດເຜີຍແຜ່ແລ້ວບໍ່ເຫັນຫຍັງເກີດຂຶ້ນ ມີແຈ້ງເຕືອນສີຂຽວຂຶ້ນມາແວບດຽວ ອ່ານບໍ່ທັນ ບໍ່ຮູ້ວ່າໂຄສະນາຖືກຍິງຫຼືບໍ່"): the 🚀 launch (single ad and A/B group, auto-switch server path) now shows a blocking progress box ("ກຳລັງສົ່ງຄຳສັ່ງຍິງໄປ Facebook...") while the request runs and then a result box that stays until closed: ✅ launched N of M (rest is launched by the system within ~10 min, no need to press again) / ⏳ accepted but video still preparing / ❌ failed with the reason, plus where to look (🧪 tab, Ads Manager name contains TEST). Replaces the 3-second toast. Display only; no server/SQL change.
@@ -1661,7 +1662,8 @@ const APP_VERSION = "9.04"; // v9.04 CHANGE (Tar 2026-11-25, screenshot of the A
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "9.03"; // (v9.03 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "9.04"; // (v9.04 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "9.03"; // (v9.03 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.02"; // (v9.02 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.01"; // (v9.01 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.00"; // (v9.00 text kept in the history comment lines of APP_VERSION above)
@@ -1786,7 +1788,8 @@ const APP_VERSION_PREV = "9.03"; // (v9.03 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "9.02"; // (v9.02 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "9.03"; // (v9.03 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.02"; // (v9.02 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.01"; // (v9.01 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.00"; // (v9.00 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.99"; // (v8.99 text kept in the history comment lines above)
@@ -21347,6 +21350,372 @@ function buildAdSpendAdRows(){
   });
 }
 
+// =====================================================================
+// v9.05: "📑 Ads Manager" sub-page — Facebook Ads Manager style 3 levels (ແຄມເປນ / ຊຸດໂຄສະນາ / ໂຄສະນາ).
+// Ticking rows in one level filters the next level (campaign -> ad set -> ad). A row name opens a detail panel
+// read LIVE from Facebook (edge function ads-manager-api, action "detail") where the settings can be edited.
+// Status / budget / start time / bid strategy go through update-ad-entity; names, end time, targeting, placements and
+// ad text go through ads-manager-api "edit". Old "🎯 ຈັດການແຄມເປນ" page is untouched.
+// =====================================================================
+function amState(){
+  if(!STATE.am) STATE.am = { level:"campaign", selCamp:{}, selSet:{}, account:"", status:"all", search:"", limit:60, detail:null, creatives:{} };
+  return STATE.am;
+}
+const AM_LEVELS = [["campaign","📁 ແຄມເປນ"],["adset","▦ ຊຸດໂຄສະນາ"],["ad","🖼️ ໂຄສະນາ"]];
+const AM_STATUS_PAUSE = ["PAUSED","CAMPAIGN_PAUSED","ADSET_PAUSED"];
+function amNum(n,d){ return Number(n||0).toLocaleString("en-US",{maximumFractionDigits:d||0, minimumFractionDigits:d||0}); }
+function amRows(){
+  const s = amState();
+  const camps = buildAdSpendCampaignRows();
+  const sets = buildAdSpendAdSetRows();
+  const ads = buildAdSpendAdRows();
+  const campById = {}; camps.forEach(c=>{ campById[c.id]=c; });
+  const setById = {}; sets.forEach(x=>{ setById[x.id]=x; });
+  const q = (s.search||"").trim().toLowerCase();
+  const stOk = (r)=> s.status==="all" || (s.status==="active" ? r.effectiveStatusReal==="ACTIVE" : r.effectiveStatusReal!=="ACTIVE");
+  const nameOk = (r)=> !q || String(r.campaignName||r.name||"").toLowerCase().includes(q) || String(r.nickname||"").toLowerCase().includes(q);
+  const selC = Object.keys(s.selCamp), selS = Object.keys(s.selSet);
+  const campAccOk = (cid)=> !s.account || ((campById[cid]||{}).adAccountId===s.account);
+  const rc = camps.filter(r=>campAccOk(r.id) && stOk(r) && nameOk(r));
+  let rs = sets.filter(r=>campAccOk(r.campaignId) && stOk(r) && nameOk(r));
+  if(selC.length) rs = rs.filter(r=>selC.includes(r.campaignId));
+  let ra = ads.filter(r=>{ const st = setById[r.adSetId]; return st && campAccOk(st.campaignId) && stOk(r) && nameOk(r); });
+  if(selS.length) ra = ra.filter(r=>selS.includes(r.adSetId));
+  else if(selC.length) ra = ra.filter(r=>{ const st = setById[r.adSetId]; return st && selC.includes(st.campaignId); });
+  const sortSpend = (a,b)=>(b.spend||0)-(a.spend||0);
+  return { camps: rc.sort(sortSpend), sets: rs.sort(sortSpend), ads: ra.sort(sortSpend), campById, setById };
+}
+function amStatusBadge(r){
+  return `<span class="small-muted" style="white-space:nowrap;">${esc(adEffectiveStatusLabel(r.effectiveStatusReal, r.pausedBySystem, r.closedForLowRoas))}</span>`;
+}
+function amMetricCells(r){
+  return `<td style="text-align:right;">${amNum(r.spend,2)}</td><td style="text-align:right;">${amNum(r.messages)}</td><td style="text-align:right;">${r.messages>0?amNum(r.costPerMessage,2):"—"}</td><td style="text-align:right;">${amNum(r.purchases)}</td><td style="text-align:right;">${r.spend>0&&r.purchaseValue>0?amNum(r.roas,2)+"x":"—"}</td><td style="text-align:right;">${amNum(r.impressions)}</td><td style="text-align:right;">${r.impressions>0?amNum(r.ctr,2)+"%":"—"}</td>`;
+}
+function amTotals(rows){
+  const t = rows.reduce((a,r)=>{ ["spend","messages","purchases","purchaseValue","impressions","clicks"].forEach(k=>{ a[k]=(a[k]||0)+(r[k]||0); }); return a; }, {});
+  return withAdSpendDerived({ spend:0, messages:0, purchases:0, purchaseValue:0, impressions:0, clicks:0, ...t });
+}
+function amTable(level, rows, E){
+  const s = amState();
+  const sel = level==="campaign" ? s.selCamp : level==="adset" ? s.selSet : {};
+  const total = amTotals(rows);
+  const shown = rows.slice(0, s.limit);
+  const head = `<th style="width:28px;">${level!=="ad"?`<input type="checkbox" data-am-all="${level}" ${rows.length && rows.every(r=>sel[r.id])?"checked":""}/>`:""}</th><th>ເປີດ/ປິດ</th><th>ຊື່</th><th>ສະຖານະ</th>${level==="campaign"?"<th>ບັນຊີ</th><th>ງົບ</th>":""}${level==="adset"?"<th>ແຄມເປນ</th>":""}${level==="ad"?"<th>ຊຸດໂຄສະນາ</th>":""}<th style="text-align:right;">ໃຊ້ໄປ</th><th style="text-align:right;">ຄົນທັກແຊັດ</th><th style="text-align:right;">ຕົ້ນທຶນ/ແຊັດ</th><th style="text-align:right;">ຍອດຊື້</th><th style="text-align:right;">ROAS</th><th style="text-align:right;">ການສະແດງຜົນ</th><th style="text-align:right;">CTR</th><th></th>`;
+  const body = shown.map(r=>{
+    const on = r.effectiveStatusReal==="ACTIVE";
+    const nm = level==="campaign" ? (r.nickname ? r.nickname+" · " : "")+(r.campaignName||r.id) : (r.name||r.id);
+    const cr = level==="ad" ? (s.creatives[r.id]||null) : null;
+    const thumb = level==="ad" ? `<div style="width:44px;height:44px;border-radius:6px;background:#eee;overflow:hidden;flex:none;">${cr && (cr.thumbnail_url||cr.image_url)?`<img src="${esc(cr.thumbnail_url||cr.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover;" referrerpolicy="no-referrer"/>`:""}</div>` : "";
+    let extra = "";
+    if(level==="campaign"){
+      const b = r.dailyBudget!=null ? amNum(r.dailyBudget)+"/ວັນ" : (r.lifetimeBudget!=null ? amNum(r.lifetimeBudget)+" (ຕະຫຼອດ)" : "ງົບຢູ່ຊຸດໂຄສະນາ");
+      extra = `<td class="small-muted">${esc(r.accountName||"")}</td><td>${esc(b)}</td>`;
+    } else if(level==="adset"){
+      const c = E.campById[r.campaignId]; extra = `<td class="small-muted">${esc(c?(c.nickname||c.campaignName):"")}</td>`;
+    } else {
+      const st = E.setById[r.adSetId]; extra = `<td class="small-muted">${esc(st?st.name:"")}</td>`;
+    }
+    return `<tr${level!=="ad" && sel[r.id]?' style="background:#EEF4FF;"':""}>
+      <td>${level!=="ad"?`<input type="checkbox" data-am-sel="${level}:${r.id}" ${sel[r.id]?"checked":""}/>`:""}</td>
+      <td><label class="meta-toggle"><input type="checkbox" data-am-toggle="${level}:${r.id}" ${on?"checked":""}/><span class="meta-toggle-track"></span></label></td>
+      <td><div style="display:flex;gap:8px;align-items:center;">${thumb}<a href="#" data-am-open="${level}:${r.id}" style="color:#1877f2;font-weight:600;text-decoration:none;">${esc(nm)}</a></div></td>
+      <td>${amStatusBadge(r)}</td>${extra}${amMetricCells(r)}
+      <td style="white-space:nowrap;">${level==="campaign"?`<button class="btn btn-sm btn-outline" data-am-drill="campaign:${r.id}" title="ເບິ່ງຊຸດໂຄສະນາ">▦ ›</button> `:""}${level==="adset"?`<button class="btn btn-sm btn-outline" data-am-drill="adset:${r.id}" title="ເບິ່ງໂຄສະນາ">🖼️ ›</button> `:""}<button class="btn btn-sm btn-outline" data-am-open="${level}:${r.id}">✏️ ແກ້ໄຂ</button></td>
+    </tr>`;
+  }).join("");
+  const foot = `<tr style="background:var(--tint-highlight);font-weight:700;"><td colspan="${level==="campaign"?6:5}">ຜົນລວມ ${amNum(rows.length)} ລາຍການ</td>${amMetricCells(total)}<td></td></tr>`;
+  return `<div style="overflow-x:auto;"><table><thead><tr>${head}</tr></thead><tbody>${body||`<tr><td colspan="14" class="small-muted" style="padding:18px;text-align:center;">ບໍ່ມີລາຍການ</td></tr>`}${foot}</tbody></table></div>
+    ${rows.length>shown.length?`<div style="text-align:center;margin-top:10px;"><button class="btn btn-outline" data-am-more="1">ສະແດງເພີ່ມ (${amNum(rows.length-shown.length)} ລາຍການທີ່ເຫຼືອ)</button></div>`:""}`;
+}
+function renderAdsManagerSubPage(){
+  const s = amState();
+  const E = amRows();
+  const nC = Object.keys(s.selCamp).length, nS = Object.keys(s.selSet).length;
+  const accs = STATE.data.adAccounts || [];
+  const chip = (n, what)=> n>0 ? `<span class="chip" style="background:#E7F0FF;color:#1b4fb3;border-radius:12px;padding:1px 8px;margin-left:6px;font-size:12px;">ເລືອກແລ້ວ ${n} <a href="#" data-am-clear="${what}" style="color:#1b4fb3;text-decoration:none;">✕</a></span>` : "";
+  const tabLabel = { campaign: "📁 ແຄມເປນ"+chip(nC,"camp"), adset: "▦ ຊຸດໂຄສະນາ"+(nC>0?` <span class="small-muted">(ຂອງແຄມເປນທີ່ເລືອກ)</span>`:"")+chip(nS,"set"), ad: "🖼️ ໂຄສະນາ"+((nS>0||nC>0)?` <span class="small-muted">(ຂອງ${nS>0?"ຊຸດ":"ແຄມເປນ"}ທີ່ເລືອກ)</span>`:"") };
+  const rows = s.level==="campaign" ? E.camps : s.level==="adset" ? E.sets : E.ads;
+  if(s.level==="ad") setTimeout(amLoadCreatives, 0);
+  return `
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+        <select data-am-filter="account" style="max-width:240px;"><option value="">ບັນຊີ: ທັງໝົດ</option>${accs.map(a=>`<option value="${esc(a.id)}" ${s.account===a.id?"selected":""}>${esc(a.name||a.id)}</option>`).join("")}</select>
+        <select data-am-filter="status" style="max-width:180px;"><option value="all" ${s.status==="all"?"selected":""}>ສະຖານະ: ທັງໝົດ</option><option value="active" ${s.status==="active"?"selected":""}>ເປີດຢູ່</option><option value="paused" ${s.status==="paused"?"selected":""}>ຢຸດໄວ້</option></select>
+        <input type="search" data-am-filter="search" value="${esc(s.search)}" placeholder="🔍 ຄົ້ນຫາຊື່ (ກົດ Enter)" style="max-width:260px;"/>
+        <span class="small-muted">ຕົວເລກຕາມຊ່ວງວັນທີ່ເລືອກຢູ່ດ້ານເທິງຂອງໜ້າ</span>
+      </div>
+      <div class="tabs" style="margin-bottom:12px;">${AM_LEVELS.map(([k])=>`<div class="tab ${s.level===k?"active":""}" data-am-level="${k}">${tabLabel[k]}</div>`).join("")}</div>
+      ${amTable(s.level, rows, E)}
+    </div>
+    ${renderAmDetail()}`;
+}
+// (called from renderAdsManagerSubPage via a timer so the thumbnails of the ad level load after the first paint)
+// ---------- loading ad creatives (thumbnails) for the ad level ----------
+async function amLoadCreatives(){
+  const s = amState();
+  if(s.level!=="ad") return;
+  const ids = amRows().ads.slice(0, s.limit).map(r=>r.id).filter(id=>!(id in s.creatives));
+  if(!ids.length) return;
+  ids.forEach(id=>{ s.creatives[id] = false; });
+  try{
+    const { data } = await sb.from("ad_creatives").select("ad_id,thumbnail_url,image_url").in("ad_id", ids.slice(0,300));
+    (data||[]).forEach(r=>{ s.creatives[r.ad_id] = r; });
+    render();
+  }catch(e){ console.warn("amLoadCreatives", e); }
+}
+// ---------- detail panel ----------
+const AM_CTA = [["MESSAGE_PAGE","ສົ່ງຂໍ້ຄວາມ (Send Message)"],["ORDER_NOW","ສັ່ງຊື້ເລີຍ (Order Now)"],["SHOP_NOW","ຊື້ເລີຍ (Shop Now)"],["GET_OFFER","ຮັບຂໍ້ສະເໜີ (Get Offer)"],["LEARN_MORE","ອ່ານເພີ່ມເຕີມ (Learn More)"],["CONTACT_US","ຕິດຕໍ່ເຮົາ (Contact Us)"]];
+const AM_COUNTRY = { LA:"ລາວ", TH:"ໄທ", VN:"ຫວຽດນາມ", KH:"ກຳປູເຈຍ", MM:"ມຽນມາ" };
+function amLaoLocal(iso){ if(!iso) return ""; const d = new Date(iso); if(isNaN(d)) return ""; return new Date(d.getTime()+7*3600e3).toISOString().slice(0,16); }
+function amFromLaoLocal(v){ if(!v) return ""; const d = new Date(v+":00+07:00"); return isNaN(d)?"":d.toISOString(); }
+function amRow(label, html){ return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #f0ede4;align-items:flex-start;"><div style="width:190px;flex:none;color:#666;font-size:13px;">${label}</div><div style="flex:1;min-width:0;font-size:13.5px;">${html}</div></div>`; }
+function amSec(title, inner){ return `<div style="border:1px solid #E5DFD0;border-radius:10px;padding:12px 14px;margin-bottom:12px;background:#fff;"><div style="font-weight:700;margin-bottom:6px;">${title}</div>${inner}</div>`; }
+function amSaveBtn(key){ return `<div style="margin-top:10px;"><button class="btn" data-am-save="${key}">💾 ບັນທຶກສ່ວນນີ້ໄປ Facebook</button></div>`; }
+function renderAmDetail(){
+  const d = amState().detail;
+  if(!d) return "";
+  const typeLabel = { campaign:"ແຄມເປນ", adset:"ຊຸດໂຄສະນາ", ad:"ໂຄສະນາ" }[d.type];
+  let body = "";
+  if(d.loading) body = `<div style="padding:40px;text-align:center;">⏳ ກຳລັງດຶງຂໍ້ມູນສົດຈາກ Facebook...</div>`;
+  else if(d.err) body = `<div style="padding:14px;background:#FDECEA;border-radius:8px;white-space:pre-wrap;">❌ ${esc(d.err)}</div>`;
+  else body = amDetailBody(d);
+  return `<div id="am-detail-overlay" class="no-print" style="position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);display:flex;justify-content:flex-end;">
+    <div style="width:min(940px,100%);height:100%;overflow-y:auto;background:#F7F4EC;padding:16px 18px;box-shadow:-6px 0 30px rgba(0,0,0,.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
+        <div><div class="small-muted">ແກ້ໄຂ ${typeLabel} · ຂໍ້ມູນສົດຈາກ Facebook</div><div style="font-size:17px;font-weight:700;word-break:break-word;">${esc(d.name||d.id)}</div><div class="small-muted">ID ${esc(d.id)}</div></div>
+        <div style="display:flex;gap:8px;"><button class="btn btn-outline" data-am-refresh="1">🔄 ໂຫຼດໃໝ່</button><button class="btn" data-am-close="1">✕ ປິດ</button></div>
+      </div>${body}</div></div>`;
+}
+function amDetailBody(d){
+  const r = d.raw || {};
+  const inp = (id, val, extra)=>`<input id="${id}" value="${esc(val==null?"":val)}" ${extra||""} style="width:100%;margin:0;"/>`;
+  const issues = (r.issues_info||[]).map(i=>`<div style="color:#b3261e;">⚠️ ${esc(i.error_summary||i.error_message||"")}${i.error_message?" — "+esc(i.error_message):""}</div>`).join("");
+  const nameSec = amSec("ທົ່ວໄປ", amRow("ຊື່", inp("am-f-name", r.name))+amRow("ສະຖານະ (Facebook)", esc(r.effective_status||r.status||"")+(r.status && r.effective_status && r.status!==r.effective_status?` <span class="small-muted">(ຕັ້ງໄວ້: ${esc(r.status)})</span>`:""))+(issues?amRow("ບັນຫາ", issues):"")+amRow("ສ້າງເມື່ອ", esc(r.created_time||"-"))+amSaveBtn("name"));
+  let html = nameSec;
+  if(d.type==="campaign"){
+    html += amSec("ເປົ້າໝາຍ ແລະ ການປະມູນ", amRow("ເປົ້າໝາຍ (Objective)", esc(r.objective||"-"))+amRow("ປະເພດການຊື້", esc(r.buying_type||"-"))+amRow("ກົນລະຍຸດການປະມູນ", esc(r.bid_strategy||"-"))+amRow("ໝວດໂຄສະນາພິເສດ", esc((r.special_ad_categories||[]).join(", ")||"ບໍ່ມີ"))+amRow("ຂີດຈຳກັດການໃຊ້ຈ່າຍ", r.spend_cap?amNum(Number(r.spend_cap)/100):"ບໍ່ກຳນົດ"));
+    html += amSec("ງົບປະມານ ແລະ ເວລາ", amBudgetRows(d,r));
+  } else if(d.type==="adset"){
+    const po = r.promoted_object||{};
+    html += amSec("ການປະສິດທິພາບ ແລະ ການຈັດສົ່ງ", amRow("ເປົ້າໝາຍການປະສິດທິພາບ", esc(r.optimization_goal||"-"))+amRow("ເກັບເງິນຕາມ (Billing)", esc(r.billing_event||"-"))+amRow("ປາຍທາງ", esc(r.destination_type||"-"))+amRow("ເພຈທີ່ໂຄສະນາ", esc(po.page_id||"-"))+amRow("ກົນລະຍຸດການປະມູນ", esc(r.bid_strategy||"-")+(r.bid_amount?" · "+amNum(Number(r.bid_amount)/100,2):""))+amRow("ຊ່ວງຮຽນຮູ້ (Learning)", esc((r.learning_stage_info||{}).status||"-"))+amRow("ກຳນົດເວລາການໃຊ້ງົບ", esc(r.pacing_type?r.pacing_type.join(", "):"-")));
+    html += amSec("ງົບປະມານ ແລະ ເວລາ", amBudgetRows(d,r));
+    html += amSec("ກຸ່ມເປົ້າໝາຍ", amTargetingRows(r.targeting||{}));
+    html += amSec("ຕຳແໜ່ງໂຄສະນາ (Placements)", amPlacementRows(r.targeting||{}));
+  } else {
+    html += amAdSections(d, r);
+  }
+  html += `<details style="margin-top:8px;"><summary class="small-muted" style="cursor:pointer;">ເບິ່ງຂໍ້ມູນດິບຈາກ Facebook (JSON)</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:11.5px;background:#fff;padding:10px;border-radius:8px;max-height:360px;overflow:auto;">${esc(JSON.stringify(r,null,2))}</pre></details>`;
+  return html;
+}
+function amBudgetRows(d, r){
+  const hasBudget = r.daily_budget!=null || r.lifetime_budget!=null;
+  const kind = r.lifetime_budget!=null ? "lifetime" : "daily";
+  const val = r.lifetime_budget!=null ? Number(r.lifetime_budget)/100 : (r.daily_budget!=null ? Number(r.daily_budget)/100 : "");
+  const stopF = d.type==="campaign" ? r.stop_time : r.end_time;
+  let h = "";
+  if(hasBudget) h += amRow(kind==="lifetime"?"ງົບຕະຫຼອດໄລຍະ":"ງົບຕໍ່ວັນ", `<input id="am-f-budget" type="number" min="0" step="1" value="${esc(val)}" style="width:160px;margin:0;"/> <span class="small-muted">${d.type==="campaign"?"(ງົບແບບ CBO)":""}</span>`);
+  else h += amRow("ງົບປະມານ", `<span class="small-muted">${d.type==="campaign"?"ຕັ້ງຢູ່ລະດັບຊຸດໂຄສະນາ":"ໃຊ້ງົບຂອງແຄມເປນ (CBO)"}</span>`);
+  h += amRow("ວັນທີ່ເລີ່ມ", `<input id="am-f-start" type="datetime-local" value="${esc(amLaoLocal(r.start_time))}" style="margin:0;"/> <span class="small-muted">ເວລາລາວ</span>`);
+  h += amRow("ວັນທີ່ສິ້ນສຸດ", `<input id="am-f-end" type="datetime-local" value="${esc(amLaoLocal(stopF))}" style="margin:0;"/> <span class="small-muted">ເວລາລາວ · ເປົ່າ = ບໍ່ກຳນົດ</span>`);
+  if(d.type==="adset"){
+    h += amRow("ກົນລະຍຸດການປະມູນ", `<select id="am-f-bidstrat" style="margin:0;">${[["LOWEST_COST_WITHOUT_CAP","ຕົ້ນທຶນຕ່ຳສຸດ"],["LOWEST_COST_WITH_BID_CAP","ຈຳກັດການປະມູນ (Bid cap)"],["COST_CAP","ຈຳກັດຕົ້ນທຶນ (Cost cap)"]].map(([v,l])=>`<option value="${v}" ${r.bid_strategy===v?"selected":""}>${l}</option>`).join("")}</select> <input id="am-f-bidamt" type="number" min="0" step="0.01" placeholder="ຈຳນວນ" value="${r.bid_amount?esc(Number(r.bid_amount)/100):""}" style="width:110px;margin:0;"/>`);
+  }
+  return h + amSaveBtn("schedule");
+}
+function amTargetingRows(t){
+  const gl = t.geo_locations||{}, ex = t.excluded_geo_locations||{};
+  const gen = (t.genders&&t.genders.length) ? (t.genders.length===2?"all":String(t.genders[0])) : "all";
+  const custom = (t.custom_audiences||[]).map(a=>a.name||a.id).join(", ");
+  const adv = t.targeting_automation && t.targeting_automation.advantage_audience;
+  return amRow("ອາຍຸ", `<input id="am-f-agemin" type="number" min="13" max="65" value="${esc(t.age_min||18)}" style="width:80px;margin:0;"/> ຫາ <input id="am-f-agemax" type="number" min="13" max="65" value="${esc(t.age_max||65)}" style="width:80px;margin:0;"/>`)
+    + amRow("ເພດ", `<select id="am-f-gender" style="margin:0;"><option value="all" ${gen==="all"?"selected":""}>ທັງໝົດ</option><option value="1" ${gen==="1"?"selected":""}>ຊາຍ</option><option value="2" ${gen==="2"?"selected":""}>ຍິງ</option></select>`)
+    + amRow("ສະແດງໃນປະເທດ", `<input id="am-f-countries" value="${esc((gl.countries||[]).join(", "))}" style="width:100%;margin:0;"/><div class="small-muted">ລະຫັດປະເທດ ຄັ່ນດ້ວຍຈຸດ , ເຊັ່ນ LA — ${esc((gl.countries||[]).map(c=>AM_COUNTRY[c]||c).join(", "))}${gl.cities||gl.regions?" · ມີເມືອງ/ແຂວງສະເພາະ (ບໍ່ຖືກແກ້ຈາກບ່ອນນີ້)":""}</div>`)
+    + amRow("ຍົກເວັ້ນປະເທດ", `<input id="am-f-excl" value="${esc((ex.countries||[]).join(", "))}" style="width:100%;margin:0;"/><div class="small-muted">${esc((ex.countries||[]).map(c=>AM_COUNTRY[c]||c).join(", "))}</div>`)
+    + amRow("ກຸ່ມເປົ້າໝາຍທີ່ບັນທຶກ (Custom)", esc(custom||"ບໍ່ມີ")+` <span class="small-muted">(ເບິ່ງຢ່າງດຽວ)</span>`)
+    + amRow("Advantage+ audience", adv===1?"ເປີດ":(adv===0?"ປິດ":"-"))
+    + amRow("ພາສາ/ຄວາມສົນໃຈ", esc(((t.flexible_spec||[]).length?"ມີຕັ້ງຄ່າ (ເບິ່ງໃນຂໍ້ມູນດິບ)":"ບໍ່ມີ")))
+    + amSaveBtn("targeting");
+}
+function amPlacementRows(t){
+  const pp = t.publisher_platforms;
+  const manual = Array.isArray(pp) && pp.length>0;
+  const P = [["facebook","Facebook"],["instagram","Instagram"],["messenger","Messenger"],["audience_network","Audience Network"]];
+  const posTxt = ["facebook_positions","instagram_positions","messenger_positions","audience_network_positions"].filter(k=>Array.isArray(t[k])&&t[k].length).map(k=>k.replace("_positions","")+": "+t[k].join(", ")).join(" · ");
+  return amRow("ໂໝດ", manual ? "ເລືອກເອງ (Manual)" : "ອັດຕະໂນມັດ (Advantage+ placements)")
+    + amRow("ເລືອກເວທີ", P.map(([v,l])=>`<label style="margin-right:14px;white-space:nowrap;"><input type="checkbox" data-am-pp="${v}" ${manual && pp.includes(v)?"checked":""}/> ${l}</label>`).join("")+`<div class="small-muted">ບໍ່ຕິ໊ກເລີຍ = ອັດຕະໂນມັດ. ເມື່ອບັນທຶກ ຕຳແໜ່ງຍ່ອຍ (Feed, Reels ...) ຈະຖືກລ້າງ ໃຫ້ Facebook ເລືອກເອງ</div>`)
+    + (posTxt?amRow("ຕຳແໜ່ງຍ່ອຍປັດຈຸບັນ", esc(posTxt)):"")
+    + amSaveBtn("placements");
+}
+function amAdSections(d, r){
+  const p = d.parts || {};
+  const cr = r.creative || {};
+  const thumb = (cr.thumbnail_url || cr.image_url || p.image_url) ? `<div class="tst-thumb"><img src="${esc(cr.thumbnail_url||cr.image_url||p.image_url)}" alt="" referrerpolicy="no-referrer"/>${p.video_id?`<span class="tst-play">▶</span>`:""}</div>` : `<div class="tst-thumb tst-thumb-empty">ບໍ່ມີຮູບຕົວຢ່າງ</div>`;
+  const preview = adsTestFbPost({ page: "", caption: p.primary_text, headline: p.headline, thumb });
+  const welcome = d.welcome ? (d.welcome.texts||[]).filter(x=>!/^https?:/i.test(x)).map(x=>`<div style="padding:3px 0;">• ${esc(x)}</div>`).join("") + (d.welcome.template_id?`<div class="small-muted">Template ID: ${esc(d.welcome.template_id)}</div>`:"") : `<span class="small-muted">ບໍ່ມີຂໍ້ຄວາມທັກທາຍໃນໂຄສະນານີ້</span>`;
+  const editable = p.kind==="video_data" || p.kind==="link_data";
+  let h = amSec("ໂພສຕົວຢ່າງ (ຄືທີ່ລູກຄ້າເຫັນ)", `<div style="max-width:420px;">${preview}</div>`);
+  h += amSec("ຂໍ້ຄວາມໂຄສະນາ", editable
+    ? amRow("ຂໍ້ຄວາມຫຼັກ (Caption)", `<textarea id="am-f-text" rows="8" style="width:100%;margin:0;">${esc(p.primary_text||"")}</textarea>`)
+      + amRow("ຂໍ້ຄວາມຂ້າງປຸ່ມ (Headline)", inpText("am-f-head", p.headline))
+      + amRow("ປຸ່ມ (CTA)", `<select id="am-f-cta" style="margin:0;">${[...AM_CTA, ...(p.cta && !AM_CTA.some(c=>c[0]===p.cta)?[[p.cta,p.cta]]:[])].map(([v,l])=>`<option value="${v}" ${p.cta===v?"selected":""}>${esc(l)}</option>`).join("")}</select>`)
+      + `<div class="small-muted" style="margin-top:6px;">⚠️ Facebook ແກ້ຂໍ້ຄວາມຂອງໂຄສະນາທີ່ມີຢູ່ບໍ່ໄດ້ ລະບົບຈະສ້າງ creative ໃໝ່ແລ້ວປ່ຽນເຂົ້າໂຄສະນານີ້ (ໂຄສະນາອາດຕ້ອງຜ່ານການກວດໃໝ່ ແລະຈຳນວນ Like/ຄອມເມັ້ນເດີມອາດບໍ່ຕິດໄປ).</div>`
+      + amSaveBtn("creative")
+    : amRow("ຂໍ້ຄວາມຫຼັກ", esc(p.primary_text||"-"))+amRow("ຂໍ້ຄວາມຂ້າງປຸ່ມ", esc(p.headline||"-"))+amRow("ປຸ່ມ (CTA)", esc(p.cta||"-"))+`<div class="small-muted">ຮູບແບບໂຄສະນານີ້ແກ້ຈາກບ່ອນນີ້ບໍ່ໄດ້ (ບໍ່ແມ່ນວິດີໂອ/ລິ້ງທຳມະດາ)</div>`);
+  h += amSec("ຂໍ້ຄວາມທັກທາຍ (Welcome message / ເທມເພລດ)", amRow("ຂໍ້ຄວາມທີ່ຕັ້ງໄວ້", welcome) + `<div class="small-muted" style="margin-top:6px;">ເບິ່ງຢ່າງດຽວ — ການແກ້ຂໍ້ຄວາມທັກທາຍຈາກໜ້ານີ້ຍັງບໍ່ເຮັດ</div>`);
+  h += amSec("ການຕິດຕາມ ແລະ ລິ້ງ", amRow("ເພຈ (Page ID)", esc(p.page_id||"-"))+amRow("ໂພສ (Story ID)", esc(cr.effective_object_story_id||"-"))+amRow("ວິດີໂອ ID", esc(p.video_id||"-"))+amRow("URL tags", esc(cr.url_tags||"-"))+(r.preview_shareable_link?amRow("ລິ້ງພຣີວິວ Facebook", `<a href="${esc(r.preview_shareable_link)}" target="_blank" rel="noopener">ເປີດພຣີວິວ</a>`):"")+amRow("Ad set / Campaign", esc((r.adset_id||"")+" / "+(r.campaign_id||""))));
+  return h;
+}
+function inpText(id, val){ return `<input id="${id}" value="${esc(val==null?"":val)}" style="width:100%;margin:0;"/>`; }
+async function amOpenDetail(type, id){
+  const s = amState();
+  const list = type==="campaign" ? STATE.data.adCampaigns : type==="adset" ? STATE.data.adSets : STATE.data.ads;
+  const row = (list||[]).find(x=>x.id===id) || {};
+  s.detail = { type, id, name: row.campaignName || row.name || id, loading:true, err:"", raw:null };
+  render();
+  try{
+    const { data, error } = await sb.functions.invoke("ads-manager-api", { body:{ action:"detail", entityType:type, entityId:id } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(!data || data.ok===false) throw new Error((data&&data.error)||"ດຶງຂໍ້ມູນບໍ່ສຳເລັດ");
+    if(!s.detail || s.detail.id!==id) return;
+    Object.assign(s.detail, { loading:false, raw:data.raw, parts:data.parts||null, welcome:data.welcome||null, name:(data.raw&&data.raw.name)||s.detail.name });
+  }catch(e){ if(s.detail && s.detail.id===id){ s.detail.loading=false; s.detail.err = String(e.message||e); } }
+  render();
+}
+async function amSaveSection(key){
+  const s = amState(); const d = s.detail; if(!d || !d.raw) return;
+  const v = (id)=>{ const el = document.getElementById(id); return el ? el.value : null; };
+  const by = STATE.currentUser?STATE.currentUser.name:"";
+  const r = d.raw; const type = d.type; const id = d.id;
+  const entName = r.name || d.name;
+  const editApi = async (changes)=>{
+    const { data, error } = await sb.functions.invoke("ads-manager-api", { body:{ action:"edit", entityType:type, entityId:id, changes, changedBy:by, entityName:entName } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(!data || data.ok===false) throw new Error((data&&data.error)||"ບັນທຶກບໍ່ສຳເລັດ");
+  };
+  const upd = async (body)=>{
+    const { data, error } = await sb.functions.invoke("update-ad-entity", { body:{ entityType:type, entityId:id, entityName:entName, changedBy:by, ...body } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ບັນທຶກບໍ່ສຳເລັດ");
+  };
+  const steps = []; let summary = "";
+  try{
+    if(key==="name"){
+      const nv = (v("am-f-name")||"").trim(); if(!nv) throw new Error("ຊື່ຫວ່າງ");
+      if(nv===r.name){ showToast("ບໍ່ມີການປ່ຽນແປງ"); return; }
+      summary = `ປ່ຽນຊື່\nຈາກ: ${r.name}\nເປັນ: ${nv}`; steps.push(()=>editApi({ name:nv }));
+    } else if(key==="schedule"){
+      const lines = [];
+      const bEl = document.getElementById("am-f-budget");
+      if(bEl && bEl.value!==""){
+        const oldB = (r.lifetime_budget!=null ? r.lifetime_budget : r.daily_budget); const nb = Number(bEl.value);
+        if(!(nb>0)) throw new Error("ງົບຕ້ອງຫຼາຍກວ່າ 0");
+        if(oldB==null || Math.round(nb*100)!==Number(oldB)){ lines.push(`ງົບ: ${amNum(Number(oldB||0)/100,2)} → ${amNum(nb,2)}`); steps.push(()=>upd({ action: r.lifetime_budget!=null?"set_lifetime_budget":"set_daily_budget", budgetAmount: nb })); }
+      }
+      const st = amFromLaoLocal(v("am-f-start"));
+      if(st && st!==(r.start_time?new Date(r.start_time).toISOString():"")){ lines.push(`ເລີ່ມ: ${amLaoLocal(r.start_time)||"-"} → ${v("am-f-start")}`); steps.push(()=>upd({ action:"set_start_time", startTime: st })); }
+      const endOld = type==="campaign" ? r.stop_time : r.end_time;
+      const en = v("am-f-end");
+      if((en||"") !== amLaoLocal(endOld)){ lines.push(`ສິ້ນສຸດ: ${amLaoLocal(endOld)||"ບໍ່ກຳນົດ"} → ${en||"ບໍ່ກຳນົດ"}`); steps.push(()=>editApi({ end_time: en?amFromLaoLocal(en):"" })); }
+      if(type==="adset"){
+        const bs = v("am-f-bidstrat"), ba = v("am-f-bidamt");
+        if(bs && (bs!==r.bid_strategy || (ba!=="" && Math.round(Number(ba)*100)!==Number(r.bid_amount||0)))){ lines.push(`ກົນລະຍຸດປະມູນ: ${r.bid_strategy||"-"} → ${bs}${ba?" ("+ba+")":""}`); steps.push(()=>upd({ action:"set_bid_strategy", bidStrategy:bs, bidAmount: ba===""?null:Number(ba) })); }
+      }
+      if(!steps.length){ showToast("ບໍ່ມີການປ່ຽນແປງ"); return; }
+      summary = "ແກ້ງົບ/ເວລາ:\n"+lines.join("\n");
+    } else if(key==="targeting"){
+      const g = v("am-f-gender"); const parse = (x)=> String(x||"").split(/[ ,]+/).map(c=>c.trim().toUpperCase()).filter(Boolean);
+      const tp = { age_min:Number(v("am-f-agemin")), age_max:Number(v("am-f-agemax")), genders: g==="all"?[]:[Number(g)], countries: parse(v("am-f-countries")), excluded_countries: parse(v("am-f-excl")) };
+      if(!tp.countries.length) throw new Error("ຕ້ອງມີຢ່າງໜ້ອຍ 1 ປະເທດ");
+      summary = `ແກ້ກຸ່ມເປົ້າໝາຍ:\nອາຍຸ ${tp.age_min}-${tp.age_max}\nເພດ ${g==="all"?"ທັງໝົດ":(g==="1"?"ຊາຍ":"ຍິງ")}\nສະແດງ: ${tp.countries.join(", ")}\nຍົກເວັ້ນ: ${tp.excluded_countries.join(", ")||"ບໍ່ມີ"}\n\n⚠️ ການແກ້ກຸ່ມເປົ້າໝາຍອາດເຮັດໃຫ້ຊຸດໂຄສະນາເຂົ້າຊ່ວງຮຽນຮູ້ໃໝ່`;
+      steps.push(()=>editApi({ targeting: tp }));
+    } else if(key==="placements"){
+      const pp = [...document.querySelectorAll("[data-am-pp]")].filter(x=>x.checked).map(x=>x.getAttribute("data-am-pp"));
+      summary = `ແກ້ຕຳແໜ່ງໂຄສະນາ:\n${pp.length?"ເລືອກເອງ: "+pp.join(", "):"ອັດຕະໂນມັດ (Advantage+)"}\n\n⚠️ ຕຳແໜ່ງຍ່ອຍເດີມຈະຖືກລ້າງ ແລະອາດເຂົ້າຊ່ວງຮຽນຮູ້ໃໝ່`;
+      steps.push(()=>editApi({ publisher_platforms: pp }));
+    } else if(key==="creative"){
+      const p = d.parts||{};
+      const nt = v("am-f-text"), nh = v("am-f-head"), nc = v("am-f-cta");
+      if(nt===(p.primary_text||"") && nh===(p.headline||"") && nc===p.cta){ showToast("ບໍ່ມີການປ່ຽນແປງ"); return; }
+      if(!(nt||"").trim()) throw new Error("ຂໍ້ຄວາມຫຼັກຫວ່າງ");
+      summary = `ແກ້ຂໍ້ຄວາມໂຄສະນາ (ສ້າງ creative ໃໝ່ ແລ້ວປ່ຽນເຂົ້າໂຄສະນາ)\n\nຂໍ້ຄວາມຂ້າງປຸ່ມ: ${nh||"-"}\nປຸ່ມ: ${nc}\nຂໍ້ຄວາມຫຼັກ ${String(nt).length} ຕົວອັກສອນ\n\n⚠️ ໂຄສະນາອາດຕ້ອງຜ່ານການກວດໃໝ່`;
+      steps.push(()=>editApi({ creative:{ primary_text:nt, headline:nh, cta:nc } }));
+    }
+    if(!steps.length) return;
+    const ok = await customConfirm(`${summary}\n\nສົ່ງໄປ Facebook ເລີຍບໍ?`, { okLabel:"ຢືນຢັນ ບັນທຶກ" });
+    if(!ok) return;
+    d.saving = true; render();
+    for(const st of steps) await st();
+    showToast("✅ ບັນທຶກໄປ Facebook ແລ້ວ");
+    // reload live data + refresh local rows
+    d.saving = false;
+    await amOpenDetail(type, id);
+    try{ if(typeof loadAllData==="function") { /* data refresh left to the normal sync */ } }catch(_e){}
+  }catch(e){ if(d) d.saving=false; showErrorToast("ບັນທຶກບໍ່ສຳເລັດ: "+(e.message||e)); render(); }
+}
+async function amToggle(type, id, on){
+  const list = type==="campaign" ? STATE.data.adCampaigns : type==="adset" ? STATE.data.adSets : STATE.data.ads;
+  const row = (list||[]).find(x=>x.id===id); const name = row ? (row.campaignName||row.name||id) : id;
+  const newStatus = on ? "ACTIVE" : "PAUSED";
+  const ok = await customConfirm(`${on?"ເປີດ":"ປິດ"} "${name}" ໃນ Facebook ແມ່ນບໍ?`, { okLabel:on?"ເປີດ":"ປິດ" });
+  if(!ok){ render(); return; }
+  try{
+    const { data, error } = await sb.functions.invoke("update-ad-entity", { body:{ entityType:type, entityId:id, action:"toggle_status", newStatus, entityName:name, changedBy: STATE.currentUser?STATE.currentUser.name:"" } });
+    if(error) throw new Error(await extractFunctionErrorMessage(error));
+    if(data && data.ok===false) throw new Error(data.error||"ປ່ຽນສະຖານະບໍ່ສຳເລັດ");
+    if(row){ row.status = newStatus; row.effectiveStatus = newStatus; if(type!=="ad"){ row.effectiveStatusReal = newStatus; row.pausedBySystem=false; if(on) row.closedForLowRoas=false; } }
+    showToast(`✅ ${on?"ເປີດ":"ປິດ"}ແລ້ວ`);
+  }catch(e){ showErrorToast("ບໍ່ສຳເລັດ: "+(e.message||e)); }
+  render();
+}
+// ---------- one delegated listener for the whole page ----------
+(function amBind(){
+  if(window.__amBound) return; window.__amBound = true;
+  document.addEventListener("click", (ev)=>{
+    const t = ev.target.closest && ev.target.closest("[data-am-level],[data-am-open],[data-am-drill],[data-am-clear],[data-am-close],[data-am-refresh],[data-am-save],[data-am-more],[data-am-sel],[data-am-all]");
+    if(!t) return;
+    const s = amState();
+    if(t.hasAttribute("data-am-sel") || t.hasAttribute("data-am-all")) return; // handled on "change"
+    if(t.tagName==="A") ev.preventDefault();
+    if(t.hasAttribute("data-am-level")){ s.level = t.getAttribute("data-am-level"); s.limit = 60; render(); amLoadCreatives(); return; }
+    if(t.hasAttribute("data-am-open")){ const [ty,id] = t.getAttribute("data-am-open").split(":"); amOpenDetail(ty,id); return; }
+    if(t.hasAttribute("data-am-drill")){
+      const [ty,id] = t.getAttribute("data-am-drill").split(":");
+      if(ty==="campaign"){ s.selCamp = {[id]:true}; s.selSet = {}; s.level = "adset"; }
+      else { const st = (STATE.data.adSets||[]).find(x=>x.id===id); if(st) s.selCamp = {[st.campaignId]:true}; s.selSet = {[id]:true}; s.level = "ad"; }
+      s.limit = 60; render(); amLoadCreatives(); return;
+    }
+    if(t.hasAttribute("data-am-clear")){ const w = t.getAttribute("data-am-clear"); if(w==="camp"){ s.selCamp = {}; s.selSet = {}; } else s.selSet = {}; render(); return; }
+    if(t.hasAttribute("data-am-close")){ s.detail = null; render(); return; }
+    if(t.hasAttribute("data-am-refresh")){ if(s.detail) amOpenDetail(s.detail.type, s.detail.id); return; }
+    if(t.hasAttribute("data-am-save")){ if(!(s.detail && s.detail.saving)) amSaveSection(t.getAttribute("data-am-save")); return; }
+    if(t.hasAttribute("data-am-more")){ s.limit += 60; render(); amLoadCreatives(); return; }
+  });
+  document.addEventListener("change", (ev)=>{
+    const el = ev.target; if(!el || !el.getAttribute) return;
+    const s = amState();
+    if(el.hasAttribute("data-am-sel")){
+      const [ty,id] = el.getAttribute("data-am-sel").split(":");
+      const m = ty==="campaign" ? s.selCamp : s.selSet;
+      if(el.checked) m[id] = true; else delete m[id];
+      if(ty==="campaign"){ // drop selected ad sets that no longer belong to a selected campaign
+        const keep = Object.keys(s.selCamp);
+        if(keep.length) Object.keys(s.selSet).forEach(sid=>{ const st=(STATE.data.adSets||[]).find(x=>x.id===sid); if(!st || !keep.includes(st.campaignId)) delete s.selSet[sid]; });
+      }
+      render(); return;
+    }
+    if(el.hasAttribute("data-am-all")){
+      const ty = el.getAttribute("data-am-all"); const E = amRows(); const rows = ty==="campaign"?E.camps:E.sets; const m = ty==="campaign"?s.selCamp:s.selSet;
+      rows.forEach(r=>{ if(el.checked) m[r.id]=true; else delete m[r.id]; }); render(); return;
+    }
+    if(el.hasAttribute("data-am-filter")){
+      const k = el.getAttribute("data-am-filter"); s[k] = el.value; s.limit = 60; render(); amLoadCreatives(); return;
+    }
+    if(el.hasAttribute("data-am-toggle")){
+      const [ty,id] = el.getAttribute("data-am-toggle").split(":"); amToggle(ty,id,el.checked); return;
+    }
+  });
+})();
+
 function adEffectiveStatusLabel(status, pausedBySystem, closedForLowRoas){
   const map = {
     ACTIVE:"✅ ເປີດຢູ່", PAUSED:"⏸️ ຢຸດໄວ້", CAMPAIGN_PAUSED:"⏸️ ແຄມເປນຢຸດ", ADSET_PAUSED:"⏸️ ຊຸດຢຸດ",
@@ -21709,6 +22078,7 @@ function renderAdSpend(){
       <div class="tabs" style="margin-top:14px;">
         <a class="tab ${sub==="dashboard"?'active':''}" href="#adSpend/dashboard" data-adspend-subpage="dashboard" style="text-decoration:none; color:inherit;">📊 Dashboard</a>
         <a class="tab ${sub==="campaigns"?'active':''}" href="#adSpend/campaigns" data-adspend-subpage="campaigns" style="text-decoration:none; color:inherit;">🎯 ຈັດການແຄມເປນ</a>
+        <a class="tab ${sub==="adsmanager"?'active':''}" href="#adSpend/adsmanager" data-adspend-subpage="adsmanager" style="text-decoration:none; color:inherit;">📑 Ads Manager</a>
         <a class="tab ${sub==="automation"?'active':''}" href="#adSpend/automation" data-adspend-subpage="automation" style="text-decoration:none; color:inherit;">🤖 ອັດຕະໂນມັດ</a>
         <a class="tab ${sub==="manuallog"?'active':''}" href="#adSpend/manuallog" data-adspend-subpage="manuallog" style="text-decoration:none; color:inherit;">📜 ປະຫວັດແກ້ໄຂດ້ວຍມື</a>
         <a class="tab ${sub==="launchlog"?'active':''}" href="#adSpend/launchlog" data-adspend-subpage="launchlog" style="text-decoration:none; color:inherit;">🚀 ປະຫວັດການຍິງແອັດ</a>
@@ -21718,6 +22088,7 @@ function renderAdSpend(){
 
     ${sub==="dashboard" ? renderAdSpendDashboardSubPage(summary, periods, accounts) : ""}
     ${sub==="campaigns" ? renderAdSpendCampaignsSubPage(summary) : ""}
+    ${sub==="adsmanager" ? renderAdsManagerSubPage() : ""}
     ${sub==="automation" ? renderAdAutomationSubPage() : ""}
     ${sub==="manuallog" ? renderAdControlLogSubPage() : ""}
     ${sub==="launchlog" ? renderAdLaunchLogSubPage() : ""}
