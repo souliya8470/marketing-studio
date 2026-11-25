@@ -360,8 +360,10 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - index.html v8.99: review screen shows CTA as "ສົ່ງຂໍ້ຄວາມ (Send Message)" instead of MESSAGE_PAGE and a new row "ຍົກເວັ້ນປະເທດ". Display only.
 - Not yet checked on a live launch.
 
-## ads-test-variants v5 — headline as offer line (2026-11-25)
+## ads-test-variants v5/v6 — headline as selling line (2026-11-25)
 - Tar: the bold line beside the "Send Message" button (headline, sent as video_data.title / link_data.name) can be written by us when launching from the backend; he wants an offer line (e.g. "1 ແຖມ 1 ... 189.000 ກີບ"), not a hook question.
 - Deployed ads-test-variants v5: headline_lo (max 60 chars) states the current_promo deal exactly (free delivery only if the promo says so); with no promo: benefit line, list price allowed, no gift/discount/free-delivery words (code check PROMO_WORDS still applies).
 - The CTA button itself stays a fixed Facebook choice (MESSAGE_PAGE = "Send Message"); all 65 existing ads use it. Trying another button (e.g. Order Now / Get Offer) was offered to Tar, NOT built or tested.
 - ads-test-auto's own cron planner still writes ≤40-char headlines (not changed).
+
+- v6 (deployed, version 6): Tar wants the 3 headlines to differ, all selling: (1) deal line (current_promo deal, or product + list price when no promo), (2) action slogan in the spirit of "take care of your lungs, start today" (soft, no medical claim), (3) who-it-is-for / why this shop / direct push. Never a question. Existing plans keep old headlines until regen.
