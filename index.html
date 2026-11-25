@@ -353,6 +353,21 @@
   .custom-dialog-overlay{position:fixed; inset:0; background:rgba(30,22,15,.55); display:flex; align-items:center; justify-content:center; z-index:600; padding:20px; animation:dialogFadeIn .15s ease-out;}
   .custom-dialog-box{background:var(--white); border-radius:16px; padding:28px 26px 22px; width:100%; max-width:380px; box-shadow:0 20px 50px rgba(0,0,0,.3); text-align:center; animation:dialogPopIn .18s ease-out;}
   .custom-dialog-icon{font-size:34px; margin-bottom:10px; line-height:1;}
+  /* v9.04: Facebook-post style preview of a test ad (page header, 3-line caption + "ດູເພີ່ມເຕີມ", video, headline + Send Message button) */
+  .fbp{background:#fff; border:1px solid #dddfe2; border-radius:10px; overflow:hidden; font-family:'Segoe UI',Roboto,Helvetica,Arial,'Noto Sans Lao',sans-serif; color:#1c1e21; text-align:left;}
+  .fbp-top{display:flex; gap:8px; align-items:center; padding:10px 12px 4px;}
+  .fbp-av{width:36px; height:36px; border-radius:50%; background:#1877f2; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none;}
+  .fbp-pg{font-weight:700; font-size:14px; line-height:1.25;}
+  .fbp-sub{font-size:12px; color:#65676b;}
+  .fbp-cap{padding:4px 12px 0; font-size:14px; line-height:1.5; white-space:pre-wrap; word-break:break-word;}
+  .fbp-cap.fbp-clamp{display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .fbp-more{display:block; margin:0 0 6px 12px; padding:0; border:0; background:none; color:#65676b; font-weight:600; font-size:13.5px; cursor:pointer;}
+  .fbp .tst-thumb{border-radius:0; aspect-ratio:1/1; max-height:420px; width:100%;}
+  .fbp-bar{display:flex; gap:10px; align-items:center; justify-content:space-between; background:#f0f2f5; padding:9px 12px;}
+  .fbp-h{font-weight:700; font-size:14px; line-height:1.3; min-width:0; word-break:break-word;}
+  .fbp-hl{font-size:11px; color:#65676b; font-weight:600; margin-bottom:1px;}
+  .fbp-btn{flex:none; background:#e4e6eb; border-radius:6px; padding:7px 10px; font-weight:600; font-size:13px; white-space:nowrap;}
+  .fbp-react{display:flex; justify-content:space-around; padding:7px 4px; font-size:12.5px; color:#65676b; font-weight:600; border-top:1px solid #dddfe2;}
   .custom-dialog-message{font-size:15px; color:var(--bg-deep); line-height:1.55; white-space:pre-wrap; margin-bottom:22px;}
   .custom-dialog-actions{display:flex; gap:10px; justify-content:center;}
   .custom-dialog-actions .btn{flex:1; justify-content:center; max-width:150px;}
@@ -979,7 +994,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "9.03"; // v9.03 CHANGE (Tar 2026-11-25, "ຢາກເປີດຍິງ 10-20 ແອັດພ້ອມກັນບັດດຽວ ບໍ່ຢາກລໍ"): adsTestTickLoop repeats the launch tick up to 10 times (was 6) so up to ~30 ads go out from one press of 🚀 (server still launches 3 per run). No server/SQL change.
+const APP_VERSION = "9.04"; // v9.04 CHANGE (Tar 2026-11-25, screenshot of the Ads Manager preview: "ຮູບແບບທີ່ເຈົ້າເຮັດມາຍັງເບິ່ງຍາກ ຢາກໃຫ້ເປັນຄືໜ້າໂພສຈິງ ... ແຄັບຊັນ 3 ແຖວ ຖ້າຢາກເບິ່ງໝົດໃຫ້ບີບເບິ່ງເພີ່ມ"): every test ad is shown as a Facebook post preview (adsTestFbPost): page avatar + name + "ໂຄສະນາ", caption clamped to 3 lines with a "ດູເພີ່ມເຕີມ" / "ຫຍໍ້ລົງ" toggle, the video, then the grey bar with the headline (ຂໍ້ຄວາມຂ້າງປຸ່ມ) on the left and the "ສົ່ງຂໍ້ຄວາມ" button on the right, and the like/comment/share row. Used on the 🧪 plan cards (A/B group + single) and in the review step of the 🚀 picker. Display only; no server/SQL change.
+// (previous text of this slot, kept) const APP_VERSION = "9.03"; // v9.03 CHANGE (Tar 2026-11-25, "ຢາກເປີດຍິງ 10-20 ແອັດພ້ອມກັນບັດດຽວ ບໍ່ຢາກລໍ"): adsTestTickLoop repeats the launch tick up to 10 times (was 6) so up to ~30 ads go out from one press of 🚀 (server still launches 3 per run). No server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.02"; // v9.02 CHANGE (Tar 2026-11-25, "ເປັນຫຍັງແຕ່ລະແຄມເປນຕ້ອງຫ່າງກັນ 10 ນາທີ"): the server (ads-test-auto) launches at most 3 plans per run, so 12 ads (4 campaigns x 3) needed 4 cron runs. The 🚀 launch now repeats the tick up to 6 times while it still launches something (adsTestTickLoop) and the progress box shows "ຍິງແລ້ວ N ຈາກ M". No server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.01"; // v9.01 FIX (Tar 2026-11-25, "ກົດເຜີຍແຜ່ແລ້ວບໍ່ເຫັນຫຍັງເກີດຂຶ້ນ ມີແຈ້ງເຕືອນສີຂຽວຂຶ້ນມາແວບດຽວ ອ່ານບໍ່ທັນ ບໍ່ຮູ້ວ່າໂຄສະນາຖືກຍິງຫຼືບໍ່"): the 🚀 launch (single ad and A/B group, auto-switch server path) now shows a blocking progress box ("ກຳລັງສົ່ງຄຳສັ່ງຍິງໄປ Facebook...") while the request runs and then a result box that stays until closed: ✅ launched N of M (rest is launched by the system within ~10 min, no need to press again) / ⏳ accepted but video still preparing / ❌ failed with the reason, plus where to look (🧪 tab, Ads Manager name contains TEST). Replaces the 3-second toast. Display only; no server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "9.00"; // v9.00 CHANGE (Tar 2026-11-25, "ຄຳເວົ້າທີ່ຢູ່ຂ້າງປຸ່ມສົ່ງຂໍ້ຄວາມ ມັນສະແດງຢູ່ບ່ອນໃດ"): the headline (the bold line shown beside the Send Message button) is now labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" in the three places where it is shown: the review screen of the 🚀 picker (each ad box), the plan cards of the 🧪 tab, and the caption cards of the playbook. Display only; no server/SQL change.
@@ -1645,7 +1661,8 @@ const APP_VERSION = "9.03"; // v9.03 CHANGE (Tar 2026-11-25, "ຢາກເປີ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "9.02"; // (v9.02 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "9.03"; // (v9.03 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "9.02"; // (v9.02 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.01"; // (v9.01 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.00"; // (v9.00 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.99"; // (v8.99 text kept in the history comment lines of APP_VERSION above)
@@ -1769,7 +1786,8 @@ const APP_VERSION_PREV = "9.02"; // (v9.02 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "9.01"; // (v9.01 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "9.02"; // (v9.02 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.01"; // (v9.01 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.00"; // (v9.00 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.99"; // (v8.99 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.98"; // (v8.98 text kept in the history comment lines above)
@@ -23567,7 +23585,7 @@ function adsTestPickTargets(opts){
         const place = plc==="fb_messenger" ? "<b>Facebook + Messenger</b> (ບໍ່ມີ Instagram) — ຕຳແໜ່ງຍ່ອຍ Facebook ເລືອກເອງພາຍໃນສອງບ່ອນນີ້"
           : plc==="fb_only" ? "<b>Facebook ຢ່າງດຽວ</b> — ຕຳແໜ່ງຍ່ອຍ Facebook ເລືອກເອງ"
           : (pl.mode==="manual" ? "ຕາມແມ່ແບບ — ກຳນົດເອງ: "+esc((pl.publisher_platforms||[]).join(", ")) : "ຕາມແມ່ແບບ — ອັດຕະໂນມັດ (Advantage+) ອາດລວມ Instagram");
-        const ads = plans.map((x,j)=>`<div style="border:1px solid #E9E3D3;border-radius:8px;padding:8px;margin-top:6px;font-size:12.5px;"><b>ແອັດ ${isCbo?"ABCDEF"[j]||j+1:""}</b> <span style="color:#777;">(${String(x.caption||"").length} ຕົວອັກສອນ)</span>${x.headline?`<div style="margin-top:3px;"><span style="color:#777;">ຂໍ້ຄວາມຂ້າງປຸ່ມ:</span> <b>${esc(x.headline)}</b></div>`:""}<div style="white-space:pre-wrap;margin-top:4px;max-height:110px;overflow:auto;">${esc(x.caption||"")}</div></div>`).join("");
+        const ads = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px;">`+plans.map((x,j)=>`<div><div style="font-weight:700;font-size:12.5px;margin-bottom:4px;">ແອັດ ${isCbo?"ABCDEF"[j]||j+1:""} <span style="font-weight:400;color:#777;">(${String(x.caption||"").length} ຕົວອັກສອນ)</span></div>${adsTestFbPost({ page: tg.page_id ? (tg.page_name||tg.page_id) : (tplPage ? pageName(tplPage) : ""), caption: x.caption, headline: x.headline, thumb: adsTestThumb((STATE.adsTestAssets||[]).find(a=>a.id===x.asset_id)) })}</div>`).join("")+`</div>`;
         const w = [];
         if(bad) w.push(`⚠️ ບັນຊີ "${esc(accName)}" ${esc(adAccountStatusLabel(acc.accountStatus))} — Facebook ອາດບໍ່ຍອມສ້າງແອັດ`);
         if(otherAcc && custom>0) w.push(`ບັນຊີອື່ນ: ກຸ່ມເປົ້າໝາຍ custom audience ຂອງແມ່ແບບ (${custom}) ຈະບໍ່ຖືກກ໊ອບ`);
@@ -24104,6 +24122,19 @@ function adsTestPromoCard(sel, pending){
     ${pendHtml}
   </div>`;
 }
+function adsTestFbPost(o){
+  const page = String(o.page||"ເພຈຂອງທ່ານ");
+  const cap = String(o.caption||"");
+  const long = cap.split("\n").length>3 || cap.length>140;
+  return `<div class="fbp">
+    <div class="fbp-top"><div class="fbp-av">${esc(page.trim().charAt(0).toUpperCase()||"F")}</div><div><div class="fbp-pg">${esc(page)}</div><div class="fbp-sub">ໂຄສະນາ · 🌐</div></div></div>
+    <div class="fbp-cap${long?" fbp-clamp":""}">${esc(cap)}</div>
+    ${long?`<button type="button" class="fbp-more" onclick="var c=this.previousElementSibling;var o=c.classList.toggle('fbp-clamp');this.textContent=o?'ດູເພີ່ມເຕີມ':'ຫຍໍ້ລົງ';">ດູເພີ່ມເຕີມ</button>`:`<div style="height:6px;"></div>`}
+    ${o.thumb||""}
+    <div class="fbp-bar"><div class="fbp-h">${o.headline?`<div class="fbp-hl">ຂໍ້ຄວາມຂ້າງປຸ່ມ ↓</div>${esc(o.headline)}`:`<span style="font-weight:400;color:#65676b;">(ບໍ່ມີຂໍ້ຄວາມຂ້າງປຸ່ມ)</span>`}</div><div class="fbp-btn">💬 ສົ່ງຂໍ້ຄວາມ</div></div>
+    <div class="fbp-react"><span>👍 ຖືກໃຈ</span><span>💬 ສະແດງຄວາມຄິດເຫັນ</span><span>↗ ແບ່ງປັນ</span></div>
+  </div>`;
+}
 function adsTestThumb(a){
   if(!a) return `<div class="tst-thumb tst-thumb-empty">ໄຟລ໌ຖືກລົບແລ້ວ</div>`;
   if(a.source==="facebook"){ // v8.38: imported old ad -> public_url/thumb_url is a picture (even for videos)
@@ -24213,15 +24244,14 @@ function renderAdsTestTab(){
     else if(p.status==="approved") primary = `<button class="btn tst-go" data-test-now="${p.id}" ${anyBusy||!a?"disabled":""}>⚡ ຍິງດຽວນີ້</button>`;
     else if(p.status==="failed") primary = `<button class="btn tst-go" data-test-retry="${p.id}" ${anyBusy?"disabled":""}>🔁 ລອງໃໝ່</button>`;
     const canEdit = p.status==="proposed" || p.status==="approved";
+    const tg = (p.ai && p.ai.target) || {};
     return `<div class="tst-card">
-      ${adsTestThumb(a)}
       <div class="tst-card-body">
         ${ab?`<div class="tst-abbadge">${abLetter(p)} · ${esc(p.ai.ab_title_lo||"")}</div><div class="tst-why">💡 ${esc(p.ai.ab_why_lo||"")}</div>`:aiBlock(p.ai)}
         ${adsTestTargetBadge(p)}
         ${variantsBlock(p)}
-        <div class="tst-cap${(hasVars(p)||ab)?" tst-cap-full":""}">${esc((hasVars(p)||ab)?String(p.caption||""):clip(p.caption,260))}</div>
-        ${(hasVars(p)||ab)?`<div class="tst-meta">${String(p.caption||"").length} ຕົວອັກສອນ</div>`:""}
-        ${p.headline?`<div class="tst-head"><span style="font-weight:400;font-size:11.5px;color:#777;">ຂໍ້ຄວາມຂ້າງປຸ່ມ:</span> ${esc(p.headline)}</div>`:""}
+        ${adsTestFbPost({ page: tg.page_name||"", caption: p.caption, headline: p.headline, thumb: adsTestThumb(a) })}
+        <div class="tst-meta">${String(p.caption||"").length} ຕົວອັກສອນ · ກົດ "ດູເພີ່ມເຕີມ" ເພື່ອເບິ່ງຂໍ້ຄວາມເຕັມ</div>
         <div class="tst-meta">${(ab && p.ai.ab_mode==="cbo")?"ງົບຖືກແບ່ງຈາກງົບລວມຂອງແຄມເປນ (CBO)":"ງົບ "+esc(String(p.daily_budget))+"/ວັນ"}</div>
         ${(p.ai && Object.prototype.hasOwnProperty.call(p.ai,"promo_used")) ? `<div class="tst-meta">🎁 ${p.ai.promo_used?"ໂປຣໃນຄຳບັນຍາຍ: "+esc(p.ai.promo_used):"ບໍ່ມີໂປຣ — ຄຳບັນຍາຍບໍ່ມີຂອງແຖມ/ສ່ວນຫຼຸດ"}</div>`:""}
         ${planNote(p)}

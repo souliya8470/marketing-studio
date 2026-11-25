@@ -382,3 +382,6 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 
 ## index.html v9.03 — tick loop up to 10 rounds (2026-11-25)
 - Tar wants 10-20 ads launched at once. Server cap is 3 launches/run (`done >= 3` in ads-test-auto launchStage, ~8 s per ad, BUDGET_MS 100 s). Client loop now up to 10 ticks (~30 ads). Idea if needed later: raise the cap server-side and launch joiners of one CBO group in parallel (first plan of each group must go first).
+
+## index.html v9.04 — Facebook-post style ad preview (2026-11-25)
+- Tar: plan cards hard to read; wants the real Ads Manager post look. New `adsTestFbPost({page,caption,headline,thumb})` (CSS `.fbp*` in the global style block): page avatar/name, caption clamped to 3 lines + "ດູເພີ່ມເຕີມ" toggle (inline onclick), video, grey bar with headline left + "ສົ່ງຂໍ້ຄວາມ" button right, reaction row. Used in 🧪 readyCard (A/B + single) and the 🚀 review step ad boxes (grid). Display only. Headline label "ຂໍ້ຄວາມຂ້າງປຸ່ມ ↓".
