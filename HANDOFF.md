@@ -367,3 +367,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - ads-test-auto's own cron planner still writes ≤40-char headlines (not changed).
 
 - v6 (deployed, version 6): Tar wants the 3 headlines to differ, all selling: (1) deal line (current_promo deal, or product + list price when no promo), (2) action slogan in the spirit of "take care of your lungs, start today" (soft, no medical claim), (3) who-it-is-for / why this shop / direct push. Never a question. Existing plans keep old headlines until regen.
+
+## index.html v9.00 — headline labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" (2026-11-25)
+- Display only (no server/SQL change): review screen ad boxes (step 2 of 🚀 picker), 🧪 plan cards (`tst-head`) and playbook caption cards now label the headline (bold line beside the Send Message button).
+- Shown headlines of plans made before ads-test-variants v6 are still old question hooks until the plan is regenerated.

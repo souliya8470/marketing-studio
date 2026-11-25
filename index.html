@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.99"; // v8.99 CHANGE (Tar 2026-11-25, screenshot of the review screen: "ປຸ່ມ (CTA) MESSAGE_PAGE ໝາຍຄວາມວ່າແນວໃດ" + "ເລືອກລາວ ແລ້ວກັນໄທ ຫວຽດນາມ ກຳປູເຈຍ ມຽນມາ ອອກ"): the review screen (step 2 of the 🚀 picker) now shows the CTA in Lao ("ສົ່ງຂໍ້ຄວາມ (Send Message)" for MESSAGE_PAGE, with a short explanation) and a new row "ຍົກເວັ້ນປະເທດ" listing the excluded countries. Server: ads-test-auto v14 always excludes TH, VN, KH, MM on top of what the template excludes (before only the sesame_coffee template had all four, Bio Pro Orange only TH, lutein_coffee none). Display only in index.html; no SQL change.
+const APP_VERSION = "9.00"; // v9.00 CHANGE (Tar 2026-11-25, "ຄຳເວົ້າທີ່ຢູ່ຂ້າງປຸ່ມສົ່ງຂໍ້ຄວາມ ມັນສະແດງຢູ່ບ່ອນໃດ"): the headline (the bold line shown beside the Send Message button) is now labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" in the three places where it is shown: the review screen of the 🚀 picker (each ad box), the plan cards of the 🧪 tab, and the caption cards of the playbook. Display only; no server/SQL change.
+// (previous text of this slot, kept) const APP_VERSION = "8.99"; // v8.99 CHANGE (Tar 2026-11-25, screenshot of the review screen: "ປຸ່ມ (CTA) MESSAGE_PAGE ໝາຍຄວາມວ່າແນວໃດ" + "ເລືອກລາວ ແລ້ວກັນໄທ ຫວຽດນາມ ກຳປູເຈຍ ມຽນມາ ອອກ"): the review screen (step 2 of the 🚀 picker) now shows the CTA in Lao ("ສົ່ງຂໍ້ຄວາມ (Send Message)" for MESSAGE_PAGE, with a short explanation) and a new row "ຍົກເວັ້ນປະເທດ" listing the excluded countries. Server: ads-test-auto v14 always excludes TH, VN, KH, MM on top of what the template excludes (before only the sesame_coffee template had all four, Bio Pro Orange only TH, lutein_coffee none). Display only in index.html; no SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.98"; // v8.98 CHANGE (Tar 2026-11-25, "ຕັດ IG ອອກ ເນັ້ນ Facebook ເປັນຫຼັກ + ຕຳແໜ່ງຈັດໂຄສະນາ"): Instagram removed from the 🧪 test ads. The template Instagram identity is never copied any more, and the 🚀 picker has a new section "3) ຕຳແໜ່ງໂຄສະນາ": Facebook + Messenger (default, no Instagram, no Audience Network) / Facebook only / as template (Advantage+, may include Instagram; for comparison only). The choice is saved as ai.placement on every plan (copies too) and the review screen (step 2) shows it; the Instagram row says it is not used. Server: ads-test-auto v13 (publisher_platforms = [facebook, messenger] or [facebook], all position lists dropped so Facebook picks the sub-positions; if Facebook refuses the placement the launch is retried once with the template targeting). Plans without ai.placement (older or auto-made) also default to Facebook + Messenger. Not yet confirmed on a live Facebook launch. No SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.97"; // v8.97 FIX (Tar 2026-11-25, screenshot of the v8.96 review screen: the "ຄຳທັກທາຍ" row showed raw data "image · https://scontent...fbcdn.net/..."): the saved welcome message of the template ad is a list of Messenger messages (image attachment url, text, quick-reply buttons) and the review printed every string. Now the row shows only the greeting TEXT, "🖼️ ມີຮູບ" when it has a picture, and the quick-reply button titles. Display only; launch logic unchanged.
 // (previous text of this slot, kept) const APP_VERSION = "8.96"; // v8.96 NEW (Tar 2026-11-25, screenshot of the account/page picker: "ເຮົາສິພຣີວິວແອດຢູ່ໃນ Ad Manager ກ່ອນທີ່ເຮົາສິກົດເຜີຍແຜ່ ... ຢາກໃຫ້ມີຂັ້ນຕອນນັ້ນນຳ ເພື່ອກົດເຊັກອີຫຍັງຫຼາຍໆຢ່າງ"): the 🚀 picker of v8.95 is now 2 steps. Step 1 = choose ad accounts + pages ("ຕໍ່ໄປ: ກວດກ່ອນເຜີຍແຜ່"). Step 2 = REVIEW before publish, like the Ads Manager review screen: one block per campaign that will be created (campaign name, ad account + status, page, objective/destination, CBO or ABO budget, start, audience age/countries/Advantage+ audience/custom audiences, placements, saved greeting text, Instagram identity, CTA, every ad with its full caption + headline + file) and a ✅/⚠️ check list (unsettled account, other page = greeting/IG not copied, other account = audiences dropped, imported video locked to its account, total budget vs the product daily cap, empty greeting in the template, caption too long). The template facts come from the read-only ads-test-auto action "template" (no Facebook write, ~5-10 s, shown with a spinner; if it fails the review still opens with a warning). Buttons: "← ກັບໄປແກ້" (keeps the ticks) and "🚀 ເຜີຍແຜ່ເລີຍ". Nothing is written to the database or Facebook before that last button. No server/SQL change.
@@ -1641,7 +1642,8 @@ const APP_VERSION = "8.99"; // v8.99 CHANGE (Tar 2026-11-25, screenshot of the r
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.98"; // (v8.98 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.99"; // (v8.99 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.98"; // (v8.98 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.97"; // (v8.97 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.96"; // (v8.96 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.95"; // (v8.95 text kept in the history comment lines of APP_VERSION above)
@@ -1761,7 +1763,8 @@ const APP_VERSION_PREV = "8.98"; // (v8.98 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.97"; // (v8.97 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.98"; // (v8.98 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.97"; // (v8.97 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.96"; // (v8.96 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.95"; // (v8.95 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.94"; // (v8.94 text kept in the history comment lines above)
@@ -23190,7 +23193,7 @@ function adsPlaybookCard(sel){
   const pains = (c.core_pains_lo||[]).map(x=>`<li>${esc(x)}</li>`).join("");
   const caps = (c.sample_captions||[]).map(x=>{
     const full = (x.headline_lo?x.headline_lo+"\n\n":"")+(x.caption_lo||"");
-    return `<div class="pb-cap"><div class="small-muted">ມຸມ: ${esc(x.angle_lo||"")}</div>${x.headline_lo?`<div><b>${esc(x.headline_lo)}</b></div>`:""}<div class="pb-t" style="white-space:pre-wrap;">${esc(x.caption_lo||"")}${flag(full)}</div><div>${cp(full)}</div></div>`;
+    return `<div class="pb-cap"><div class="small-muted">ມຸມ: ${esc(x.angle_lo||"")}</div>${x.headline_lo?`<div><span class="small-muted">ຂໍ້ຄວາມຂ້າງປຸ່ມ:</span> <b>${esc(x.headline_lo)}</b></div>`:""}<div class="pb-t" style="white-space:pre-wrap;">${esc(x.caption_lo||"")}${flag(full)}</div><div>${cp(full)}</div></div>`;
   }).join("");
   const vids = (c.video_ideas||[]).map(v=>`<div class="pb-line"><div class="pb-t"><b>3 ວິນາທີທຳອິດ:</b> ${esc(v.first_3_seconds_lo)}<br><b>ຂໍ້ຄວາມເທິງຈໍ:</b> ${esc(v.on_screen_text_lo)}${flag(v.first_3_seconds_lo+" "+v.on_screen_text_lo)}</div>${cp((v.first_3_seconds_lo||"")+"\n"+(v.on_screen_text_lo||""))}</div>`).join("");
   const chat = (c.chat_flow||[]).map(x=>`<div class="pb-cap"><div><b>${esc(x.step_lo)}</b></div><div class="pb-t" style="white-space:pre-wrap;">${esc(x.example_lo)}${flag(x.example_lo)}</div><div>${cp(x.example_lo)}</div></div>`).join("");
@@ -23555,7 +23558,7 @@ function adsTestPickTargets(opts){
         const place = plc==="fb_messenger" ? "<b>Facebook + Messenger</b> (ບໍ່ມີ Instagram) — ຕຳແໜ່ງຍ່ອຍ Facebook ເລືອກເອງພາຍໃນສອງບ່ອນນີ້"
           : plc==="fb_only" ? "<b>Facebook ຢ່າງດຽວ</b> — ຕຳແໜ່ງຍ່ອຍ Facebook ເລືອກເອງ"
           : (pl.mode==="manual" ? "ຕາມແມ່ແບບ — ກຳນົດເອງ: "+esc((pl.publisher_platforms||[]).join(", ")) : "ຕາມແມ່ແບບ — ອັດຕະໂນມັດ (Advantage+) ອາດລວມ Instagram");
-        const ads = plans.map((x,j)=>`<div style="border:1px solid #E9E3D3;border-radius:8px;padding:8px;margin-top:6px;font-size:12.5px;"><b>ແອັດ ${isCbo?"ABCDEF"[j]||j+1:""}${x.headline?" · "+esc(x.headline):""}</b> <span style="color:#777;">(${String(x.caption||"").length} ຕົວອັກສອນ)</span><div style="white-space:pre-wrap;margin-top:4px;max-height:110px;overflow:auto;">${esc(x.caption||"")}</div></div>`).join("");
+        const ads = plans.map((x,j)=>`<div style="border:1px solid #E9E3D3;border-radius:8px;padding:8px;margin-top:6px;font-size:12.5px;"><b>ແອັດ ${isCbo?"ABCDEF"[j]||j+1:""}</b> <span style="color:#777;">(${String(x.caption||"").length} ຕົວອັກສອນ)</span>${x.headline?`<div style="margin-top:3px;"><span style="color:#777;">ຂໍ້ຄວາມຂ້າງປຸ່ມ:</span> <b>${esc(x.headline)}</b></div>`:""}<div style="white-space:pre-wrap;margin-top:4px;max-height:110px;overflow:auto;">${esc(x.caption||"")}</div></div>`).join("");
         const w = [];
         if(bad) w.push(`⚠️ ບັນຊີ "${esc(accName)}" ${esc(adAccountStatusLabel(acc.accountStatus))} — Facebook ອາດບໍ່ຍອມສ້າງແອັດ`);
         if(otherAcc && custom>0) w.push(`ບັນຊີອື່ນ: ກຸ່ມເປົ້າໝາຍ custom audience ຂອງແມ່ແບບ (${custom}) ຈະບໍ່ຖືກກ໊ອບ`);
@@ -24166,7 +24169,7 @@ function renderAdsTestTab(){
         ${variantsBlock(p)}
         <div class="tst-cap${(hasVars(p)||ab)?" tst-cap-full":""}">${esc((hasVars(p)||ab)?String(p.caption||""):clip(p.caption,260))}</div>
         ${(hasVars(p)||ab)?`<div class="tst-meta">${String(p.caption||"").length} ຕົວອັກສອນ</div>`:""}
-        ${p.headline?`<div class="tst-head">${esc(p.headline)}</div>`:""}
+        ${p.headline?`<div class="tst-head"><span style="font-weight:400;font-size:11.5px;color:#777;">ຂໍ້ຄວາມຂ້າງປຸ່ມ:</span> ${esc(p.headline)}</div>`:""}
         <div class="tst-meta">${(ab && p.ai.ab_mode==="cbo")?"ງົບຖືກແບ່ງຈາກງົບລວມຂອງແຄມເປນ (CBO)":"ງົບ "+esc(String(p.daily_budget))+"/ວັນ"}</div>
         ${(p.ai && Object.prototype.hasOwnProperty.call(p.ai,"promo_used")) ? `<div class="tst-meta">🎁 ${p.ai.promo_used?"ໂປຣໃນຄຳບັນຍາຍ: "+esc(p.ai.promo_used):"ບໍ່ມີໂປຣ — ຄຳບັນຍາຍບໍ່ມີຂອງແຖມ/ສ່ວນຫຼຸດ"}</div>`:""}
         ${planNote(p)}
