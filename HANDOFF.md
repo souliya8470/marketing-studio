@@ -343,3 +343,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## v8.96 — review step before publish (2026-11-25, editor chat) -- index.html only
 - The 🚀 picker (v8.95) is now 2 steps: 1) choose accounts + pages, 2) "🔍 ກວດກ່ອນເຜີຍແຜ່": one block per campaign (name, account + status, page, objective, CBO/ABO budget, audience, placements, saved greeting, IG, CTA, every ad's full caption) + ⚠️ checks. Template facts come from the read-only `ads-test-auto` action `template` (no Facebook write). Back button keeps the ticks; nothing is written until "🚀 ເຜີຍແຜ່ເລີຍ".
 - Not built (offered to Tar): "create PAUSED for checking in Ads Manager" — needs a per-plan `ai.create_paused` in ads-test-auto (today `create_paused` is per tick only and the cron would continue such plans live).
+
+## v8.97 — review screen greeting row fix (2026-11-25, editor chat) -- index.html only
+- v8.96 review printed the raw welcome-message strings (image url etc.). Now shows greeting text + "🖼️ ມີຮູບ" + quick-reply titles. Display only.
+- Open question to Tar: for a page other than the template page the greeting/IG are NOT copied (server v12); offered to add a saved-greeting (ad_message_templates) dropdown per page in the picker.
