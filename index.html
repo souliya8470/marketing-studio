@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "9.00"; // v9.00 CHANGE (Tar 2026-11-25, "ຄຳເວົ້າທີ່ຢູ່ຂ້າງປຸ່ມສົ່ງຂໍ້ຄວາມ ມັນສະແດງຢູ່ບ່ອນໃດ"): the headline (the bold line shown beside the Send Message button) is now labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" in the three places where it is shown: the review screen of the 🚀 picker (each ad box), the plan cards of the 🧪 tab, and the caption cards of the playbook. Display only; no server/SQL change.
+const APP_VERSION = "9.01"; // v9.01 FIX (Tar 2026-11-25, "ກົດເຜີຍແຜ່ແລ້ວບໍ່ເຫັນຫຍັງເກີດຂຶ້ນ ມີແຈ້ງເຕືອນສີຂຽວຂຶ້ນມາແວບດຽວ ອ່ານບໍ່ທັນ ບໍ່ຮູ້ວ່າໂຄສະນາຖືກຍິງຫຼືບໍ່"): the 🚀 launch (single ad and A/B group, auto-switch server path) now shows a blocking progress box ("ກຳລັງສົ່ງຄຳສັ່ງຍິງໄປ Facebook...") while the request runs and then a result box that stays until closed: ✅ launched N of M (rest is launched by the system within ~10 min, no need to press again) / ⏳ accepted but video still preparing / ❌ failed with the reason, plus where to look (🧪 tab, Ads Manager name contains TEST). Replaces the 3-second toast. Display only; no server/SQL change.
+// (previous text of this slot, kept) const APP_VERSION = "9.00"; // v9.00 CHANGE (Tar 2026-11-25, "ຄຳເວົ້າທີ່ຢູ່ຂ້າງປຸ່ມສົ່ງຂໍ້ຄວາມ ມັນສະແດງຢູ່ບ່ອນໃດ"): the headline (the bold line shown beside the Send Message button) is now labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" in the three places where it is shown: the review screen of the 🚀 picker (each ad box), the plan cards of the 🧪 tab, and the caption cards of the playbook. Display only; no server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.99"; // v8.99 CHANGE (Tar 2026-11-25, screenshot of the review screen: "ປຸ່ມ (CTA) MESSAGE_PAGE ໝາຍຄວາມວ່າແນວໃດ" + "ເລືອກລາວ ແລ້ວກັນໄທ ຫວຽດນາມ ກຳປູເຈຍ ມຽນມາ ອອກ"): the review screen (step 2 of the 🚀 picker) now shows the CTA in Lao ("ສົ່ງຂໍ້ຄວາມ (Send Message)" for MESSAGE_PAGE, with a short explanation) and a new row "ຍົກເວັ້ນປະເທດ" listing the excluded countries. Server: ads-test-auto v14 always excludes TH, VN, KH, MM on top of what the template excludes (before only the sesame_coffee template had all four, Bio Pro Orange only TH, lutein_coffee none). Display only in index.html; no SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.98"; // v8.98 CHANGE (Tar 2026-11-25, "ຕັດ IG ອອກ ເນັ້ນ Facebook ເປັນຫຼັກ + ຕຳແໜ່ງຈັດໂຄສະນາ"): Instagram removed from the 🧪 test ads. The template Instagram identity is never copied any more, and the 🚀 picker has a new section "3) ຕຳແໜ່ງໂຄສະນາ": Facebook + Messenger (default, no Instagram, no Audience Network) / Facebook only / as template (Advantage+, may include Instagram; for comparison only). The choice is saved as ai.placement on every plan (copies too) and the review screen (step 2) shows it; the Instagram row says it is not used. Server: ads-test-auto v13 (publisher_platforms = [facebook, messenger] or [facebook], all position lists dropped so Facebook picks the sub-positions; if Facebook refuses the placement the launch is retried once with the template targeting). Plans without ai.placement (older or auto-made) also default to Facebook + Messenger. Not yet confirmed on a live Facebook launch. No SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.97"; // v8.97 FIX (Tar 2026-11-25, screenshot of the v8.96 review screen: the "ຄຳທັກທາຍ" row showed raw data "image · https://scontent...fbcdn.net/..."): the saved welcome message of the template ad is a list of Messenger messages (image attachment url, text, quick-reply buttons) and the review printed every string. Now the row shows only the greeting TEXT, "🖼️ ມີຮູບ" when it has a picture, and the quick-reply button titles. Display only; launch logic unchanged.
@@ -1642,7 +1643,8 @@ const APP_VERSION = "9.00"; // v9.00 CHANGE (Tar 2026-11-25, "ຄຳເວົ້
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.99"; // (v8.99 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "9.00"; // (v9.00 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.99"; // (v8.99 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.98"; // (v8.98 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.97"; // (v8.97 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.96"; // (v8.96 text kept in the history comment lines of APP_VERSION above)
@@ -1763,7 +1765,8 @@ const APP_VERSION_PREV = "8.99"; // (v8.99 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.98"; // (v8.98 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.99"; // (v8.99 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.98"; // (v8.98 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.97"; // (v8.97 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.96"; // (v8.96 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.95"; // (v8.95 text kept in the history comment lines above)
@@ -23651,6 +23654,32 @@ async function adsTestApplyTargets(plans, targets, cfg, placement){
   }
   return { total: plans.length + insertedIds.length };
 }
+// v9.01: launch feedback. Before, the 🚀 launch showed no progress except a small button text and a 3-second toast that
+// Tar could not read ("ບໍ່ເຫັນວ່າໂຄສະນາຖືກຍິງຫຼືບໍ່"). Now: a blocking progress box while the request runs, then a result box that stays until closed.
+function adsTestBusyBox(on, text){
+  let el = document.getElementById("tst-busybox");
+  if(!on){ if(el) el.remove(); return; }
+  if(!el){
+    el = document.createElement("div"); el.id = "tst-busybox"; el.className = "no-print";
+    el.style.cssText = "position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<div style="background:#fff;border-radius:14px;padding:26px 28px;max-width:420px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35);"><div style="font-size:38px;line-height:1;">⏳</div><div style="margin-top:12px;font-size:16px;font-weight:700;color:#222;white-space:pre-wrap;">'+esc(text||"")+'</div></div>';
+}
+async function adsTestLaunchResultBox(data, total, errMsg){
+  const nl = "\n\n";
+  const where = "ເບິ່ງຜົນ: ແທັບ 🧪 ກຳລັງທົດສອບ (ສະຖານະຂອງແຕ່ລະແອັດ) ຫຼື Ads Manager — ແຄມເປນຊື່ມີຄຳວ່າ TEST";
+  if(errMsg) return customAlert("❌ ຍິງບໍ່ສຳເລັດ"+nl+errMsg, { danger:true, okLabel:"ຮັບຊາບ" });
+  if(data && data.busy) return customAlert("⏳ ລະບົບກຳລັງເຮັດວຽກຢູ່"+nl+"ຮັບຄຳສັ່ງຍິງໄວ້ແລ້ວ ລະບົບຈະຍິງໃຫ້ເອງໃນຮອບຕໍ່ໄປ (ພາຍໃນ ~10 ນາທີ) ບໍ່ຕ້ອງກົດຊ້ຳ."+nl+where, { okLabel:"ຮັບຊາບ" });
+  const n = (data && data.launched && data.launched.length) || 0;
+  const warn = (data && data.warnings && data.warnings.length) ? ("\n\n⚠️ "+data.warnings.slice(0,3).join("\n⚠️ ")) : "";
+  if(n>0){
+    const rest = Math.max(0, total-n);
+    return customAlert("✅ ຍິງແລ້ວ "+n+" ຈາກ "+total+" ແອັດ"+(rest>0 ? nl+"ທີ່ເຫຼືອ "+rest+" ແອັດ ລະບົບຈະຍິງໃຫ້ເອງພາຍໃນ ~10 ນາທີ (ບໍ່ຕ້ອງກົດຊ້ຳ)" : "")+warn+nl+where, { okLabel:"ຮັບຊາບ" });
+  }
+  if(warn) return customAlert("❌ ຍິງບໍ່ສຳເລັດ"+warn, { danger:true, okLabel:"ຮັບຊາບ" });
+  return customAlert("⏳ ຮັບຄຳສັ່ງແລ້ວ ແຕ່ຍັງບໍ່ໄດ້ຍິງ"+nl+"ກຳລັງກຽມ (ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ) ລະບົບຈະຍິງໃຫ້ເອງເມື່ອພ້ອມ ພາຍໃນ ~10 ນາທີ. ບໍ່ຕ້ອງກົດຊ້ຳ."+nl+where, { okLabel:"ຮັບຊາບ" });
+}
 async function adsTestLaunchGroup(group){
   if(STATE.adsTestTicking || STATE.adsTestBusy) return;
   const ps = (STATE.adsTestPlans||[]).filter(p=>adsTestAbOf(p)===group && ["proposed","approved","failed"].includes(p.status));
@@ -23664,17 +23693,20 @@ async function adsTestLaunchGroup(group){
   });
   if(!picked) return;
   STATE.adsTestTicking = true; render();
+  adsTestBusyBox(true, "ກຳລັງສົ່ງຄຳສັ່ງຍິງໄປ Facebook...\nກະລຸນາລໍຖ້າ ຢ່າປິດໜ້າ (ປະມານ 10–60 ວິນາທີ)");
+  let resData = null, resTotal = ps.length, resErr = "";
   try{
     const ap = await adsTestApplyTargets(ps, picked.targets, cfg, picked.placement);
+    resTotal = ap.total;
     const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[ps[0].product_key] } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
-    if(data && data.busy) showToast("ລະບົບກຳລັງເຮັດວຽກຢູ່ — ກົດຍິງໄວ້ແລ້ວ ລະບົບຈະຍິງໃຫ້ໃນຮອບຕໍ່ໄປ");
-    else if(data && data.launched && data.launched.length) showToast("✅ ຍິງແລ້ວ "+data.launched.length+"/"+ap.total+" ແອັດ — ທີ່ເຫຼືອລະບົບຍິງໃຫ້ເອງ");
-    else if(data && data.warnings && data.warnings.length) showErrorToast("ຍິງບໍ່ສຳເລັດ: "+data.warnings[0]);
-    else showToast("ກຳລັງກຽມ (ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ) — ລະບົບຈະຍິງໃຫ້ເອງເມື່ອພ້ອມ");
-  }catch(e){ showErrorToast("ຍິງບໍ່ສຳເລັດ: "+(e.message||e)); }
+    resData = data;
+  }catch(e){ resErr = String(e.message||e); }
+  adsTestBusyBox(false);
   STATE.adsTestTicking = false;
+  render();
+  await adsTestLaunchResultBox(resData, resTotal, resErr);
   await loadAdsCoachData();
 }
 // v8.92: budget ceilings per product, editable (they only limit the AUTO planner; a manual 🚀 is never blocked by them).
@@ -23857,17 +23889,20 @@ async function adsTestLaunchViaServer(planId){
   });
   if(!picked) return;
   STATE.adsTestTicking = true; render();
+  adsTestBusyBox(true, "ກຳລັງສົ່ງຄຳສັ່ງຍິງໄປ Facebook...\nກະລຸນາລໍຖ້າ ຢ່າປິດໜ້າ (ປະມານ 10–60 ວິນາທີ)");
+  let resData = null, resTotal = 1, resErr = "";
   try{
     const ap = await adsTestApplyTargets([plan], picked.targets, cfg, picked.placement);
+    resTotal = ap.total;
     const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[plan.product_key] } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
-    if(data && data.busy) showToast("ລະບົບກຳລັງເຮັດວຽກຢູ່ — ກົດຍິງໄວ້ແລ້ວ ລະບົບຈະຍິງໃຫ້ໃນຮອບຕໍ່ໄປ");
-    else if(data && data.launched && data.launched.length) showToast(ap.total>1 ? "✅ ຍິງແລ້ວ "+data.launched.length+"/"+ap.total+" ແຄມເປນ — ທີ່ເຫຼືອລະບົບຍິງໃຫ້ເອງ" : "✅ ຍິງແອັດແລ້ວ — ເລີ່ມແລ່ນພາຍໃນ ~3 ນາທີ");
-    else if(data && data.warnings && data.warnings.length) showErrorToast("ຍິງບໍ່ສຳເລັດ: "+data.warnings[0]);
-    else showToast("ກຳລັງກຽມ (ວິດີໂອຕ້ອງສົ່ງໃຫ້ Facebook ກ່ອນ) — ລະບົບຈະຍິງໃຫ້ເອງເມື່ອພ້ອມ");
-  }catch(e){ showErrorToast("ຍິງບໍ່ສຳເລັດ: "+(e.message||e)); }
+    resData = data;
+  }catch(e){ resErr = String(e.message||e); }
+  adsTestBusyBox(false);
   STATE.adsTestTicking = false;
+  render();
+  await adsTestLaunchResultBox(resData, resTotal, resErr);
   await loadAdsCoachData();
 }
 async function adsTestLaunch(planId){

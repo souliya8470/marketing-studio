@@ -371,3 +371,7 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## index.html v9.00 — headline labelled "ຂໍ້ຄວາມຂ້າງປຸ່ມ" (2026-11-25)
 - Display only (no server/SQL change): review screen ad boxes (step 2 of 🚀 picker), 🧪 plan cards (`tst-head`) and playbook caption cards now label the headline (bold line beside the Send Message button).
 - Shown headlines of plans made before ads-test-variants v6 are still old question hooks until the plan is regenerated.
+
+## index.html v9.01 — launch progress + result box (2026-11-25)
+- Tar pressed 🚀 and saw nothing (only a 3 s toast). Checked DB: the launch DID work (ad_test_log #13-15 launched at 13:13 Laos; 9 more plans approved/manual_go, launched by cron in ~10 min).
+- adsTestLaunchGroup / adsTestLaunchViaServer now show a blocking progress box (adsTestBusyBox) then a result box that stays until closed (adsTestLaunchResultBox: launched N/M, queued rest, failed + reason, where to look). Display only; no server/SQL change.
