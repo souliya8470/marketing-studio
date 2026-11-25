@@ -1,4 +1,5 @@
-// Supabase Edge Function: ads-test-auto (v11)
+// Supabase Edge Function: ads-test-auto (v12)
+// v12 (2026-11-25): LAUNCH TARGETS. plan.ai.target = { account_id, account_name, page_id, page_name } (either may be null = take it from the product's template campaign) lets the owner pick the ad account and the Facebook page per launch (UI 🧪 picker) to compare accounts/pages. plan.ai.cmp_group links copies of the same ad launched on different targets (they reuse one uploaded video per ad account). With another page the template's Instagram identity and saved welcome message are NOT copied (they belong to the template page); with another ad account the template's custom audiences are dropped. Plans without ai.target behave exactly as v11.
 // v11 (2026-11-25): creative enhancements copied from the template keep only OPT_IN features (the full OPT_OUT list made Facebook answer "Permissions error" subcode 1487194 on the Velaris creative); that error also triggers the retry without enhancements.
 // v10 (2026-11-24): A/B GROUPS AS ONE CBO CAMPAIGN. Plans with plan.ai.ab_mode = "cbo" and the same plan.ai.ab_group (made by the UI "split into 3 ads",
 //     one video x N caption angles) are launched as 1 campaign (campaign budget = sum of the group's daily_budget, CBO) -> 1 ad set -> N ads, like Ads Manager
@@ -792,6 +793,13 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   const { data: asset } = await sb.from("product_assets").select("*").eq("id", plan.asset_id).maybeSingle();
   if (!asset) throw new Error("asset was deleted");
 
+  // v12: launch target chosen by the owner (ad account / page); null parts = template defaults
+  const tgt: any = (plan.ai && plan.ai.target && typeof plan.ai.target === "object") ? plan.ai.target : null;
+  const origAcct = String(cfg.ad_account_id);
+  const acct = (tgt && tgt.account_id) ? String(tgt.account_id) : origAcct;
+  cfg = { ...cfg, ad_account_id: acct };
+  if (asset.fb_video_id && acct !== origAcct) throw new Error("an old Facebook video can only be used in its own ad account");
+
   // v6: the promo may have changed since the caption was written (plans can wait for the next morning)
   if (plan.ai && Object.prototype.hasOwnProperty.call(plan.ai, "promo_used") && plan.status === "approved" && !plan.upload_phase) {
     const now = activePromo(cfg), then = plan.ai.promo_used;
@@ -829,8 +837,22 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
       video = { videoId: joinTo.video_id, thumbnailImageHash: s.thumbnailImageHash || null, thumbnailUrl: s.thumbnailUrl || null };
       if (!DRY) await sb.from("ad_test_plans").update({ video_id: joinTo.video_id, upload_phase: "ready" }).eq("id", plan.id);
     } else {
-      video = await advanceVideo(plan, asset, cfg);
-      if (!video) return; // more ticks needed
+      // v12: the same ad launched on several pages of ONE ad account shares one upload
+      let sib: any = null;
+      if (plan.ai && plan.ai.cmp_group && !plan.upload_phase) {
+        const { data: sibs } = await sb.from("ad_test_plans").select("id,video_id,upload_phase,ai").eq("ai->>cmp_group", String(plan.ai.cmp_group)).neq("id", plan.id).not("video_id", "is", null);
+        sib = (sibs || []).find((x: any) => String((x.ai && x.ai.target && x.ai.target.account_id) || origAcct) === acct) || null;
+      }
+      if (sib && sib.upload_phase === "transfer") { report.skipped.push(`${plan.product_key}: plan ${id8} waits for the video upload of its twin on the same ad account`); return; }
+      if (sib && ["processing", "ready"].includes(sib.upload_phase)) {
+        const s = await callFn("fb-upload-video", { adAccountId: acct, connectionMode: "system", launchedBy: "ads-test-auto", action: "status", videoId: sib.video_id }, 60000);
+        if (!s || !s.ready) { report.skipped.push(`${plan.product_key}: shared video of plan ${id8} is not ready yet`); return; }
+        video = { videoId: sib.video_id, thumbnailImageHash: s.thumbnailImageHash || null, thumbnailUrl: s.thumbnailUrl || null };
+        if (!DRY) await sb.from("ad_test_plans").update({ video_id: sib.video_id, upload_phase: "ready" }).eq("id", plan.id);
+      } else {
+        video = await advanceVideo(plan, asset, cfg);
+        if (!video) return; // more ticks needed
+      }
     }
   }
   if (!inWindow) { report.skipped.push(`${plan.product_key}: ready but outside launch window`); return; }
@@ -839,6 +861,13 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
 
   const a = await loadTemplate(cfg);
   const T = a.full;
+  const pageId = (tgt && tgt.page_id) ? String(tgt.page_id) : String(a.pageId);
+  const samePage = pageId === String(a.pageId);
+  let targetingCopy: any = T.targeting;
+  if (acct !== origAcct && targetingCopy) {
+    targetingCopy = JSON.parse(JSON.stringify(targetingCopy));
+    delete targetingCopy.custom_audiences; delete targetingCopy.excluded_custom_audiences; // audiences belong to the template's ad account
+  }
   let imageBase64: string | null = null;
   if (asset.kind === "image") {
     const r = await fetch(asset.public_url);
@@ -847,7 +876,8 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     if (u8.length > 12_000_000) throw new Error("image larger than 12MB");
     imageBase64 = b64(u8);
   }
-  const name = `${cfg.label} TEST ${laosDDMM()} #${id8}`;
+  const tgtTag = (tgt && (tgt.account_name || tgt.page_name)) ? " [" + [tgt.account_name, tgt.page_name].filter(Boolean).join(" / ").slice(0, 48) + "]" : "";
+  const name = `${cfg.label}${tgtTag} TEST ${laosDDMM()} #${id8}`;
   const capped = a.bidStrategy && a.bidStrategy !== "LOWEST_COST_WITHOUT_CAP";
   const startTime = CREATE_PAUSED ? null : new Date(Date.now() + 3 * 60e3).toISOString();
   const body: any = {
@@ -855,24 +885,24 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     dailyBudget: (plan.ai && plan.ai.ab_mode === "cbo" && !joinTo) ? groupBudget : Number(plan.daily_budget), budgetType: (plan.ai && plan.ai.ab_mode === "cbo" && !joinTo) ? "cbo" : "abo",
     bidStrategy: capped ? a.bidStrategy : null, bidAmount: (capped && a.bidAmount != null) ? Number(a.bidAmount) : null,
     destinationType: (T.destinationType || a.destinationType) === "WHATSAPP" ? "whatsapp" : "messenger",
-    pageWelcomeMessage: T.welcomeRaw || null, pixelId: null, websiteUrl: null,
+    pageWelcomeMessage: samePage ? (T.welcomeRaw || null) : null, pixelId: null, websiteUrl: null,
     primaryText: plan.caption, headline: plan.headline || null,
     imageBase64, existingPostId: null, existingImageHash: null,
     videoId: video ? video.videoId : null, videoThumbnailImageHash: video ? video.thumbnailImageHash : null, videoThumbnailUrl: video ? video.thumbnailUrl : null,
     ctaType: a.ctaType || T.ctaType || null, ageMin: Number(a.ageMin) || 18, ageMax: Number(a.ageMax) || 65, gender: a.gender || "all",
     locations: a.locations || [], interests: a.interests || [], savedAudienceId: null,
-    targetingOverride: T.targeting, instagramUserId: T.instagramUserId || null, degreesOfFreedomSpec: T.dof || null,
+    targetingOverride: targetingCopy, instagramUserId: samePage ? (T.instagramUserId || null) : null, degreesOfFreedomSpec: T.dof || null,
     mobileOnly: false, placementMode: "auto", placements: { facebook: [], instagram: [], messenger: [] },
     launchedBy: "ads-test-auto", assignedRuleId: null, startTime, templateId: null, templateName: null,
-    adAccountId: cfg.ad_account_id, pageId: a.pageId, flowType: "new_campaign", campaignId: null, campaignName: name, adsetName: name,
+    adAccountId: acct, pageId, flowType: "new_campaign", campaignId: null, campaignName: name, adsetName: name,
   };
   let res: any;
   if (joinTo) {
     // v10: join the group's existing ad set: new creative + ad only
     const letter = "ABCDEF"[Number(plan.ai?.ab_index) || 0] || "X";
     const addBody: any = {
-      adAccountId: cfg.ad_account_id, adsetId: joinTo.adset_id, campaignId: joinTo.campaign_id, campaignName: null, logName: name, adName: `${name} - Ad ${letter}`,
-      pageId: a.pageId, destinationType: body.destinationType, pageWelcomeMessage: body.pageWelcomeMessage, primaryText: plan.caption, headline: plan.headline || null,
+      adAccountId: acct, adsetId: joinTo.adset_id, campaignId: joinTo.campaign_id, campaignName: null, logName: name, adName: `${name} - Ad ${letter}`,
+      pageId, destinationType: body.destinationType, pageWelcomeMessage: body.pageWelcomeMessage, primaryText: plan.caption, headline: plan.headline || null,
       videoId: body.videoId, videoThumbnailImageHash: body.videoThumbnailImageHash, videoThumbnailUrl: body.videoThumbnailUrl, imageBase64,
       ctaType: body.ctaType, instagramUserId: body.instagramUserId, degreesOfFreedomSpec: body.degreesOfFreedomSpec, active: !CREATE_PAUSED, launchedBy: "ads-test-auto", dailyBudget: Number(plan.daily_budget),
     };

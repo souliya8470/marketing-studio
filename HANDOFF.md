@@ -330,3 +330,12 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Auto switch was turned OFF during the test and is back ON (value '1').
 - Lesson: a tick without `create_paused` continues any `manual_go` plan LIVE — before a paused test, make sure the cron cannot pick the plan up (switch auto off between my own ticks).
 - Open: items 2 (add ads from other videos into a running ad set) and 3 (Ads-Manager-like defaults in the launch form) not started.
+
+## v8.95 — choose ad account + page at every launch, compare results (2026-11-25, editor chat) -- index.html + ads-test-auto v12
+- Tar: "choose everything before testing an ad, so I can compare which ad works with which page / ad account".
+- 🧪 tab, 🚀 buttons (single ad + A/B group; only on the server path = auto switch ON): `adsTestPickTargets` modal (multi-select accounts and pages, nothing ticked = template default, max 6 combinations, warns about unsettled accounts). `adsTestApplyTargets` writes `ai.target {account_id, account_name, page_id, page_name}` on the plan, inserts copies (status approved + manual_go) for the other combinations, linked by `ai.cmp_group` (`cmp_copy:true` on copies; copies of an A/B group get their own `ab_group` → one CBO campaign per combination).
+- `ads-test-auto` v12 (deployed, snapshot in repo): uses target account/page; other page → template IG identity + welcome message NOT copied; other account → template custom audiences dropped; old imported FB video only on its own account (picker locks others); sibling plans of one `cmp_group` on the same ad account share one video upload; campaign name gets `[account / page]` before `TEST dd/mm #id8`.
+- New card "📊 ທຽບຜົນຕາມບັນຊີ/ເພຈ" (7-day spend / messages / cost per message / link CTR per combination, 🏆 best cost per message only when every row has messages) above running and judged cards; 🎯 badge on cards.
+- Not tested live on Facebook (ToukShop account act_1820956388519613 is still UNSETTLED; use a healthy account like Yumiko act_753806877392045 — its page must be allowed for that account). A page not shared with the ad account will fail with a Facebook error shown in the plan (fail_reason).
+- Auto switch OFF → the old browser-side launch is unchanged (always template account/page).
+- Still open: #108 paused CBO test (needs a healthy account), #109 add ads of other videos into a running ad set, #110 Ads-Manager-like defaults in launch form.
