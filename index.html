@@ -979,7 +979,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "8.97"; // v8.97 FIX (Tar 2026-11-25, screenshot of the v8.96 review screen: the "ຄຳທັກທາຍ" row showed raw data "image · https://scontent...fbcdn.net/..."): the saved welcome message of the template ad is a list of Messenger messages (image attachment url, text, quick-reply buttons) and the review printed every string. Now the row shows only the greeting TEXT, "🖼️ ມີຮູບ" when it has a picture, and the quick-reply button titles. Display only; launch logic unchanged.
+const APP_VERSION = "8.98"; // v8.98 CHANGE (Tar 2026-11-25, "ຕັດ IG ອອກ ເນັ້ນ Facebook ເປັນຫຼັກ + ຕຳແໜ່ງຈັດໂຄສະນາ"): Instagram removed from the 🧪 test ads. The template Instagram identity is never copied any more, and the 🚀 picker has a new section "3) ຕຳແໜ່ງໂຄສະນາ": Facebook + Messenger (default, no Instagram, no Audience Network) / Facebook only / as template (Advantage+, may include Instagram; for comparison only). The choice is saved as ai.placement on every plan (copies too) and the review screen (step 2) shows it; the Instagram row says it is not used. Server: ads-test-auto v13 (publisher_platforms = [facebook, messenger] or [facebook], all position lists dropped so Facebook picks the sub-positions; if Facebook refuses the placement the launch is retried once with the template targeting). Plans without ai.placement (older or auto-made) also default to Facebook + Messenger. Not yet confirmed on a live Facebook launch. No SQL change.
+// (previous text of this slot, kept) const APP_VERSION = "8.97"; // v8.97 FIX (Tar 2026-11-25, screenshot of the v8.96 review screen: the "ຄຳທັກທາຍ" row showed raw data "image · https://scontent...fbcdn.net/..."): the saved welcome message of the template ad is a list of Messenger messages (image attachment url, text, quick-reply buttons) and the review printed every string. Now the row shows only the greeting TEXT, "🖼️ ມີຮູບ" when it has a picture, and the quick-reply button titles. Display only; launch logic unchanged.
 // (previous text of this slot, kept) const APP_VERSION = "8.96"; // v8.96 NEW (Tar 2026-11-25, screenshot of the account/page picker: "ເຮົາສິພຣີວິວແອດຢູ່ໃນ Ad Manager ກ່ອນທີ່ເຮົາສິກົດເຜີຍແຜ່ ... ຢາກໃຫ້ມີຂັ້ນຕອນນັ້ນນຳ ເພື່ອກົດເຊັກອີຫຍັງຫຼາຍໆຢ່າງ"): the 🚀 picker of v8.95 is now 2 steps. Step 1 = choose ad accounts + pages ("ຕໍ່ໄປ: ກວດກ່ອນເຜີຍແຜ່"). Step 2 = REVIEW before publish, like the Ads Manager review screen: one block per campaign that will be created (campaign name, ad account + status, page, objective/destination, CBO or ABO budget, start, audience age/countries/Advantage+ audience/custom audiences, placements, saved greeting text, Instagram identity, CTA, every ad with its full caption + headline + file) and a ✅/⚠️ check list (unsettled account, other page = greeting/IG not copied, other account = audiences dropped, imported video locked to its account, total budget vs the product daily cap, empty greeting in the template, caption too long). The template facts come from the read-only ads-test-auto action "template" (no Facebook write, ~5-10 s, shown with a spinner; if it fails the review still opens with a warning). Buttons: "← ກັບໄປແກ້" (keeps the ticks) and "🚀 ເຜີຍແຜ່ເລີຍ". Nothing is written to the database or Facebook before that last button. No server/SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.95"; // v8.95 NEW (Tar 2026-11-25, "ໃຫ້ສາມາດເລືອກໄດ້ທຸກຢ່າງກ່ອນທີ່ເຮົາຈະເທສແອັດ ... ເທສແອັດນີ້ໄປດີກັບເພຈໃດ/ບັນຊີໃດ ເອົາຂໍ້ມູນມາທຽບກັນ"): at every 🚀 launch in the 🧪 tab (single ad and A/B group, auto switch ON = server path) a picker opens: tick one or more AD ACCOUNTS and one or more FACEBOOK PAGES (nothing ticked = the product template default, as before). Every account x page combination becomes its own campaign (a group of 3 captions stays 1 CBO campaign per combination). adsTestPickTargets (modal, shows total budget, warns about unsettled accounts / other page / other account, max 6 combinations) -> adsTestApplyTargets writes ai.target {account_id, account_name, page_id, page_name} on the plan and inserts copies for the other combinations (status approved + manual_go, ai.cmp_group links them, cmp_copy marks the copies, copies of an A/B group get their own ab_group). Server: ads-test-auto v12 (deployed first) launches with the chosen account/page; another page = template Instagram identity + welcome message are NOT copied; another account = template custom audiences dropped; an imported old Facebook video can only go to its own account (picker locks the others); the same video is uploaded once per ad account. New card "📊 ທຽບຜົນຕາມບັນຊີ/ເພຈ" in ກຳລັງທົດສອບ (adsTestCmpCard): per combination spend, messages, cost per message, link CTR from the 7-day numbers, best cost per message marked 🏆 only when every row has messages; running/judged/ready cards show a 🎯 badge with the chosen account/page. Campaign names get the tag " [account / page]". With the auto switch OFF the old browser-side launch is unchanged (always template account/page). No SQL change.
 // (previous text of this slot, kept) const APP_VERSION = "8.94"; // v8.94 CHANGE (Tar 2026-11-25, "ບັນທຶກຊື່ຂົນສົ່ງຜິດ ອານຸສິດ<->ຮຸ່ງອາລຸນ ແລ້ວສົ່ງບິນຊ້ຳຫາລູກຄ້າ"): courier bill import used to read the courier radio (STATE.courierBillCourierName) LATE (OCR + batch creation, minutes after the upload started) and two uploads could overlap in the same tab, so another n8n script flipping the radio mid-OCR relabelled a whole batch (310 rows since Oct) and the duplicate check, being per-courier, missed them -> bills sent twice. Fix: courierBillHandleFiles now captures the courier at call time and queues uploads one after another (_courierBillUploadChain); processing/batch creation use STATE.courierBillUploadCourier; the tracking-number duplicate check no longer filters by courier (826... = Anousith, VTE... = HAL are unique across couriers). No DB change.
@@ -1639,7 +1640,8 @@ const APP_VERSION = "8.97"; // v8.97 FIX (Tar 2026-11-25, screenshot of the v8.9
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "8.96"; // (v8.96 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "8.97"; // (v8.97 text kept in the history comment lines of APP_VERSION above)
+// (previous text of this slot, kept) const APP_VERSION_PREV = "8.96"; // (v8.96 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.95"; // (v8.95 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.94"; // (v8.94 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "8.93"; // (v8.93 text kept in the history comment lines of APP_VERSION above)
@@ -1757,7 +1759,8 @@ const APP_VERSION_PREV = "8.96"; // (v8.96 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "8.95"; // (v8.95 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "8.96"; // (v8.96 text kept in the history comment lines above)
+// (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.95"; // (v8.95 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.94"; // (v8.94 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.93"; // (v8.93 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "8.92"; // (v8.92 text kept in the history comment lines above)
@@ -23469,6 +23472,12 @@ function adsTestPickTargets(opts){
         <div style="margin-bottom:10px;">${accRows}</div>
         <div style="font-weight:700;margin-bottom:4px;">2) ເພຈ Facebook <span style="font-weight:400;color:#777;font-size:12px;">— ບໍ່ຕິ໊ກ = ໃຊ້ເພຈຂອງແມ່ແບບ</span></div>
         <div style="margin-bottom:10px;max-height:220px;overflow:auto;">${pageRows}</div>
+        <div style="font-weight:700;margin-bottom:4px;">3) ຕຳແໜ່ງໂຄສະນາ <span style="font-weight:400;color:#777;font-size:12px;">— ແອັດຈະສະແດງຢູ່ບ່ອນໃດ</span></div>
+        <div style="margin-bottom:10px;">
+          <label style="${rowStyle}"><input type="radio" name="tgt-plc" value="fb_messenger" checked/> <span><b>Facebook + Messenger</b> <span style="font-size:11px;background:#E8F3E8;border-radius:999px;padding:1px 8px;">ແນະນຳ</span><br/><span style="color:#777;font-size:12px;">ຟີດ, ສະຕໍຣີ, Reels ຂອງ Facebook ແລະ ກ່ອງ Messenger — ບໍ່ມີ Instagram, ບໍ່ມີ Audience Network</span></span></label>
+          <label style="${rowStyle}"><input type="radio" name="tgt-plc" value="fb_only"/> <span><b>Facebook ຢ່າງດຽວ</b><br/><span style="color:#777;font-size:12px;">ບໍ່ສະແດງໃນ Messenger, Instagram, Audience Network</span></span></label>
+          <label style="${rowStyle}"><input type="radio" name="tgt-plc" value="template"/> <span><b>ຕາມແມ່ແບບ (ອັດຕະໂນມັດ Advantage+)</b><br/><span style="color:#777;font-size:12px;">Facebook ເລືອກເອງ ອາດລວມ Instagram ແລະ Audience Network — ໃຊ້ທຽບຜົນເທົ່ານັ້ນ</span></span></label>
+        </div>
         <div id="tgt-info" style="font-size:13px;margin-bottom:10px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-outline" id="tgt-cancel">ຍົກເລີກ</button><button class="btn" id="tgt-next">ຕໍ່ໄປ: ກວດກ່ອນເຜີຍແຜ່ →</button></div>
       </div>
@@ -23482,6 +23491,7 @@ function adsTestPickTargets(opts){
       for(const a of (A.length?A:[null])) for(const pg of (P.length?P:[null])) targets.push({ account_id:a?a.id:null, account_name:a?a.name:null, page_id:pg?pg.id:null, page_name:pg?pg.name:null });
       return targets;
     };
+    const getPlc = ()=>{ const r = ov.querySelector("input[name=tgt-plc]:checked"); return r ? r.value : "fb_messenger"; };
     const refresh = ()=>{
       const A = picked("tgt-acc"), P = picked("tgt-page");
       const n = Math.max(1,A.length)*Math.max(1,P.length);
@@ -23533,15 +23543,19 @@ function adsTestPickTargets(opts){
         const gImg = cn.some(x=>/^https?:/i.test(x) || x==="image");
         const greetTxt = gBody.length ? esc(gBody[0].slice(0,300)) + (gImg?" · 🖼️ ມີຮູບ":"") + (gQr.length?`<div style="color:#777;font-size:12px;">ປຸ່ມຕອບດ່ວນ: ${esc(gQr.slice(0,6).join(" | "))}</div>`:"") : "";
         const greet = otherPage ? `<span style="color:#B7791F;">ບໍ່ກ໊ອບ — ໃຊ້ຄຳທັກທາຍທີ່ຕັ້ງໄວ້ໃນເພຈນີ້ເອງ</span>` : (greetTxt || `<span style="color:#B7791F;">ແມ່ແບບບໍ່ມີຄຳທັກທາຍ</span>`);
-        const ig = otherPage ? `<span style="color:#B7791F;">ບໍ່ກ໊ອບ</span>` : (t.instagram_user_id ? "ໃຊ້ IG ຂອງແມ່ແບບ" : "ບໍ່ມີ");
+        const ig = "ບໍ່ໃຊ້ — ບໍ່ເອົາ Instagram (ຈະບໍ່ກ໊ອບ IG ຂອງແມ່ແບບ)";
         const custom = Number(aud.custom_audiences||0);
-        const place = pl.mode==="manual" ? "ກຳນົດເອງ: "+esc((pl.publisher_platforms||[]).join(", ")) : "ອັດຕະໂນມັດ (Advantage+)";
+        const plc = getPlc();
+        const place = plc==="fb_messenger" ? "<b>Facebook + Messenger</b> (ບໍ່ມີ Instagram) — ຕຳແໜ່ງຍ່ອຍ Facebook ເລືອກເອງພາຍໃນສອງບ່ອນນີ້"
+          : plc==="fb_only" ? "<b>Facebook ຢ່າງດຽວ</b> — ຕຳແໜ່ງຍ່ອຍ Facebook ເລືອກເອງ"
+          : (pl.mode==="manual" ? "ຕາມແມ່ແບບ — ກຳນົດເອງ: "+esc((pl.publisher_platforms||[]).join(", ")) : "ຕາມແມ່ແບບ — ອັດຕະໂນມັດ (Advantage+) ອາດລວມ Instagram");
         const ads = plans.map((x,j)=>`<div style="border:1px solid #E9E3D3;border-radius:8px;padding:8px;margin-top:6px;font-size:12.5px;"><b>ແອັດ ${isCbo?"ABCDEF"[j]||j+1:""}${x.headline?" · "+esc(x.headline):""}</b> <span style="color:#777;">(${String(x.caption||"").length} ຕົວອັກສອນ)</span><div style="white-space:pre-wrap;margin-top:4px;max-height:110px;overflow:auto;">${esc(x.caption||"")}</div></div>`).join("");
         const w = [];
         if(bad) w.push(`⚠️ ບັນຊີ "${esc(accName)}" ${esc(adAccountStatusLabel(acc.accountStatus))} — Facebook ອາດບໍ່ຍອມສ້າງແອັດ`);
         if(otherAcc && custom>0) w.push(`ບັນຊີອື່ນ: ກຸ່ມເປົ້າໝາຍ custom audience ຂອງແມ່ແບບ (${custom}) ຈະບໍ່ຖືກກ໊ອບ`);
         if(otherPage) w.push("ເພຈອື່ນ: ຕ້ອງແນ່ໃຈວ່າເພຈນີ້ຖືກແຊຣ໌ໃຫ້ບັນຊີໂຄສະນານີ້ ບໍ່ດັ່ງນັ້ນ Facebook ຈະປະຕິເສດ");
         if(plans.some(x=>String(x.caption||"").length>450)) w.push("ມີແຄັບຊັນຍາວກວ່າ 450 ຕົວອັກສອນ");
+        if(getPlc()==="template") w.push("ຕຳແໜ່ງຕາມແມ່ແບບ: ແອັດອາດສະແດງໃນ Instagram ແລະ Audience Network");
         return `<div style="border:2px solid ${w.length?"#E0B04A":"#BFD8C2"};border-radius:10px;padding:10px;margin-bottom:10px;">
           <div style="font-weight:700;margin-bottom:4px;">ແຄມເປນ ${i+1}/${targets.length}</div>
           ${row("ຊື່ແຄມເປນ", esc(lbl+tag+" TEST "+ddmm+" #xxxxxxxx"))}
@@ -23565,7 +23579,7 @@ function adsTestPickTargets(opts){
         ${cards}
         <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;"><button class="btn btn-outline" id="tgt-back">← ກັບໄປແກ້</button><button class="btn" id="tgt-ok">🚀 ເຜີຍແຜ່ເລີຍ</button></div>`;
       s2.querySelector("#tgt-back").onclick = ()=>{ ov.querySelector("#tgt-title").textContent = "🚀 ຍິງແອັດ — ຂັ້ນ 1/2: ເລືອກບັນຊີ ແລະ ເພຈ"; s2.style.display="none"; ov.querySelector("#tgt-step1").style.display=""; };
-      s2.querySelector("#tgt-ok").onclick = ()=>done({ targets });
+      s2.querySelector("#tgt-ok").onclick = ()=>done({ targets, placement:getPlc() });
     };
     ov.querySelector("#tgt-next").onclick = async ()=>{
       const s2 = ov.querySelector("#tgt-step2");
@@ -23587,7 +23601,7 @@ function adsTestPickTargets(opts){
   });
 }
 // writes ai.target on the plans, inserts copies for the other combinations, and approves everything (manual_go) so the tick launches it
-async function adsTestApplyTargets(plans, targets, cfg){
+async function adsTestApplyTargets(plans, targets, cfg, placement){
   const uid = ()=> (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ("g"+Date.now()+Math.random().toString(36).slice(2,8));
   const tOf = (t)=> (t && (t.account_id||t.page_id)) ? { account_id:t.account_id||null, account_name:t.account_name||null, page_id:t.page_id||null, page_name:t.page_name||null } : null;
   const cmp = targets.length>1 ? uid() : null;
@@ -23599,6 +23613,7 @@ async function adsTestApplyTargets(plans, targets, cfg){
       const t = tOf(targets[k]); const gmap = {};
       const rows = plans.map(p=>{
         const ai = Object.assign({}, p.ai||{}, { manual_go:true, manual_go_at:stamp, cmp_group:cmp, cmp_copy:true });
+        if(placement) ai.placement = placement;
         delete ai.variants;
         if(t) ai.target = t; else delete ai.target;
         if(ai.ab_group){ const og = String(ai.ab_group); gmap[og] = gmap[og] || uid(); ai.ab_group = gmap[og]; }
@@ -23611,6 +23626,7 @@ async function adsTestApplyTargets(plans, targets, cfg){
     const t0 = tOf(targets[0]);
     for(const p of plans){
       const ai = Object.assign({}, p.ai||{}, { manual_go:true, manual_go_at:stamp });
+      if(placement) ai.placement = placement;
       if(t0) ai.target = t0; else delete ai.target;
       if(cmp) ai.cmp_group = cmp; else delete ai.cmp_group;
       const patch = { status:"approved", attempts:0, fail_reason:null, last_checked_at:null, ai };
@@ -23639,7 +23655,7 @@ async function adsTestLaunchGroup(group){
   if(!picked) return;
   STATE.adsTestTicking = true; render();
   try{
-    const ap = await adsTestApplyTargets(ps, picked.targets, cfg);
+    const ap = await adsTestApplyTargets(ps, picked.targets, cfg, picked.placement);
     const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[ps[0].product_key] } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");
@@ -23832,7 +23848,7 @@ async function adsTestLaunchViaServer(planId){
   if(!picked) return;
   STATE.adsTestTicking = true; render();
   try{
-    const ap = await adsTestApplyTargets([plan], picked.targets, cfg);
+    const ap = await adsTestApplyTargets([plan], picked.targets, cfg, picked.placement);
     const { data, error } = await sb.functions.invoke("ads-test-auto", { body: { action:"tick", force_launch:true, product_keys:[plan.product_key] } });
     if(error) throw new Error(await extractFunctionErrorMessage(error));
     if(data && data.ok===false) throw new Error(data.error||"ບໍ່ສຳເລັດ");

@@ -1,4 +1,5 @@
-// Supabase Edge Function: ads-test-auto (v12)
+// Supabase Edge Function: ads-test-auto (v13)
+// v13 (2026-11-25): NO INSTAGRAM + PLACEMENT CHOICE. Tar does not market or answer on Instagram: the template Instagram identity is never copied any more, and plan.ai.placement decides where the ad is shown: "fb_messenger" (default when missing) = publisher_platforms [facebook, messenger] (no Instagram, no Audience Network), "fb_only" = [facebook], "template" = the template targeting untouched (Advantage+ placements). All per-position lists are dropped so Facebook picks the positions inside the chosen platforms. If Facebook refuses the placement the launch is retried once with the template targeting.
 // v12 (2026-11-25): LAUNCH TARGETS. plan.ai.target = { account_id, account_name, page_id, page_name } (either may be null = take it from the product's template campaign) lets the owner pick the ad account and the Facebook page per launch (UI 🧪 picker) to compare accounts/pages. plan.ai.cmp_group links copies of the same ad launched on different targets (they reuse one uploaded video per ad account). With another page the template's Instagram identity and saved welcome message are NOT copied (they belong to the template page); with another ad account the template's custom audiences are dropped. Plans without ai.target behave exactly as v11.
 // v11 (2026-11-25): creative enhancements copied from the template keep only OPT_IN features (the full OPT_OUT list made Facebook answer "Permissions error" subcode 1487194 on the Velaris creative); that error also triggers the retry without enhancements.
 // v10 (2026-11-24): A/B GROUPS AS ONE CBO CAMPAIGN. Plans with plan.ai.ab_mode = "cbo" and the same plan.ai.ab_group (made by the UI "split into 3 ads",
@@ -868,6 +869,14 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     targetingCopy = JSON.parse(JSON.stringify(targetingCopy));
     delete targetingCopy.custom_audiences; delete targetingCopy.excluded_custom_audiences; // audiences belong to the template's ad account
   }
+  // v13: placement choice (default Facebook + Messenger, never Instagram)
+  const plc = (plan.ai && plan.ai.placement) ? String(plan.ai.placement) : "fb_messenger";
+  const targetingBase = targetingCopy;
+  if (plc !== "template" && targetingCopy) {
+    targetingCopy = JSON.parse(JSON.stringify(targetingCopy));
+    for (const k of ["facebook_positions", "instagram_positions", "messenger_positions", "audience_network_positions", "threads_positions"]) delete targetingCopy[k];
+    targetingCopy.publisher_platforms = plc === "fb_only" ? ["facebook"] : ["facebook", "messenger"];
+  }
   let imageBase64: string | null = null;
   if (asset.kind === "image") {
     const r = await fetch(asset.public_url);
@@ -891,7 +900,8 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
     videoId: video ? video.videoId : null, videoThumbnailImageHash: video ? video.thumbnailImageHash : null, videoThumbnailUrl: video ? video.thumbnailUrl : null,
     ctaType: a.ctaType || T.ctaType || null, ageMin: Number(a.ageMin) || 18, ageMax: Number(a.ageMax) || 65, gender: a.gender || "all",
     locations: a.locations || [], interests: a.interests || [], savedAudienceId: null,
-    targetingOverride: targetingCopy, instagramUserId: samePage ? (T.instagramUserId || null) : null, degreesOfFreedomSpec: T.dof || null,
+    targetingOverride: targetingCopy, instagramUserId: null, // v13: no Instagram identity
+    degreesOfFreedomSpec: T.dof || null,
     mobileOnly: false, placementMode: "auto", placements: { facebook: [], instagram: [], messenger: [] },
     launchedBy: "ads-test-auto", assignedRuleId: null, startTime, templateId: null, templateName: null,
     adAccountId: acct, pageId, flowType: "new_campaign", campaignId: null, campaignName: name, adsetName: name,
@@ -924,7 +934,12 @@ async function launchOne(plan: any, cfg: any, inWindow: boolean) {
   try { res = await callFn("launch-ad", body, 90000); }
   catch (e) {
     // creative enhancements are the one part Facebook may refuse on its own; launch-ad already removed the empty campaign
-    if (body.degreesOfFreedomSpec && /3858504|1487194|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
+    if (plc !== "template" && /placement|publisher_platform|position/i.test(errMsg(e)) && timeLeft() > 25000) {
+      report.warnings.push("launch with template placements (Facebook refused the chosen ones): " + errMsg(e));
+      await L(plan.product_key, plan.id, "launch_placement_fallback", errMsg(e));
+      body.targetingOverride = targetingBase;
+      res = await callFn("launch-ad", body, 90000);
+    } else if (body.degreesOfFreedomSpec && /3858504|1487194|degrees_of_freedom|creative_features|enhancement/i.test(errMsg(e)) && timeLeft() > 25000) {
       report.warnings.push("launch without creative enhancements: " + errMsg(e));
       await L(plan.product_key, plan.id, "launch_no_dof", errMsg(e));
       body.degreesOfFreedomSpec = null;

@@ -347,3 +347,10 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 ## v8.97 — review screen greeting row fix (2026-11-25, editor chat) -- index.html only
 - v8.96 review printed the raw welcome-message strings (image url etc.). Now shows greeting text + "🖼️ ມີຮູບ" + quick-reply titles. Display only.
 - Open question to Tar: for a page other than the template page the greeting/IG are NOT copied (server v12); offered to add a saved-greeting (ad_message_templates) dropdown per page in the picker.
+
+## v8.98 + ads-test-auto v13 — no Instagram, placement choice (2026-11-25)
+- Tar: no marketing/replies on Instagram, focus on Facebook; asked where ads show now.
+- Before: placements and the IG identity were copied from the template (Advantage+ automatic = Facebook, Instagram, Messenger, Audience Network; IG identity only for the template page).
+- Now: ads-test-auto v13 (deployed, version 13) never sends an Instagram identity; `plan.ai.placement` = `fb_messenger` (default, also when missing) -> publisher_platforms [facebook, messenger]; `fb_only` -> [facebook]; `template` -> template targeting untouched. All *_positions lists are dropped. If Facebook refuses the placement, one retry with template targeting (log action `launch_placement_fallback`).
+- index.html v8.98: picker step 1 has "3) ຕຳແໜ່ງໂຄສະນາ" radios; choice saved as ai.placement on all plans (copies too); review screen shows it; Instagram row says not used.
+- NOT yet verified on a live Facebook launch (ToukShop still unpaid; manual placement without positions untested). Check ad_test_log for launch_placement_fallback after the first launch.
