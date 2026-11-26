@@ -1,4 +1,6 @@
-// ads-manager-api (v1, 2026-11-25) — backs the "📑 Ads Manager" sub-page of Marketing Studio.
+// ads-manager-api (v2, 2026-11-26) — backs the "📑 Ads Manager" sub-page of Marketing Studio.
+//   v2: detail also returns the REAL page (name + avatar) the ad / ad set / campaign runs with, a large picture for the preview, and
+//       action "preview" returns Facebook's own preview iframe (GET /{ad_id}/previews) like the real Ads Manager.
 //   action "detail": live read of one campaign / ad set / ad from the Facebook Marketing API (all settings, targeting, placements, creative, greeting message).
 //   action "edit":   whitelisted edits (campaign/adset/ad name, end time, ad-set age/gender/countries/placements, ad primary text/headline/CTA).
 //                    Status, budget, start time and bid strategy keep using update-ad-entity.
@@ -63,6 +65,11 @@ async function fbGet(path: string, token: string, fields: string) {
   const r = await fetch(`${FB}/${path}?fields=${encodeURIComponent(fields)}&access_token=${token}`);
   const j = await r.json(); if (j.error) throw new Error(fbErr(j)); return j;
 }
+async function fbGetX(path: string, token: string, fields: string, extra: Record<string, string>) {
+  const q = new URLSearchParams({ fields, access_token: token, ...extra });
+  const r = await fetch(`${FB}/${path}?${q.toString()}`);
+  const j = await r.json(); if (j.error) throw new Error(fbErr(j)); return j;
+}
 async function fbPost(path: string, token: string, params: Record<string, any>) {
   const body = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) body.set(k, typeof v === "string" ? v : JSON.stringify(v));
@@ -107,12 +114,60 @@ async function logChange(type: string, id: string, name: string, action: string,
   try { await sb.from("ad_control_log").insert({ entity_type: type, entity_id: id, entity_name: name || "", action, old_value: oldV, new_value: newV, changed_by: by || "" }); } catch (_e) { /* best effort */ }
 }
 
+// real page behind an id: name + avatar (never throws — a page we cannot read just comes back with only its id)
+async function pageInfo(pageId: string | null | undefined, token: string) {
+  if (!pageId) return null;
+  try {
+    const j = await fbGetX(String(pageId), token, "name,link,picture.type(large){url}", {});
+    return { id: String(pageId), name: j.name || null, link: j.link || null, avatar: j.picture?.data?.url || null };
+  } catch (e) { return { id: String(pageId), name: null, link: null, avatar: null, error: String((e as any)?.message || e).slice(0, 300) }; }
+}
+// the biggest picture we can find for an ad (video poster / image), so the preview is not a 64px thumbnail
+async function bigPicture(creative: any, parts: any, token: string): Promise<string | null> {
+  try {
+    const vid = parts?.video_id || creative?.video_id;
+    if (vid) {
+      const v = await fbGet(String(vid), token, "picture,thumbnails{uri,width,height,is_preferred}");
+      const th = (v.thumbnails?.data || []).slice().sort((a: any, b: any) => (b.is_preferred ? 1 : 0) - (a.is_preferred ? 1 : 0) || (b.width || 0) - (a.width || 0));
+      const pref = th.find((t: any) => t.is_preferred) || th[0];
+      if (pref?.uri) return pref.uri;
+      if (v.picture) return v.picture;
+    }
+    if (creative?.id) {
+      const c = await fbGetX(String(creative.id), token, "image_url,thumbnail_url", { thumbnail_width: "1080", thumbnail_height: "1080" });
+      return c.image_url || c.thumbnail_url || null;
+    }
+  } catch (_e) { /* fall through */ }
+  return parts?.image_url || creative?.image_url || creative?.thumbnail_url || null;
+}
 async function doDetail(type: string, id: string, token: string) {
   const fields = type === "campaign" ? F_CAMPAIGN : type === "adset" ? F_ADSET : F_AD;
   const raw = await fbGet(id, token, fields);
   const out: any = { raw };
-  if (type === "ad") { out.parts = creativeParts(raw.creative); out.welcome = welcomeOf(raw.creative); }
+  if (type === "ad") {
+    out.parts = creativeParts(raw.creative); out.welcome = welcomeOf(raw.creative);
+    const [page, pic] = await Promise.all([pageInfo(out.parts.page_id, token), bigPicture(raw.creative, out.parts, token)]);
+    out.page = page; out.bigPicture = pic;
+  } else if (type === "adset") {
+    out.page = await pageInfo(raw.promoted_object?.page_id, token);
+  } else {
+    // campaign: the pages of its ad sets
+    try {
+      const sets = await fbGetX(id + "/adsets", token, "promoted_object", { limit: "100" });
+      const ids = [...new Set(((sets.data || []) as any[]).map((a) => a.promoted_object?.page_id).filter(Boolean))].slice(0, 5);
+      out.pages = (await Promise.all(ids.map((x) => pageInfo(x as string, token)))).filter(Boolean);
+    } catch (_e) { out.pages = []; }
+  }
   return out;
+}
+const PREVIEW_FORMATS = ["MOBILE_FEED_STANDARD", "DESKTOP_FEED_STANDARD", "FACEBOOK_REELS_MOBILE", "FACEBOOK_STORY_MOBILE", "INSTAGRAM_STANDARD", "MESSENGER_MOBILE_INBOX_MEDIA"];
+async function doPreview(id: string, token: string, format: string) {
+  const f = PREVIEW_FORMATS.includes(format) ? format : "MOBILE_FEED_STANDARD";
+  const j = await fbGetX(id + "/previews", token, "body", { ad_format: f });
+  const body: string = j.data?.[0]?.body || "";
+  const m = body.match(/src="([^"]+)"/);
+  const src = m ? m[1].replace(/&amp;/g, "&") : null;
+  return { format: f, src, width: Number((body.match(/width="(\d+)"/) || [])[1]) || null, height: Number((body.match(/height="(\d+)"/) || [])[1]) || null };
 }
 
 async function doEdit(type: string, id: string, token: string, ch: any, by: string, entName: string) {
@@ -198,6 +253,10 @@ Deno.serve(async (req: Request) => {
     if (!entityId) return json({ ok: false, error: "Missing entityId" }, 400);
     const token = await tokenFor(entityType, String(entityId));
     if (action === "detail") return json({ ok: true, entityType, ...(await doDetail(entityType, String(entityId), token)) });
+    if (action === "preview") {
+      if (entityType !== "ad") return json({ ok: false, error: "preview is for ads only" }, 400);
+      return json({ ok: true, ...(await doPreview(String(entityId), token, String(b.format || ""))) });
+    }
     if (action === "edit") {
       if (!b.changes || typeof b.changes !== "object") return json({ ok: false, error: "Missing changes" }, 400);
       const done = await doEdit(entityType, String(entityId), token, b.changes, b.changedBy || "", b.entityName || "");

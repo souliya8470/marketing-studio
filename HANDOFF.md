@@ -392,6 +392,12 @@ _Research done 2026-10-13. Scope: how to connect a Facebook (Meta Ads) MCP, what
 - Edge function `ads-manager-api` (verify_jwt false, MS guard like update-ad-entity; snapshot in supabase/functions/ads-manager-api): `detail` (Graph GET with fields) and `edit` (names, end time, ad-set targeting patch = read-modify-write of whole targeting, placements, ad creative = new adcreative from old object_story_spec swapped onto the ad). Edits logged in ad_control_log (edit_name / edit_end_time / edit_targeting / edit_creative).
 - NOT verified on live Facebook (sandbox cannot reach it; guard verified: anon key → 401). First real use should be on a paused test ad. Welcome-message/template shown read-only (editing not built). Ad creative swap may restart review and loses likes/comments of the old creative's post.
 
+### Marketing Studio v9.06 — Ads Manager: real page + real Facebook preview (2026-11-26, Claude, session_012sciTYadZ7DeKHcJArmBXL)
+- Tar: ad detail showed placeholder page name "ເພຈຂອງທ່ານ" and a tiny thumbnail; wants the real page the ad runs with and Ads-Manager-like preview.
+- `ads-manager-api` v2 (deployed + snapshot in repo): `detail` now also returns `page` {id,name,avatar} (ad: creative object_story_spec.page_id; ad set: promoted_object.page_id), `pages[]` for a campaign (from its ad sets), `bigPicture` (video thumbnails / creative image at 1080) ; new action `preview` (ads only) → GET /{ad}/previews?ad_format=… returns iframe `src` (+width/height). Formats whitelisted (MOBILE_FEED_STANDARD, DESKTOP_FEED_STANDARD, FACEBOOK_REELS_MOBILE, FACEBOOK_STORY_MOBILE, INSTAGRAM_STANDARD, MESSENGER_MOBILE_INBOX_MEDIA).
+- index.html v9.06: ad detail starts with the real FB preview iframe + format select (`data-am-pvfmt`, `amLoadPreview`), our drawn post below with real page name/avatar (`adsTestFbPost` got `avatar` option), `amPageHtml` shows page name+avatar in ad / ad set / campaign details.
+- NOT verified live (sandbox cannot reach Facebook). Page names need the token to read the page (`name,picture`); if it fails the row shows the ID plus the error text.
+
 ## POS chat — Live labels / Live products / CF price (2026-11-26, Claude, session 01QixbUFA76sYBfLb7XkZ8GB)
 Repo `souliya8470/sykhai-pos` (POS single-file SPA), POS v2.91 → v3.00. Marketing Studio `index.html` NOT touched.
 - DB: `pos_live_labels.import_batch` (latest import = same on every device). `pos_live_labels` is NOT covered by `pos_row_audit`; deletes of label rows are logged via `pos_activity_log` action `live_label_delete` (user, code, name) since v2.93.
