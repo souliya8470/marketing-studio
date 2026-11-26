@@ -415,3 +415,8 @@ Repo `souliya8470/sykhai-pos` (POS single-file SPA), POS v2.91 → v3.00. Market
 - Cron job 33 `ads-analyst-daily` at 03:17 UTC (10:17 Laos). Body `{dry_run:true}` tests without saving; `{force:true}` re-runs inside the 20h guard.
 - Dry run on velaris_lung (0 days old data) gave honest "too early" lessons. Some Lao wording still slightly odd -- review before using lessons.
 - NOT built yet (needs Tar's go): stage 2 = approved lessons feed `product_playbooks` / shoot brief / caption prompts (ads-test-variants); stage 3 = UI card in the 🧪 tab to read/approve lessons + weekly Telegram report (needs index.html bump, only one chat edits it at a time).
+
+### 2026-11-26 update — AI ad team stage 1+2 finished (Claude, n8n/bridge chat) -- index.html v9.07
+- index.html v9.07: 🧪 tab card "🧠 ບົດຮຽນທີມວິເຄາະ" (`adsLessonsCard`, `adsLessonDecide`, `adsAnalystRunNow`): latest analyst summary + stats, draft lessons with ✅ ຍອມຮັບ / ❌ ປະຕິເສດ, approved lessons as "📋 ໃບສັ່ງຖ່າຍ/ຂຽນຄັ້ງຕໍ່ໄປ" + ↩️ ຖອນ, 🔄 ວິເຄາະດຽວນີ້. `loadAdsCoachData` also loads `ad_lessons` and `ad_analyst_runs`. Not yet seen live in the browser (syntax + card render checked in node only).
+- Edge function `ads-test-variants` v7: `loadFacts` adds owner-APPROVED `ad_lessons` (newest 8) as `team_lessons` to the angle review and every caption writer (soft guidance; LESSONS_RULE; promo/compliance/playbook rules still win). Drafts/rejected are never used. Smoke-tested (boots, regen answers "plan not found" for a fake id); a real caption run with lessons not yet seen.
+- Other chats: `ads-test-variants` and `ads-test-auto` are edited by the editor/pipeline chat too; re-read the live function before editing (authoritative copy is in Supabase).
