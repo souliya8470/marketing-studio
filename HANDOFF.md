@@ -432,3 +432,10 @@ Repo `souliya8470/sykhai-pos` (POS single-file SPA), POS v2.91 → v3.00. Market
 - Fix for Facebook error 1443051: video_data may hold only one of image_url / image_hash (drop image_url when image_hash exists).
 - `ads-fix-greeting` is now a disabled stub returning 410 (no delete tool). Re-deploy the v3 logic only if another product gets `greeting_template_id` and its running ads need repair.
 - Caveat: changing a creative on a live ad can send it back through review / reset learning.
+
+### Greeting: native Ads Manager format (2026-11-26, Claude session) — supersedes the earlier "greeting repair" note
+- Finding: the message-ARRAY welcome format (what the browser launch form and my first repair used) is NOT recognised by Ads Manager ("template not saved") and no greeting reached the chat. Ads Manager's own format is `{"type":"VISUAL_EDITOR","version":2,"landing_screen_type":"welcome_message","media_type":"text","reengagement_disabled":true,"text_format":{"customer_action_type":"ice_breakers","message":{"ice_breakers":[{"title":..}],"quick_replies":[],"text":..}}}`. Tar confirmed it shows correctly in Ads Manager.
+- `launch-ad` v23 and `ads-test-addad` v3 now build this native format from ad_test_products.greeting_template_id (text + quick reply; NO image — the saved greeting_image_url is an expired fbcdn link, 403; need a fresh image to add `image_format` with an account image_hash).
+- All 12 Velaris test ads were converted (new creative each) and tagged "ທົດລອງເທມເພລດຂໍ້ຄວາມ" on ad + campaign name; verified from Facebook. Facebook limits ad updates to 1 per ~30 s (error #613) — pace bulk edits.
+- `ads-fix-greeting` is a disabled stub (410).
+- STILL OPEN: the browser launch form in index.html (pageWelcomeMessage array) and the 🚀 review screen still use the old array format -> needs an index.html change + APP_VERSION bump (not done); greeting image; greeting templates for Bio Pro Orange, Toby, ກາເຟງາ, ກາເຟຜັກ (auto-launch refused until set).
