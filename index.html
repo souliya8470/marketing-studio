@@ -994,7 +994,8 @@ window.addEventListener("unhandledrejection", function(e){
 // Bump this string every time a new build is shipped to Tar. Shown in the
 // sidebar footer + login page so it's trivial to confirm GitHub Pages is
 // actually serving the latest upload (vs. an old cached copy).
-const APP_VERSION = "9.07"; // v9.07 NEW (Tar 2026-11-26, "ໃຫ້ມີທີມງານ AI: ຖ່າຍ → ຕັດຕໍ່ → ທົດສອບແອັດ → ວິເຄາະ → ເອົາຜົນໄປໃຊ້ຮອບຕໍ່ໄປ" - stage 1+2 of the AI ad team): 🧪 tab, new card "🧠 ບົດຮຽນທີມວິເຄາະ" per product: shows the latest run of the NEW edge function ads-analyst (daily cron 03:17 UTC; summary, total spend/messages/cost per message vs the old baseline) and its lessons (table ad_lessons, status draft/approved/rejected, confidence low/medium/high). Tar presses ✅ ຍອມຮັບ / ❌ ປະຕິເສດ / ↩️ ຖອນ (adsLessonDecide, update of status only; RLS allows only that) and 🔄 ວິເຄາະດຽວນີ້ (adsAnalystRunNow = ads-analyst {product_key, force:true}). Approved lessons are listed as "📋 ໃບສັ່ງຖ່າຍ/ຂຽນຄັ້ງຕໍ່ໄປ" for the shoot/edit team, and ads-test-variants reads them when it writes the 3 caption angles (stage 2). Nothing here touches Facebook or budgets. loadAdsCoachData now also loads ad_lessons (120) and ad_analyst_runs (latest per product).
+const APP_VERSION = "9.08"; // v9.08 NEW (Tar 2026-11-26, handoff "Thai -> Lao poster conversion system"): two new sidebar pages for the Claude Thai->Lao worker (Canva Magic Layers). "📥 ຮູບໄທ" (#laoUpload): pick a product + upload Thai-text images (stored in bucket product-assets/raw_thai/<product_id>/, one row per image in the NEW table lao_convert_jobs with status queued), list of all jobs with status badges (queued/working/review/approved/redo/failed/paused), a queued job can be removed. "✅ ຮູບລາວ" (#laoReview): Thai original next to the Lao result for each job (filter by status, default review); ✅ approve = status approved + the image is inserted into edited_product_images (source canva-magic-layers, uploaded_by Claude, language lo) so it appears in 🖼️ ຮູບສິນຄ້າ; 🔁 redo = status redo + optional staff_note for the worker; ✏️ edit words = staff edit lao_texts then redo; link to the Canva design; banner when jobs are paused (Canva quota). New table lao_convert_jobs (RLS ms_staff/ms_ok(), same as edited_product_images). The worker itself (scheduled Claude task) and the edge function fetch-to-storage are NOT part of index.html. Loads when a page is opened and on 🔄 refreshAll() if already opened — no polling.
+// (previous text of this slot, kept) const APP_VERSION = "9.07"; // v9.07 NEW (Tar 2026-11-26, "ໃຫ້ມີທີມງານ AI: ຖ່າຍ → ຕັດຕໍ່ → ທົດສອບແອັດ → ວິເຄາະ → ເອົາຜົນໄປໃຊ້ຮອບຕໍ່ໄປ" - stage 1+2 of the AI ad team): 🧪 tab, new card "🧠 ບົດຮຽນທີມວິເຄາະ" per product: shows the latest run of the NEW edge function ads-analyst (daily cron 03:17 UTC; summary, total spend/messages/cost per message vs the old baseline) and its lessons (table ad_lessons, status draft/approved/rejected, confidence low/medium/high). Tar presses ✅ ຍອມຮັບ / ❌ ປະຕິເສດ / ↩️ ຖອນ (adsLessonDecide, update of status only; RLS allows only that) and 🔄 ວິເຄາະດຽວນີ້ (adsAnalystRunNow = ads-analyst {product_key, force:true}). Approved lessons are listed as "📋 ໃບສັ່ງຖ່າຍ/ຂຽນຄັ້ງຕໍ່ໄປ" for the shoot/edit team, and ads-test-variants reads them when it writes the 3 caption angles (stage 2). Nothing here touches Facebook or budgets. loadAdsCoachData now also loads ad_lessons (120) and ad_analyst_runs (latest per product).
 // (previous text of this slot, kept) const APP_VERSION = "9.06"; // v9.06 CHANGE (Tar 2026-11-26, Ads Manager ad detail: "ຊື່ເພຈຂຽນວ່າ ເພຈຂອງທ່ານ ຮູບພຣີວິວຍັງນ້ອຍ ... ຢາກໃຫ້ດຶງຂໍ້ມູນແທ້ຕາມແຄມເປນ/ແອັດນັ້ນວ່າຍິງກັບເພຈໃດ ແລະ ໃຫ້ເປັນຂອງ Ad Manager ແທ້"): ads-manager-api v2 returns the REAL page (name + avatar) read from the ad creative (ad), promoted_object (ad set) or the ad sets (campaign), a large video/image picture, and a new action "preview" = Facebook's own preview iframe (GET /{ad}/previews). The ad detail now opens with the section "ພຣີວິວແທ້ຈາກ Facebook" (iframe, format select: mobile feed / desktop feed / Reels / Story / Instagram / Messenger); our own drawn post keeps below it with the real page name + avatar and a full-size picture. Ad set and campaign details show the page name + avatar. Not yet tested against live Facebook (sandbox cannot reach it).
 // (previous text of this slot, kept) const APP_VERSION = "9.05"; // v9.05 NEW (Tar 2026-11-25, screenshots of Facebook Ads Manager: "ໃຫ້ເປັນຄືກັບ Ads Manager ແຍກແຄມເປນ / Ad Set / Ad ຕິ໊ກເລືອກແລ້ວກອງຕໍ່ກັນ ... ກົດເຂົ້າໄປແກ້ໄຂເຫັນການຕັ້ງຄ່າທຸກຢ່າງ"): new sub-page "📑 Ads Manager" in ຄ່າໂຄສະນາ (#adSpend/adsmanager). 3 level tabs (ແຄມເປນ / ຊຸດໂຄສະນາ / ໂຄສະນາ) with the same metric columns as the old table; ticking campaigns filters the ad sets, ticking ad sets filters the ads (chips "ເລືອກແລ້ວ N ✕"); row buttons drill down; status toggle per row (update-ad-entity). Clicking a name / ✏️ opens a right-hand panel that reads the entity LIVE from Facebook (NEW edge function ads-manager-api v1, action detail) and lets you edit: names, budget, start/end time, bid strategy (ad set), age/gender/countries/excluded countries, placements, and for ads the caption / headline / CTA (new creative swapped onto the ad) with a Facebook-post preview. Greeting message / template is shown read-only. Old "🎯 ຈັດການແຄມເປນ" page untouched. Not yet tested against live Facebook (sandbox cannot reach it).
 // (previous text of this slot, kept) const APP_VERSION = "9.04"; // v9.04 CHANGE (Tar 2026-11-25, screenshot of the Ads Manager preview: "ຮູບແບບທີ່ເຈົ້າເຮັດມາຍັງເບິ່ງຍາກ ຢາກໃຫ້ເປັນຄືໜ້າໂພສຈິງ ... ແຄັບຊັນ 3 ແຖວ ຖ້າຢາກເບິ່ງໝົດໃຫ້ບີບເບິ່ງເພີ່ມ"): every test ad is shown as a Facebook post preview (adsTestFbPost): page avatar + name + "ໂຄສະນາ", caption clamped to 3 lines with a "ດູເພີ່ມເຕີມ" / "ຫຍໍ້ລົງ" toggle, the video, then the grey bar with the headline (ຂໍ້ຄວາມຂ້າງປຸ່ມ) on the left and the "ສົ່ງຂໍ້ຄວາມ" button on the right, and the like/comment/share row. Used on the 🧪 plan cards (A/B group + single) and in the review step of the 🚀 picker. Display only; no server/SQL change.
@@ -1664,7 +1665,7 @@ const APP_VERSION = "9.07"; // v9.07 NEW (Tar 2026-11-26, "ໃຫ້ມີທີ
 // enclosing functions were already async, so no other change was needed) -- searched the whole
 // file afterward for any remaining bare confirm(/alert(/prompt( and found none left outside this
 // comment block itself.
-const APP_VERSION_PREV = "9.06"; // (v9.06 text kept in the history comment lines of APP_VERSION above)
+const APP_VERSION_PREV = "9.07"; // (v9.07 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.04"; // (v9.04 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.03"; // (v9.03 text kept in the history comment lines of APP_VERSION above)
 // (previous text of this slot, kept) const APP_VERSION_PREV = "9.02"; // (v9.02 text kept in the history comment lines of APP_VERSION above)
@@ -1791,7 +1792,7 @@ const APP_VERSION_PREV = "9.06"; // (v9.06 text kept in the history comment line
 // comment block above (this slot shifted from 8.10→8.11 now that 8.12 is current).
 // (previous text of this slot, kept) // v8.10 FIX (Tar 2026-09-30) — full note is in the APP_VERSION
 // comment block above (this slot shifted from 8.09→8.10 now that 8.11 is current).
-const APP_VERSION_PREV_OLDER = "9.05"; // (v9.05 text kept in the history comment lines above)
+const APP_VERSION_PREV_OLDER = "9.06"; // (v9.06 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.03"; // (v9.03 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.02"; // (v9.02 text kept in the history comment lines above)
 // (previous text of this slot, kept) const APP_VERSION_PREV_OLDER = "9.01"; // (v9.01 text kept in the history comment lines above)
@@ -8020,6 +8021,8 @@ async function refreshAll(){
 
     // 5) v8.52: 🖼️ ຮູບສິນຄ້າ library — only if it was already opened this session.
     if(STATE.editedImagesLoaded){ try{ await loadEditedImages(true); }catch(e){} }
+    // v9.08: Thai→Lao jobs — only if a Lao page was already opened this session.
+    if(STATE.laoJobsLoaded){ try{ await loadLaoJobs(true); }catch(e){} }
     // 6) v8.86: 🎬 ວິດີໂອສຳເລັດ library — only if it was already opened this session.
     if(STATE.editedVideosLoaded){ try{ await loadEditedVideos(true); }catch(e){} }
   }catch(e){}
@@ -29866,6 +29869,8 @@ const BASE_NAV = [
   {id:"products", label:"ສິນຄ້າ", icon:"&#9638;"},
   {id:"editedImages", label:"🖼️ ຮູບສິນຄ້າ", icon:"&#128444;"}, // v8.52: library of finished (Lao-text) product images for staff to download (see APP_VERSION comment)
   {id:"editedVideos", label:"🎬 ວິດີໂອສຳເລັດ", icon:"&#127916;"}, // v8.86: finished videos approved in the Sykhai Editor (see APP_VERSION comment)
+  {id:"laoUpload", label:"📥 ຮູບໄທ", icon:"&#128229;"}, // v9.08: upload Thai-text images for the Claude Thai→Lao worker
+  {id:"laoReview", label:"✅ ຮູບລາວ", icon:"&#9989;"}, // v9.08: review/approve the Lao images
   {id:"content", label:"Marketing Studio", icon:"&#9998;"},
   {id:"productChat", label:"ຖາມ AI ກ່ຽວກັບສິນຄ້າ", icon:"&#129302;"},
   {id:"costs", label:"ຕົ້ນທຶນ & ກຳໄລ", icon:"&#3647;"},
@@ -30254,6 +30259,7 @@ function navigateToPage(pageId, opts){
   if(STATE.page==="arrivalTagReport") loadArrivalTagReport();
   if(STATE.page==="editedImages") loadEditedImages(); // v8.52: one load per page open (no polling)
   if(STATE.page==="editedVideos") loadEditedVideos(); // v8.86: one load per page open (no polling)
+  if(STATE.page==="laoUpload" || STATE.page==="laoReview") loadLaoJobs(); // v9.08: one load per page open (no polling)
   if(STATE.page==="codReviewHistory") loadCodReviewHistory();
   if(STATE.page==="editLog") loadEditLog();
   if(STATE.page==="pancakeCrm"){ loadCrmCount(); loadCrmResults(true); loadCodReceivedMap(); loadSyncStatus(); }
@@ -30598,6 +30604,8 @@ function renderPage(){
     case "arrivalTagReport": return renderArrivalTagReport();
     case "editedImages": return renderEditedImages(); // v8.52
     case "editedVideos": return renderEditedVideos(); // v8.86
+    case "laoUpload": return renderLaoUpload(); // v9.08
+    case "laoReview": return renderLaoReview(); // v9.08
     case "clockPage": return renderClockPage(); // v8.56
     case "codReviewHistory": return renderCodReviewHistory();
     case "editLog": return renderEditLog();
@@ -37538,6 +37546,306 @@ function attachEditedImagesEvents(){
   document.querySelectorAll("[data-edited-del]").forEach(b=>b.addEventListener("click", ()=>deleteEditedImage(b.dataset.editedDel)));
 }
 
+/* ====================== THAI → LAO IMAGE CONVERSION (📥 ຮູບໄທ / ✅ ຮູບລາວ) — v9.08 ======================
+   Staff upload ChatGPT posters whose ad text is Thai; a Claude worker (scheduled task, Canva Magic Layers)
+   rewrites every Thai text into correct Lao and stores the Lao image; staff only review/approve here.
+   Raw files go to public bucket product-assets under raw_thai/<product_id>/, one row per image in table
+   lao_convert_jobs (status queued|working|review|approved|redo|failed|paused). The Lao result lives in
+   edited/<product_id>/ (written by the worker through edge function fetch-to-storage). On ✅ approve the
+   image is also inserted into edited_product_images (🖼️ ຮູບສິນຄ້າ). Loads when a page is opened and on the
+   global 🔄 refreshAll() only — no polling (standing rule). */
+const LAO_STATUS = {
+  queued:   {t:"ລໍຖ້າແປງ",       c:"#6b7280"},
+  working:  {t:"ກຳລັງແປງ",       c:"#2563eb"},
+  review:   {t:"ລໍຖ້າກວດ",       c:"#d97706"},
+  approved: {t:"ອະນຸມັດແລ້ວ",    c:"#16a34a"},
+  redo:     {t:"ລໍຖ້າເຮັດໃໝ່",   c:"#7c3aed"},
+  failed:   {t:"ບໍ່ສຳເລັດ",       c:"#dc2626"},
+  paused:   {t:"ຢຸດຊົ່ວຄາວ",     c:"#b45309"}
+};
+function laoStatusBadge(s){
+  const m = LAO_STATUS[s] || {t:s, c:"#6b7280"};
+  return `<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; color:#fff; background:${m.c};">${esc(m.t)}</span>`;
+}
+async function loadLaoJobs(quiet){
+  if(!quiet){ STATE.laoJobsLoading = true; render(); }
+  try{
+    const {data, error} = await sb.from("lao_convert_jobs").select("*").order("created_at", {ascending:false}).limit(1000);
+    if(error) throw error;
+    STATE.laoJobs = data||[];
+    STATE.laoJobsLoaded = true;
+  }catch(err){
+    console.error("loadLaoJobs failed:", err);
+    if(!quiet) showToast("⚠️ ໂຫຼດງານບໍ່ສຳເລັດ: " + (err.message||""), "error");
+  }
+  STATE.laoJobsLoading = false;
+  if(!quiet) render();
+}
+function laoJobsPausedBanner(){
+  const n = (STATE.laoJobs||[]).filter(j=>j.status==="paused").length;
+  return n ? `<div class="card" style="border-left:4px solid #b45309;"><b>⏸️ ມີ ${n} ງານຢຸດຊົ່ວຄາວ</b> <span class="small-muted">(ໂຄຕ້າ Canva ເຕັມ — ລະບົບຈະລອງໃໝ່ພາຍຫຼັງ)</span></div>` : "";
+}
+/* ---------- page 1: 📥 ຮູບໄທ (upload) ---------- */
+function renderLaoUpload(){
+  const products = STATE.data.products || [];
+  const uploadPid = STATE.laoUpProduct || "";
+  const jobs = STATE.laoJobs || [];
+  const row = (j)=>`
+    <div style="display:flex; gap:10px; align-items:center; padding:8px 0; border-top:1px solid #f1f5f9;">
+      <a href="${esc(j.raw_public_url)}" target="_blank" rel="noopener" onclick="return openSlipPopup(this.href)" style="flex:0 0 56px;">
+        <img src="${esc(j.raw_public_url)}" alt="" loading="lazy" style="width:56px; height:56px; object-fit:cover; border-radius:6px; background:#f3f4f6;"/>
+      </a>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:600; word-break:break-all;">${esc(j.file_name)}</div>
+        <div class="small-muted" style="font-size:11px;">${esc(j.product_name||"-")} · ${esc(j.uploaded_by||"-")} · ${esc(editedImgTime(j.created_at))}</div>
+        ${j.status==="failed" && j.error ? `<div style="font-size:11px; color:#dc2626; word-break:break-all;">ເຫດຜົນ: ${esc(j.error)}</div>` : ""}
+      </div>
+      <div>${laoStatusBadge(j.status)}</div>
+      ${j.status==="queued" ? `<button class="btn btn-outline btn-sm" data-lao-cancel="${esc(j.id)}">🗑️</button>` : ""}
+    </div>`;
+  return `
+    <div class="page-head">
+      <h1>📥 ຮູບໄທ → ລາວ</h1>
+      <p>ອັບໂຫຼດຮູບທີ່ມີຕົວໜັງສືໄທ ລະບົບ Claude ຈະແປງເປັນພາສາລາວໃຫ້ ແລ້ວມາລໍຖ້າກວດໃນໜ້າ "✅ ຮູບລາວ"</p>
+    </div>
+    ${laoJobsPausedBanner()}
+    <div class="card">
+      <h3 style="margin-top:0;">📤 ອັບໂຫຼດຮູບໄທ</h3>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <select id="lao-up-product" style="margin-bottom:0; max-width:320px;">
+          <option value="">-- ເລືອກສິນຄ້າ --</option>
+          ${products.map(p=>`<option value="${esc(p.id)}" ${uploadPid===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}
+        </select>
+        <input type="file" id="lao-up-files" accept="image/png,image/jpeg,image/webp" multiple style="margin-bottom:0;"/>
+        <button class="btn btn-primary btn-sm" id="btn-lao-upload" ${STATE.laoUploading?"disabled":""}>📤 ອັບໂຫຼດ ແລະ ສົ່ງແປງ</button>
+      </div>
+      <p class="small-muted" id="lao-up-status" style="margin:8px 0 0;">${esc(STATE.laoUpStatus||"ເລືອກໄຟລ໌ຮູບໄດ້ຫຼາຍຮູບພ້ອມກັນ (PNG, JPG)")}</p>
+    </div>
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:8px;">
+        <h3 style="margin:0;">ລາຍການງານ (${jobs.length})</h3>
+        <button class="btn btn-outline btn-sm" id="btn-lao-reload">🔄 ໂຫຼດຄືນໃໝ່</button>
+      </div>
+      ${STATE.laoJobsLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` : (jobs.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີງານ</p>` : jobs.slice(0,200).map(row).join(""))}
+    </div>`;
+}
+async function uploadLaoRaw(){
+  const productId = (document.getElementById("lao-up-product")||{}).value || "";
+  const input = document.getElementById("lao-up-files");
+  const files = input && input.files ? [...input.files] : [];
+  if(!productId){ showToast("ກະລຸນາເລືອກສິນຄ້າກ່ອນ", "error"); return; }
+  if(files.length===0){ showToast("ກະລຸນາເລືອກໄຟລ໌ຮູບ", "error"); return; }
+  const product = (STATE.data.products||[]).find(p=>p.id===productId) || {};
+  STATE.laoUpProduct = productId;
+  STATE.laoUploading = true;
+  const statusEl = ()=>document.getElementById("lao-up-status");
+  let ok = 0; const failed = [];
+  for(let i=0; i<files.length; i++){
+    const f = files[i];
+    const s = statusEl(); if(s) s.textContent = `ກຳລັງອັບໂຫຼດ ${i+1}/${files.length}: ${f.name}`;
+    try{
+      const dims = await editedImgDims(f);
+      const path = `raw_thai/${productId}/${Date.now()}_${i}_${editedImgSafeName(f.name)}`;
+      const up = await sb.storage.from(EDITED_IMG_BUCKET).upload(path, f, {contentType: f.type||"image/png", upsert:false});
+      if(up.error) throw up.error;
+      const publicUrl = sb.storage.from(EDITED_IMG_BUCKET).getPublicUrl(path).data.publicUrl;
+      const {error} = await sb.from("lao_convert_jobs").insert({
+        product_id: productId, product_name: product.name || null,
+        file_name: f.name, raw_path: path, raw_public_url: publicUrl, status: "queued",
+        width: dims.w, height: dims.h, size_bytes: f.size,
+        uploaded_by: (STATE.currentUser && STATE.currentUser.name) || null
+      });
+      if(error) throw error;
+      ok++;
+    }catch(err){
+      console.error("uploadLaoRaw failed for", f.name, err);
+      failed.push(f.name + " (" + (err.message||err) + ")");
+    }
+  }
+  STATE.laoUploading = false;
+  STATE.laoUpStatus = failed.length ? ("⚠️ ອັບໂຫຼດບໍ່ສຳເລັດ: " + failed.join(", ")) : ("✅ ອັບໂຫຼດແລ້ວ " + ok + " ຮູບ — ກຳລັງລໍຖ້າແປງ");
+  if(ok) showToast("✅ ອັບໂຫຼດແລ້ວ " + ok + " ຮູບ");
+  if(failed.length) showToast("⚠️ ອັບໂຫຼດບໍ່ສຳເລັດ " + failed.length + " ຮູບ", "error");
+  await loadLaoJobs();
+}
+async function cancelLaoJob(id){
+  const j = (STATE.laoJobs||[]).find(x=>String(x.id)===String(id));
+  if(!j || j.status!=="queued") return;
+  const okDel = await customConfirm("ລຶບງານ \"" + j.file_name + "\" ອອກຈາກຄິວບໍ? (ໄຟລ໌ຕົ້ນສະບັບຍັງຢູ່)", {okLabel:"ລຶບ", danger:true});
+  if(!okDel) return;
+  const {error} = await sb.from("lao_convert_jobs").delete().eq("id", j.id).eq("status", "queued");
+  if(error){ showToast("⚠️ ລຶບບໍ່ສຳເລັດ: " + (error.message||""), "error"); return; }
+  showToast("✅ ລຶບແລ້ວ");
+  STATE.laoJobs = (STATE.laoJobs||[]).filter(x=>x.id!==j.id);
+  render();
+}
+function attachLaoUploadEvents(){
+  const p = document.getElementById("lao-up-product");
+  if(p) p.addEventListener("change", ()=>{ STATE.laoUpProduct = p.value; });
+  const u = document.getElementById("btn-lao-upload");
+  if(u) u.addEventListener("click", uploadLaoRaw);
+  const r = document.getElementById("btn-lao-reload");
+  if(r) r.addEventListener("click", ()=>loadLaoJobs());
+  document.querySelectorAll("[data-lao-cancel]").forEach(b=>b.addEventListener("click", ()=>cancelLaoJob(b.dataset.laoCancel)));
+}
+/* ---------- page 2: ✅ ຮູບລາວ (review / approve) ---------- */
+function renderLaoReview(){
+  const jobs = STATE.laoJobs || [];
+  const flt = STATE.laoReviewFilter || "review";
+  const counts = {}; jobs.forEach(j=>{ counts[j.status] = (counts[j.status]||0)+1; });
+  const list = jobs.filter(j=> flt==="all" || j.status===flt);
+  const order = ["review","redo","queued","working","paused","failed","approved"];
+  const card = (j)=>{
+    const texts = Array.isArray(j.lao_texts) ? j.lao_texts : [];
+    const editing = String(STATE.laoEditId)===String(j.id);
+    const edTexts = editing ? (STATE.laoEditTexts||[]) : [];
+    return `
+    <div style="border:1px solid #e5e7eb; border-radius:10px; background:#fff; padding:10px; margin-bottom:14px;">
+      <div class="flex-between" style="gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+        <div style="font-weight:600; font-size:13px; word-break:break-all;">${esc(j.product_name||"-")} · ${esc(j.file_name)}</div>
+        <div>${laoStatusBadge(j.status)}</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px;">
+        <div>
+          <div class="small-muted" style="font-size:11px; margin-bottom:4px;">ຮູບໄທ (ຕົ້ນສະບັບ)</div>
+          <a href="${esc(j.raw_public_url)}" target="_blank" rel="noopener" onclick="return openSlipPopup(this.href)" style="display:block; background:#f3f4f6; border-radius:8px;">
+            <img src="${esc(j.raw_public_url)}" alt="" loading="lazy" style="width:100%; aspect-ratio:1/1; object-fit:contain; display:block;"/>
+          </a>
+        </div>
+        <div>
+          <div class="small-muted" style="font-size:11px; margin-bottom:4px;">ຮູບລາວ (ຜົນແປງ)</div>
+          ${j.lao_public_url ? `
+          <a href="${esc(j.lao_public_url)}" target="_blank" rel="noopener" onclick="return openSlipPopup(this.href)" style="display:block; background:#f3f4f6; border-radius:8px;">
+            <img src="${esc(j.lao_public_url)}" alt="" loading="lazy" style="width:100%; aspect-ratio:1/1; object-fit:contain; display:block;"/>
+          </a>` : `<div style="aspect-ratio:1/1; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:13px;">ຍັງບໍ່ມີຜົນແປງ</div>`}
+        </div>
+      </div>
+      ${j.error ? `<div style="font-size:12px; color:#dc2626; margin-top:6px; word-break:break-all;">ເຫດຜົນ: ${esc(j.error)}</div>` : ""}
+      ${j.staff_note ? `<div class="small-muted" style="font-size:12px; margin-top:6px;">ໝາຍເຫດພະນັກງານ: ${esc(j.staff_note)}</div>` : ""}
+      ${texts.length && !editing ? `
+      <details style="margin-top:8px;"><summary style="cursor:pointer; font-size:12px;">ຂໍ້ຄວາມລາວທີ່ໃຊ້ (${texts.length})</summary>
+        <ol style="margin:6px 0 0 18px; font-size:13px;">${texts.map(t=>`<li>${esc((t&&t.lao)||"")}</li>`).join("")}</ol>
+      </details>` : ""}
+      ${editing ? `
+      <div style="margin-top:8px;">
+        <div class="small-muted" style="font-size:12px; margin-bottom:4px;">ແກ້ຂໍ້ຄວາມລາວ ແລ້ວກົດບັນທຶກ — Claude ຈະເຮັດຮູບໃໝ່ຕາມຂໍ້ຄວາມນີ້</div>
+        ${edTexts.map((t,i)=>`<input type="text" data-lao-edit-i="${i}" value="${esc((t&&t.lao)||"")}" style="width:100%; margin-bottom:6px;"/>`).join("")}
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" data-lao-edit-save="${esc(j.id)}">💾 ບັນທຶກ ແລະ ສັ່ງເຮັດໃໝ່</button>
+          <button class="btn btn-outline btn-sm" data-lao-edit-cancel="1">ຍົກເລີກ</button>
+        </div>
+      </div>` : ""}
+      ${j.status==="review" && !editing ? `
+      <div style="margin-top:8px;">
+        <textarea data-lao-note="${esc(j.id)}" rows="2" placeholder="ບອກຈຸດທີ່ຕ້ອງແກ້ (ບໍ່ບັງຄັບ)" style="width:100%; margin-bottom:6px;">${esc((STATE.laoNotes||{})[j.id]||"")}</textarea>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" data-lao-approve="${esc(j.id)}">✅ ອະນຸມັດ</button>
+          <button class="btn btn-outline btn-sm" data-lao-redo="${esc(j.id)}">🔁 ສັ່ງເຮັດໃໝ່</button>
+          ${texts.length ? `<button class="btn btn-outline btn-sm" data-lao-edit="${esc(j.id)}">✏️ ແກ້ຄຳ</button>` : ""}
+          ${j.canva_design_url ? `<a class="btn btn-outline btn-sm" href="${esc(j.canva_design_url)}" target="_blank" rel="noopener">🔗 ເປີດໃນ Canva</a>` : ""}
+        </div>
+      </div>` : ""}
+      ${j.status!=="review" && j.canva_design_url ? `<div style="margin-top:8px;"><a class="btn btn-outline btn-sm" href="${esc(j.canva_design_url)}" target="_blank" rel="noopener">🔗 ເປີດໃນ Canva</a></div>` : ""}
+    </div>`;
+  };
+  return `
+    <div class="page-head">
+      <h1>✅ ຮູບລາວ (ກວດ ແລະ ອະນຸມັດ)</h1>
+      <p>ປຽບທຽບຮູບໄທກັບຮູບລາວ — ຖ້າຖືກຕ້ອງກົດອະນຸມັດ ຮູບຈະໄປຢູ່ໜ້າ "🖼️ ຮູບສິນຄ້າ" ຖ້າຜິດກົດສັ່ງເຮັດໃໝ່</p>
+    </div>
+    ${laoJobsPausedBanner()}
+    <div class="card">
+      <div class="flex-between" style="flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <select id="lao-review-filter" style="margin-bottom:0;">
+          ${order.map(s=>`<option value="${s}" ${flt===s?"selected":""}>${esc(LAO_STATUS[s].t)} (${counts[s]||0})</option>`).join("")}
+          <option value="all" ${flt==="all"?"selected":""}>ທັງໝົດ (${jobs.length})</option>
+        </select>
+        <button class="btn btn-outline btn-sm" id="btn-lao-reload">🔄 ໂຫຼດຄືນໃໝ່</button>
+      </div>
+      ${STATE.laoJobsLoading ? `<p class="small-muted">ກຳລັງໂຫຼດ...</p>` : (list.length===0 ? `<p class="small-muted">ຍັງບໍ່ມີງານ</p>` : list.slice(0,100).map(card).join(""))}
+    </div>`;
+}
+async function laoJobUpdate(id, patch){
+  const {error} = await sb.from("lao_convert_jobs").update({...patch, updated_at: new Date().toISOString()}).eq("id", id);
+  if(error) throw error;
+  const j = (STATE.laoJobs||[]).find(x=>String(x.id)===String(id));
+  if(j) Object.assign(j, patch);
+}
+async function approveLaoJob(id){
+  const j = (STATE.laoJobs||[]).find(x=>String(x.id)===String(id));
+  if(!j || j.status!=="review" || !j.lao_public_url || !j.lao_path) { showToast("⚠️ ງານນີ້ຍັງບໍ່ມີຮູບລາວ", "error"); return; }
+  try{
+    const me = (STATE.currentUser && STATE.currentUser.name) || null;
+    const {data: ex} = await sb.from("edited_product_images").select("id").eq("storage_path", j.lao_path).limit(1);
+    if(!ex || ex.length===0){
+      const base = String(j.file_name||"image").replace(/\.[^.]+$/, "");
+      const {error: e2} = await sb.from("edited_product_images").insert({
+        product_id: j.product_id, product_name: j.product_name || null,
+        title: base + " (ລາວ)", file_name: String(j.lao_path).split("/").pop(),
+        storage_path: j.lao_path, public_url: j.lao_public_url,
+        width: j.width||null, height: j.height||null, size_bytes: j.size_bytes||null,
+        language: "lo", source: "canva-magic-layers", uploaded_by: "Claude",
+        note: "ແປງຈາກ " + (j.file_name||"")
+      });
+      if(e2) throw e2;
+    }
+    await laoJobUpdate(id, {status:"approved", reviewed_by: me});
+    if(STATE.editedImagesLoaded){ try{ await loadEditedImages(true); }catch(e){} }
+    showToast("✅ ອະນຸມັດແລ້ວ — ຮູບຢູ່ໃນ ຮູບສິນຄ້າ ແລ້ວ");
+    render();
+  }catch(err){
+    console.error("approveLaoJob failed:", err);
+    showToast("⚠️ ອະນຸມັດບໍ່ສຳເລັດ: " + (err.message||err), "error");
+  }
+}
+async function redoLaoJob(id){
+  const j = (STATE.laoJobs||[]).find(x=>String(x.id)===String(id));
+  if(!j) return;
+  try{
+    const note = ((STATE.laoNotes||{})[id] || "").trim();
+    await laoJobUpdate(id, {status:"redo", staff_note: note || null, reviewed_by: (STATE.currentUser && STATE.currentUser.name) || null});
+    if(STATE.laoNotes) delete STATE.laoNotes[id];
+    showToast("✅ ສົ່ງໃຫ້ເຮັດໃໝ່ແລ້ວ");
+    render();
+  }catch(err){
+    console.error("redoLaoJob failed:", err);
+    showToast("⚠️ ບັນທຶກບໍ່ສຳເລັດ: " + (err.message||err), "error");
+  }
+}
+async function saveLaoEdit(id){
+  const j = (STATE.laoJobs||[]).find(x=>String(x.id)===String(id));
+  if(!j) return;
+  try{
+    const base = Array.isArray(j.lao_texts) ? j.lao_texts : [];
+    const next = base.map((t,i)=>{
+      const el = document.querySelector(`[data-lao-edit-i="${i}"]`);
+      return Object.assign({}, t, {lao: el ? el.value.trim() : ((t&&t.lao)||"")});
+    });
+    await laoJobUpdate(id, {status:"redo", lao_texts: next, staff_note: "ພະນັກງານແກ້ຄຳລາວເອງ — ໃຫ້ໃຊ້ຂໍ້ຄວາມໃນ lao_texts ຕາມນີ້", reviewed_by: (STATE.currentUser && STATE.currentUser.name) || null});
+    STATE.laoEditId = null; STATE.laoEditTexts = [];
+    showToast("✅ ບັນທຶກແລ້ວ ສົ່ງໃຫ້ເຮັດໃໝ່");
+    render();
+  }catch(err){
+    console.error("saveLaoEdit failed:", err);
+    showToast("⚠️ ບັນທຶກບໍ່ສຳເລັດ: " + (err.message||err), "error");
+  }
+}
+function attachLaoReviewEvents(){
+  const f = document.getElementById("lao-review-filter");
+  if(f) f.addEventListener("change", ()=>{ STATE.laoReviewFilter = f.value; render(); });
+  const r = document.getElementById("btn-lao-reload");
+  if(r) r.addEventListener("click", ()=>loadLaoJobs());
+  document.querySelectorAll("[data-lao-note]").forEach(t=>t.addEventListener("input", ()=>{ STATE.laoNotes = STATE.laoNotes||{}; STATE.laoNotes[t.dataset.laoNote] = t.value; }));
+  document.querySelectorAll("[data-lao-approve]").forEach(b=>b.addEventListener("click", ()=>approveLaoJob(b.dataset.laoApprove)));
+  document.querySelectorAll("[data-lao-redo]").forEach(b=>b.addEventListener("click", ()=>redoLaoJob(b.dataset.laoRedo)));
+  document.querySelectorAll("[data-lao-edit]").forEach(b=>b.addEventListener("click", ()=>{
+    const j = (STATE.laoJobs||[]).find(x=>String(x.id)===String(b.dataset.laoEdit)); if(!j) return;
+    STATE.laoEditId = j.id; STATE.laoEditTexts = Array.isArray(j.lao_texts) ? j.lao_texts : []; render();
+  }));
+  document.querySelectorAll("[data-lao-edit-save]").forEach(b=>b.addEventListener("click", ()=>saveLaoEdit(b.dataset.laoEditSave)));
+  document.querySelectorAll("[data-lao-edit-cancel]").forEach(b=>b.addEventListener("click", ()=>{ STATE.laoEditId = null; STATE.laoEditTexts = []; render(); }));
+}
+
 /* ====================== FINISHED VIDEOS (🎬 ວິດີໂອສຳເລັດ) — v8.86 ======================
    Videos approved in the Sykhai Editor arrive here by themselves (edge function editor-video-intake ->
    bucket product-assets/edited/videos/<product_id>/ + one row in edited_product_videos, soft delete via
@@ -41272,6 +41580,8 @@ function attachPageEvents(){
   if(STATE.page==="arrivalTagReport") attachArrivalTagReportEvents();
   if(STATE.page==="editedImages") attachEditedImagesEvents(); // v8.52
   if(STATE.page==="editedVideos") attachEditedVideosEvents(); // v8.86
+  if(STATE.page==="laoUpload") attachLaoUploadEvents(); // v9.08
+  if(STATE.page==="laoReview") attachLaoReviewEvents(); // v9.08
   if(STATE.page==="clockPage") attachClockPageEvents(); // v8.56
   if(STATE.page==="codReviewHistory") attachCodReviewHistoryEvents();
   if(STATE.page==="editLog") attachEditLogEvents();
